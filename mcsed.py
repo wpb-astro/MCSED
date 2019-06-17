@@ -535,13 +535,14 @@ WPBWPB units??
 
     def lnlike(self):
         ''' Calculate the log likelihood and return the value and stellar mass
-        of the model
+        of the model as well as other derived parameters
 
         Returns
         -------
-        log likelihood, mass : float, float
+        log likelihood, mass, t10, t50, t90, sfr10, sfr100 : float, float, float, float, float, float, float
             The log likelihood includes a chi2_term and a parameters term.
             The mass comes from building of the composite stellar population
+            The parameters t10, t50, t90, sfr10, and sfr100 are derived in get_derived_params(self)
         '''
         self.spectrum, mass = self.build_csp()
 
@@ -572,26 +573,27 @@ WPBWPB units??
         inv_sigma2 = 1.0 / (self.data_fnu_e**2 + (model_y * self.sigma_m)**2)
         chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
-        return (chi2_term + parm_term + emline_term, mass)
+        t10,t50,t90,sfr10,sfr100 = self.get_derived_params()
+        return (chi2_term + parm_term + emline_term, mass,t10,t50,t90,sfr10,sfr100)
 
     def lnprob(self, theta):
-        ''' Calculate the log probabilty and return the value and stellar mass
+        ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
         of the model
 
         Returns
         -------
-        log prior + log likelihood, mass : float, float
+        log prior + log likelihood, [mass,t10,t50,t90,sfr10,sfr100]: float,float,float,float,float,float,float
             The log probability is just the sum of the logs of the prior and
             likelihood.  The mass comes from the building of the composite
-            stellar population.
+            stellar population. The other derived parameters are calculated in get_derived_params()
         '''
         self.set_class_parameters(theta)
         lp = self.lnprior()
         if np.isfinite(lp):
-            lnl, mass = self.lnlike()
-            return lp + lnl, mass
+            lnl,mass,t10,t50,t90,sfr10,sfr100 = self.lnlike()
+            return lp + lnl, np.array([mass, t10, t50, t90, sfr10, sfr100])
         else:
-            return -np.inf, -np.inf
+            return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
 
     def get_init_walker_values(self, kind='ball', num=None):
         ''' Before running emcee, this function generates starting points
@@ -683,9 +685,9 @@ WPBWPB units??
         ndim = pos.shape[1]
         start = time.time()
         # Time to set up the sampler and run the mcmc
+        #dtype = [("log_mass", float),("t10", float),("t50", float),("t90", float),("sfr10", float),("sfr100", float)] #For blobs
         sampler = emcee.EnsembleSampler(self.nwalkers, ndim, self.lnprob,
                                         a=2.0)
-
         # Do real run
         sampler.run_mcmc(pos, self.nsteps, rstate0=np.random.get_state())
         end = time.time()
@@ -701,16 +703,18 @@ WPBWPB units??
                       (np.mean(sampler.acceptance_fraction)))
         self.log.info("AutoCorrelation Steps: %i, Number of Burn-in Steps: %i"
                       % (np.round(tau), burnin_step))
-        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+2))
-        new_chain[:, :, :-2] = sampler.chain
+        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+7))
+        new_chain[:, :, :-7] = sampler.chain
         self.chain = sampler.chain
         for i in xrange(len(sampler.blobs)):
             for j in xrange(len(sampler.blobs[0])):
-                x = sampler.blobs[i][j]
-                new_chain[j, i, -2] = np.where((np.isfinite(x)) * (x > 10.),
-                                               np.log10(x), -99.)
+                for k in xrange(len(sampler.blobs[0][0])):
+                    x = sampler.blobs[i][j][k]
+                    if k==0: new_chain[j, i, -7+k] = np.where((np.isfinite(x)) * (x > 10.),
+                                               np.log10(x), -99.) #Stellar mass
+                    else: new_chain[j, i, -7+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
         new_chain[:, :, -1] = sampler.lnprobability
-        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+2))
+        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+7))
 
     def calc_gaw(self,t,sfr_f,frac):
         ''' Calculate time at which the fraction "frac" of the stellar mass in the galaxy was created'''
@@ -722,7 +726,7 @@ WPBWPB units??
         tot = forward+backward
         return forward/tot *t[ind-1] + backward/tot * t[ind] #Linear interpolation to get more accurate result
 
-    def get_derived_params(self,params,agenum=None):
+    def get_derived_params1(self,params,agenum=None):
         ''' These are not free parameters in the model, but are instead
         calculated from free parameters
         '''
@@ -731,7 +735,7 @@ WPBWPB units??
         ageval = 10**age #Age in Gyr
         t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
         sfrarray = self.sfh_class.derived(t_sfh,params)
-        t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present
+        t_gaw = np.geomspace(1.0e-5,ageval,num=1000) #From (10000 years after) birth to present
         sfrfull = self.sfh_class.derived(t_gaw,params)
         sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
 
@@ -741,7 +745,26 @@ WPBWPB units??
         sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
         sfr100 = np.average(sfrarray)
 
-        return np.log10(t10),np.log10(t50),np.log10(t90),np.log10(sfr10),np.log10(sfr100)
+        return [t10,t50,t90,sfr10,sfr100]
+
+    def get_derived_params(self):
+        ''' These are not free parameters in the model, but are instead
+        calculated from free parameters
+        '''
+        ageval = 10**self.sfh_class.age #Age in Gyr
+        t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
+        sfrarray = self.sfh_class.evaluate(t_sfh)
+        t_gaw = np.geomspace(1.0e-5,ageval,num=1000) #From (10000 years after) birth to present
+        sfrfull = self.sfh_class.evaluate(t_gaw)
+        sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
+
+        t10 = self.calc_gaw(t_gaw,sfr_f,0.1)
+        t50 = self.calc_gaw(t_gaw,sfr_f,0.5)
+        t90 = self.calc_gaw(t_gaw,sfr_f,0.9)
+        sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
+        sfr100 = np.average(sfrarray)
+
+        return t10,t50,t90,sfr10,sfr100
 
 
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
@@ -840,6 +863,7 @@ WPBWPB units??
 
     def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
         ''' Make a triangle corner plot for samples from fit
+        * Doesn't include the derived parameters t10, t50, t90, sfr10, and sfr100 as that would make the plot too crowded
 
         Input
         -----
@@ -868,7 +892,7 @@ WPBWPB units??
         percentilerange = [p for i, p in enumerate(self.get_param_lims())
                            if i >= o] + [[7, 11]]
         percentilerange = [.95] * len(names)
-        fig = corner.corner(nsamples[:, o:-1], labels=names,
+        fig = corner.corner(nsamples[:, o:-6], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
                             label_kwargs={"fontsize": 18}, show_titles=True,
@@ -926,44 +950,42 @@ WPBWPB units??
         fig.savefig("%s.%s" % (outname, imgtype))
         plt.close(fig)
 
-    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5,numsamples=20,numder=5):
-        ''' Assumes that "Ln Prob" is the last column in self.samples
-        Also calculates derived parameters t_10, t_50, t_90, SFR_100, and SFR_10 (see get_derived_params()) 
-        and adds them to table
-        '''
+    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5):
+        ''' Assumes that "Ln Prob" is the last column in self.samples'''
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]
-        sfhnum = self.sfh_class.get_nparams()
-        sfhnames = self.sfh_class.get_names()
-        if "Log Age" in sfhnames: agenum = sfhnames.index("Log Age")
-        else: agenum=None
-        params = np.zeros((sfhnum,numsamples))
+        #sfhnum = self.sfh_class.get_nparams()
+        #sfhnames = self.sfh_class.get_names()
+        #if "Log Age" in sfhnames: agenum = sfhnames.index("Log Age")
+        #else: agenum=None
+        #params = np.zeros((sfhnum,numsamples))
         #t10,t50,t90,sfr10,sfr100 = np.zeros(numsamples),np.zeros(numsamples),np.zeros(numsamples),np.zeros(numsamples),np.zeros(numsamples)
-        derpar = np.zeros((numsamples,numder))
-        for k in range(sfhnum): #Get random values of SFH parameters based on their distributions
-            params[k] = np.random.choice(nsamples[:,k],size=numsamples)
+        #derpar = np.zeros((numsamples,numder))
+        #for k in range(sfhnum): #Get random values of SFH parameters based on their distributions
+        #    params[k] = np.random.choice(nsamples[:,k],size=numsamples)
 
-        for k2 in range(numsamples):
-            derpar[k2] = self.get_derived_params(params[:,k2],agenum)
-            if k2%(numsamples/10)==0: print k2,params[:,k2],derpar[k2]
+       # for k2 in range(numsamples):
+        #    derpar[k2] = self.get_derived_params(params[:,k2],agenum)
+        #    if k2%(numsamples/10)==0: print k2,params[:,k2],derpar[k2]
 
         n = len(percentiles)
         for i, per in enumerate(percentiles):
             for j, v in enumerate(np.percentile(nsamples, per, axis=0)):
                 self.table[-1][(i + start_value + j*n)] = v
-        current = i+start_value+j*n
-        for i,per in enumerate(percentiles):
-            for j,v in enumerate(np.percentile(derpar,per,axis=0)):
-                self.table[-1][(current+i+j*n+1)] = v
-        return (i + current + j*n+1)
+        #current = i+start_value+j*n
+        #for i,per in enumerate(percentiles):
+       #     for j,v in enumerate(np.percentile(derpar,per,axis=0)):
+        #        self.table[-1][(current+i+j*n+1)] = v
+        return (i + start_value + j*n)
 
     def add_truth_to_table(self, truth, start_value):
         sfhnum = self.sfh_class.get_nparams()
         sfhtruth = truth[:sfhnum]
-        derpar = self.get_derived_params(sfhtruth)
+        derpar = self.get_derived_params1(sfhtruth)
+        for par in derpar: truth.append(np.log10(par))
         for i, tr in enumerate(truth):
             self.table[-1][start_value + i + 1] = tr
-        last = start_value+i+1
-        for j in range(len(derpar)):
-            self.table[-1][last+j+1]=derpar[j]
+        #last = start_value+i+1
+        #for j in range(len(derpar)):
+         #   self.table[-1][last+j+1]=derpar[j]

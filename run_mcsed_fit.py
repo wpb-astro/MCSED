@@ -956,6 +956,11 @@ def main(argv=None, ssp_info=None):
             mcsed_model.table.add_row([fd, oi, zi] + [0.]*(len(labels)-3))
             names = mcsed_model.get_param_names()
             names.append('Log Mass')
+            names.append('t_10')
+            names.append('t_50')
+            names.append('t_90')
+            names.append('sfr_10')
+            names.append('sfr_100')
             names.append('Ln Prob')
             if args.output_dict['fitposterior']:
                 T = Table(mcsed_model.samples, names=names)
