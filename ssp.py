@@ -7,7 +7,10 @@ Single Stellar Population module for loading models
 """
 import sfh
 import sys
-
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+#plt.ioff()
 import numpy as np
 import os.path as op
 import scipy.interpolate as scint
@@ -427,8 +430,6 @@ def read_ssp(args):
 WPBWPB: need to determine units of all outputs
 WPBWPB: operate under assumption that spec, linespec are in same units
     '''
-    import matplotlib.pyplot as plt
-    plt.ioff()
 
 ## WPBWPB: m list unused
 #    s, ls, m = ([], [], [])

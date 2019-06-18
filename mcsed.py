@@ -24,8 +24,10 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-plt.ioff()
+#plt.ioff()
 import corner
 import time
 # WPBWPB delete astrpy table
