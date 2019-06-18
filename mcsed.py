@@ -24,14 +24,14 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
+import matplotlib.pyplot as plt
+plt.ioff()
 import corner
 import time
 # WPBWPB delete astrpy table
 from astropy.table import Table
 
 import numpy as np
-import matplotlib.pyplot as plt
-plt.ioff()
 
 #WPBWPB re organize the arguments (aesthetic purposes)
 class Mcsed:
