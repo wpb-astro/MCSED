@@ -924,6 +924,10 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.remove_waverange_filters(args.wave_dust_em*1e4,1e10, 
                                                      restframe=True)
 
+            # Mask the dust bump
+            Ebwave, dwave = 2175, 225
+            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
+
 ## WPB delete
 #            fwave = mcsed_model.get_filter_wavelengths()
 #            print('these are filter wavelengths:')
