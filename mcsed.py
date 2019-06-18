@@ -27,7 +27,6 @@ import emcee
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-#plt.ioff()
 import corner
 import time
 # WPBWPB delete astrpy table

@@ -10,7 +10,6 @@ import sys
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-#plt.ioff()
 import numpy as np
 import os.path as op
 import scipy.interpolate as scint
