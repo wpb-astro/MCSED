@@ -811,12 +811,16 @@ def main(argv=None, ssp_info=None):
     # Build names for parameters and labels for table
     names = mcsed_model.get_param_names()
     names.append('Log Mass')
-    ##GRN Adding the derived parameters
-    names.append('t_10')
-    names.append('t_50')
-    names.append('t_90')
-    names.append('SFR_10')
-    names.append('SFR_100')
+    ##GRN Adding the derived parameters; order matters
+    names.append('SFR10')
+    names.append('SFR100')
+    if args.fit_dust_em and not args.test:
+        names.append('fPDR')
+        names.append('Mdust')
+    names.append('t10')
+    names.append('t50')
+    names.append('t90')
+
     percentiles = args.param_percentiles 
     # WPB field/id
     labels = ['Field', 'ID', 'z']
@@ -956,13 +960,13 @@ def main(argv=None, ssp_info=None):
             mcsed_model.table.add_row([fd, oi, zi] + [0.]*(len(labels)-3))
             names = mcsed_model.get_param_names()
             names.append('Log Mass')
-            names.append('t_10')
-            names.append('t_50')
-            names.append('t_90')
-            names.append('sfr_10')
-            names.append('sfr_100')
+            names.append('SFR10')
+            names.append('SFR100')
+            if args.fit_dust_em and not args.test:
+                names.append('fPDR')
+                names.append('Mdust')
             names.append('Ln Prob')
-            if args.output_dict['fitposterior']:
+            if args.output_dict['fitposterior']: #The derived parameters t10, t50, and t90 will NOT be in this file
                 T = Table(mcsed_model.samples, names=names)
                 T.write('output/fitposterior_%s_%05d_%s.dat' % (fd, oi, args.sfh),
                         overwrite=True, format='ascii.fixed_width_two_line')

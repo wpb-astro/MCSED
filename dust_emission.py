@@ -38,11 +38,17 @@ class DL07:
         self.get_dust_emission_matrix()
 
     def get_dust_emission_matrix(self):
+        '''Draine & Li (2007) provide ascii files giving dust emissivity at various values of umin and qpah.
+        We specifically use the MW3.1 models with Umax = 1e6.
+        This function creates a 2D linear interpolator for normalized dust emissivity (units of Hz^-1)
+        The dust emissivity has two components: emission of dust heated by starlight at Umin (DE1) and emission of dust
+        heated by starlight with U>Umin (DE2)
+        '''
         DE1, DE2 = (np.zeros((7, 22, 1001)), np.zeros((7, 22, 1001)))
-        self.qpaharray = np.array([0.47, 1.12, 1.77, 2.50, 3.19, 3.90, 4.58])
+        self.qpaharray = np.array([0.47, 1.12, 1.77, 2.50, 3.19, 3.90, 4.58]) #Set of qpah values in Draine & Li tables
         self.uminarray = np.array([0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8,
                                    1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 7.0,
-                                   8.0, 12.0, 15.0, 20.0, 25.0])
+                                   8.0, 12.0, 15.0, 20.0, 25.0]) #Set of umin values in Draine & Li tables
         Xgrid, Ygrid = np.meshgrid(self.qpaharray, self.uminarray)
         X = np.vstack([Xgrid.ravel(), Ygrid.ravel()]).swapaxes(0, 1)
 
@@ -134,12 +140,12 @@ class DL07:
         Parameters
         ----------
         wave : numpy array (1 dim)
-            wavelength
+            wavelength in Angstroms
 
         Returns
         -------
         DustE : numpy array (1 dim)
-            Dust emission spectrum
+            Dust emission spectrum (units Hz^-1)--linear combination of emission from dust heated by starlight at Umin and dust heated by starlight at U>Umin
         '''
         DustE = (self.interpumin(self.qpah, self.umin) * (1. - self.gamma) +
                  self.interpumax(self.qpah, self.umin) * self.gamma)
