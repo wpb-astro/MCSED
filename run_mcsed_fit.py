@@ -97,6 +97,14 @@ def parse_args(argv=None):
                         help='''File to be read for galaxy data''',
                         type=str, default=None)
 
+    parser.add_argument("-o", "--output_filename",
+                        help='''Output filename for given run''',
+                        type=str, default='test.dat')
+
+    parser.add_argument("-p", "--parallel",
+                        help='''Running in parallel?''',
+                        action="count", default=0)
+
     parser.add_argument("-s", "--ssp",
                         help='''SSP Models, default fsps''',
                         type=str, default=None)
@@ -116,18 +124,6 @@ def parse_args(argv=None):
     parser.add_argument("-dl", "--dust_law",
                         help='''Dust law, e.g. calzetti''',
                         type=str, default=None)
-
-    parser.add_argument("-t", "--test",
-                        help='''Test script with fake data''',
-                        action="count", default=0)
-
-    parser.add_argument("-tf", "--test_field",
-                        help='''Test filters will match the given field''',
-                        type=str, default='cosmos')
-
-    parser.add_argument("-o", "--output_filename",
-                        help='''Output filename for given run''',
-                        type=str, default='test.dat')
 
     parser.add_argument("-nw", "--nwalkers",
                         help='''Number of walkers for EMCEE''',
@@ -157,13 +153,17 @@ def parse_args(argv=None):
                         help='''Error floor for emission lines''',
                         type=float, default=None)
 
+    parser.add_argument("-t", "--test",
+                        help='''Test script with fake data''',
+                        action="count", default=0)
+
+    parser.add_argument("-tf", "--test_field",
+                        help='''Test filters will match the given field''',
+                        type=str, default='cosmos')
+
     parser.add_argument("-no", "--nobjects",
                         help='''Number of test objects''',
                         type=int, default=None)
-
-    parser.add_argument("-p", "--parallel",
-                        help='''Running in parallel?''',
-                        action="count", default=0)
 
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
