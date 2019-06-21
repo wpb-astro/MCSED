@@ -25,6 +25,9 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import corner
 import time
 # WPBWPB delete astrpy table
@@ -33,8 +36,6 @@ from scipy.integrate import simps
 from scipy.interpolate import interp1d
 
 import numpy as np
-import matplotlib.pyplot as plt
-plt.ioff()
 
 #WPBWPB re organize the arguments (aesthetic purposes)
 class Mcsed:

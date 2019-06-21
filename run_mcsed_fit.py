@@ -97,6 +97,14 @@ def parse_args(argv=None):
                         help='''File to be read for galaxy data''',
                         type=str, default=None)
 
+    parser.add_argument("-o", "--output_filename",
+                        help='''Output filename for given run''',
+                        type=str, default='test.dat')
+
+    parser.add_argument("-p", "--parallel",
+                        help='''Running in parallel?''',
+                        action="count", default=0)
+
     parser.add_argument("-s", "--ssp",
                         help='''SSP Models, default fsps''',
                         type=str, default=None)
@@ -116,18 +124,6 @@ def parse_args(argv=None):
     parser.add_argument("-dl", "--dust_law",
                         help='''Dust law, e.g. calzetti''',
                         type=str, default=None)
-
-    parser.add_argument("-t", "--test",
-                        help='''Test script with fake data''',
-                        action="count", default=0)
-
-    parser.add_argument("-tf", "--test_field",
-                        help='''Test filters will match the given field''',
-                        type=str, default='cosmos')
-
-    parser.add_argument("-o", "--output_filename",
-                        help='''Output filename for given run''',
-                        type=str, default='test.dat')
 
     parser.add_argument("-nw", "--nwalkers",
                         help='''Number of walkers for EMCEE''',
@@ -157,13 +153,17 @@ def parse_args(argv=None):
                         help='''Error floor for emission lines''',
                         type=float, default=None)
 
+    parser.add_argument("-t", "--test",
+                        help='''Test script with fake data''',
+                        action="count", default=0)
+
+    parser.add_argument("-tf", "--test_field",
+                        help='''Test filters will match the given field''',
+                        type=str, default='cosmos')
+
     parser.add_argument("-no", "--nobjects",
                         help='''Number of test objects''',
                         type=int, default=None)
-
-    parser.add_argument("-p", "--parallel",
-                        help='''Running in parallel?''',
-                        action="count", default=0)
 
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
@@ -940,6 +940,10 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.remove_waverange_filters(args.wave_dust_em*1e4,1e10, 
                                                      restframe=True)
 
+            # Mask the dust bump
+            Ebwave, dwave = 2175, 225
+            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
+
 ## WPB delete
 #            fwave = mcsed_model.get_filter_wavelengths()
 #            print('these are filter wavelengths:')
@@ -968,19 +972,19 @@ def main(argv=None, ssp_info=None):
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: #The derived parameters t10, t50, and t90 will NOT be in this file
                 T = Table(mcsed_model.samples, names=names)
-                T.write('output/fitposterior_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
                 T = Table([mcsed_model.wave, mcsed_model.medianspec],
                           names=['wavelength', 'spectrum'])
-                T.write('output/bestfitspec_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
                 T = Table([mcsed_model.fluxwv, mcsed_model.fluxfn,
                            mcsed_model.data_fnu, mcsed_model.data_fnu_e],
                            names=['wavelength','model_fluxdensity',
                                   'fluxdensity', 'fluxdensityerror'])
-                T.write('output/filterflux_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if (args.output_dict['lineflux']) & (mcsed_model.use_emline_flux):
                 emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
@@ -995,7 +999,7 @@ def main(argv=None, ssp_info=None):
                           names=['rest_wavelength', 'weight', 'model_lineflux',
                                  'lineflux', 'linefluxerror'])
                 T.sort('rest_wavelength')
-                T.write('output/lineflux_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             print "Reached the point before adding fit info to table"
             last = mcsed_model.add_fitinfo_to_table(percentiles)
