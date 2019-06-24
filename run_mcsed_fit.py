@@ -736,6 +736,13 @@ def main(argv=None, ssp_info=None):
 #    print(ages)
 #    return
 
+### WPBWPB delete
+#    ### useful for saving SSP grid
+#    np.savez('mcsed_model_spectra', wave=wave, age=ages, ssp=SSP, met=met)
+#    return
+
+
+
     # Adjust filter dictionary and emission line dictionary, if applicable
     if (not args.test) & (not args.use_input_data):
         input_file_data = read_input_file(args) 
@@ -924,9 +931,9 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.remove_waverange_filters(args.wave_dust_em*1e4,1e10, 
                                                      restframe=True)
 
-            # Mask the dust bump
-            Ebwave, dwave = 2175, 225
-            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
+#            # Mask the dust bump
+#            Ebwave, dwave = 2175, 225
+#            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
 
 ## WPB delete
 #            fwave = mcsed_model.get_filter_wavelengths()
@@ -937,6 +944,16 @@ def main(argv=None, ssp_info=None):
             mcsed_model.fit_model()
 ##WPBWPB delete
 #            print('I"ve reached this point')
+
+## WPBWPB delete
+#            ### useful for saving SSP grid
+#            mcsed_model_csp, csp_mass = mcsed_model.build_csp()
+#            star_ssp, line_ssp = mcsed_model.get_ssp_spectrum()
+#            np.savez('mcsed_model_spectra', wave=mcsed_model.wave, age=mcsed_model.ssp_ages, ssp=star_ssp, csp=mcsed_model_csp, mass=np.array([csp_mass])) 
+#            return
+
+
+
     # WPB field/id
             if args.output_dict['sample plot']:
                 mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi), 
