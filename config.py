@@ -12,6 +12,7 @@ isochrone = 'padova'  # options include: 'padova'
 #                      'double_powerlaw', 'empirical_direct', 'empirical',
 sfh =  'empirical_direct'
 dust_law = 'noll' #'calzetti' # options include: 'noll', 'calzetti'
+
 dust_em = 'DL07'  # options include: 'DL07'
 
 t_birth = 7. # age of the birth cloud (log years)
