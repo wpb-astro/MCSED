@@ -93,11 +93,11 @@ metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 #    Supported formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
 output_dict = {'parameters'    : True,
                'settings'      : True, 
-               'fitposterior'  : False,
+               'fitposterior'  : True,
                'bestfitspec'   : True,
-               'fluxdensity'   : False,
-               'lineflux'      : False,
-               'triangle plot' : True,
+               'fluxdensity'   : True,
+               'lineflux'      : True,
+               'triangle plot' : False,
                'sample plot'   : False,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
@@ -148,9 +148,8 @@ filt_dict = {0: 'SubB.res', 1: 'SubIB427.res', 2: 'SubIB445.res',
              67: 'newfirm_J1.res', 68: 'newfirm_J2.res', 69: 'newfirm_J3.res',
              70: 'newfirm_H1.res', 71: 'newfirm_H2.res', 72: 'newfirm_Ks.res',
              73: 'wircam_H.res', 74: 'wircam_J.res', 75: 'wircam_Ks.res',
-             76: 'MIPS24um.res'}
- 
-
+             76: 'MIPS24um.res', 77: 'MIPS70um.res', 78: 'Herschel_PACS_Blue.res',
+             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res'}
 # Catalog column name of filter and dictionary value to the filter file
 catalog_filter_dict, catalog_maglim_dict = {}, {}
 catalog_filter_dict['goodss'] = {1: 'ia427', 2: 'ia445', 6: 'ia505',

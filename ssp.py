@@ -105,7 +105,7 @@ def bin_ages_fsps(args, ages, spec):
     for i in np.arange(nspec.shape[1]):
         sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
         nspec[:, i] = np.dot(spec[:, sel], weight[sel]) / weight[sel].sum()
-        print('%s\n%s\n%s\n\n' % (i, sel,weight[sel]))
+        #print('%s\n%s\n%s\n\n' % (i, sel,weight[sel]))
     return agebin[1:], nspec
 
 
@@ -203,10 +203,10 @@ def read_fsps(args, metallicity):
         print('Metallicity entered, %0.4f, does not match any of the %s '
               'isochrones of the %s models' % (args.metallicity,
                                                args.isochrone, args.ssp))
-        print('Metallicity options [')
-        for met in args.metallicity_dict[args.isochrone]:
-            print('%0.4f ' % met)
-        print(']')
+        #print('Metallicity options [')
+        #for met in args.metallicity_dict[args.isochrone]:
+        #    print('%0.4f ' % met)
+        #print(']')
         sys.exit(1)
     ages, masses, spec, wave = read_fsps_ssp(filename)
     # convert from solar bolometric luminosity per Hz to micro-Jy at 10 pc

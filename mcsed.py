@@ -25,8 +25,6 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import corner
 import time
@@ -499,10 +497,12 @@ WPBWPB units??
         #print "L_bol = %.3e"%(L_bol)
         umin,gamma,qpah = self.dust_em_class.get_params()
         umax=1.0e6
-        P0 = 135 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
+        P0 = 135.0 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
         Lbolfac = 2.488e-24 #Convert from uJy*Hz at 10 pc to L_sun
         uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
         mdust = L_bol*Lbolfac/uavg/P0
+        # if L_bol<0 or uavg<0 or ~np.isfinite(L_bol) or ~np.isfinite(uavg):
+        #     print "Lbol = %.3e; <U> = %.3f; M_dust = %.3e"%(L_bol*Lbolfac,uavg,mdust)
 
         # Add dust emission
         dustobscured_unnorm = self.dust_em_class.evaluate(self.wave) #Units uJy*(10pc)^2/M_sun
@@ -747,7 +747,7 @@ WPBWPB units??
             for j in xrange(len(sampler.blobs[0])):
                 for k in xrange(len(sampler.blobs[0][0])):
                     x = sampler.blobs[i][j][k]
-                    if k==0: 
+                    if k==0 or k==4: #Stellar mass or Dust mass--can't take log of negative numbers
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
                                                np.log10(x), -99.) #Stellar mass
                     else: 
