@@ -105,7 +105,8 @@ def bin_ages_fsps(args, ages, spec):
     for i in np.arange(nspec.shape[1]):
         sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
         nspec[:, i] = np.dot(spec[:, sel], weight[sel]) / weight[sel].sum()
-        print('%s\n%s\n%s\n\n' % (i, sel,weight[sel]))
+## WPBWPB delete
+#        print('%s\n%s\n%s\n\n' % (i, sel,weight[sel]))
     return agebin[1:], nspec
 
 

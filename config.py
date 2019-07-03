@@ -10,8 +10,8 @@ ssp = 'fsps'  # options include: 'fsps'
 isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'empirical_direct', 'empirical',
-sfh = 'empirical_direct'
-dust_law = 'noll'  # options include: 'noll', 'calzetti'
+sfh =  'empirical_direct'
+dust_law = 'noll' #'calzetti' # options include: 'noll', 'calzetti'
 dust_em = 'DL07'  # options include: 'DL07'
 
 t_birth = 7. # age of the birth cloud (log years)
@@ -27,7 +27,7 @@ EBV_stars_gas = -1
 # If True, fit the dust emission component. 
 # If False, remove all filters redward of rest-frame wave_dust_em microns 
 # and fix dust emission parameters to umin=2.0, gamma=0.05, qpah=2.5 
-fit_dust_em = False #True # False
+fit_dust_em = True
 wave_dust_em = 2.5 # rest-frame wavelength in microns 
 
 # EMCEE parameters
@@ -97,8 +97,8 @@ output_dict = {'parameters'    : True,
                'bestfitspec'   : True,
                'fluxdensity'   : True,
                'lineflux'      : True,
-               'triangle plot' : True,
-               'sample plot'   : True,
+               'triangle plot' : False,
+               'sample plot'   : False,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
 
@@ -148,8 +148,8 @@ filt_dict = {0: 'SubB.res', 1: 'SubIB427.res', 2: 'SubIB445.res',
              67: 'newfirm_J1.res', 68: 'newfirm_J2.res', 69: 'newfirm_J3.res',
              70: 'newfirm_H1.res', 71: 'newfirm_H2.res', 72: 'newfirm_Ks.res',
              73: 'wircam_H.res', 74: 'wircam_J.res', 75: 'wircam_Ks.res',
-             76: 'MIPS24um.res'}
- 
+             76: 'MIPS24um.res', 77: 'MIPS70um.res', 78: 'Herschel_PACS_Blue.res',
+             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res'}
 
 # Catalog column name of filter and dictionary value to the filter file
 catalog_filter_dict, catalog_maglim_dict = {}, {}

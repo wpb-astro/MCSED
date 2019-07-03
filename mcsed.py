@@ -16,7 +16,8 @@
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
 """
-
+#import matplotlib
+#matplotlib.use("Agg")
 import logging
 import sfh
 import dust_abs
@@ -31,6 +32,8 @@ import corner
 import time
 # WPBWPB delete astrpy table
 from astropy.table import Table
+from scipy.integrate import simps
+from scipy.interpolate import interp1d
 
 import numpy as np
 
@@ -330,7 +333,7 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
 #        print(self.lineSSP.shape)
         return self.SSP, self.lineSSP
 
-    def build_csp(self, sfr=None):
+    def build_csp(self, sfr=None,DMreturn=False):
         '''Build a composite stellar population model for a given star
         formation history, dust attenuation law, and dust emission law.
 
@@ -434,6 +437,7 @@ WPBWPB units??
                     weight_birth[B] = weight_age[B]
 
         # Finally, do the matrix multiplication using the weights
+        #print "Max(SSP) = %.3e"%(np.amax(self.SSP))
         spec_dustfree = np.dot(self.SSP, weight)
         spec_birth_dustfree = np.dot(self.SSP, weight_birth)
         linespec_dustfree = np.dot(self.lineSSP, weight_birth)
@@ -490,9 +494,29 @@ WPBWPB units??
         # Change in bolometric Luminosity
         L_bol = (np.dot(self.dnu, spec_dustfree) -
                  np.dot(self.dnu, spec_dustobscured))
+        #print "Max(spec_dustfree) = %.3e"%(max(spec_dustfree))
+        #print "Max(spec_dustobscured) = %.3e"%(max(spec_dustobscured))
+        #print "L_bol = %.3e"%(L_bol)
+        umin,gamma,qpah = self.dust_em_class.get_params()
+        umax=1.0e6
+        P0 = 135.0 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
+        Lbolfac = 2.488e-24 #Convert from uJy*Hz at 10 pc to L_sun
+        uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
+        mdust = L_bol*Lbolfac/uavg/P0
+        # if L_bol<0 or uavg<0 or ~np.isfinite(L_bol) or ~np.isfinite(uavg):
+        #     print "Lbol = %.3e; <U> = %.3f; M_dust = %.3e"%(L_bol*Lbolfac,uavg,mdust)
 
         # Add dust emission
-        spec_dustobscured += L_bol * self.dust_em_class.evaluate(self.wave)
+        dustobscured_unnorm = self.dust_em_class.evaluate(self.wave) #Units uJy*(10pc)^2/M_sun
+        #dustobscured_unnorm /= self.Dl**2 #Units uJy/M_sun I think we divide by a unit of 10pc, not the luminosity distance
+        #print "Max of dustobscured_unnorm = %.3e"%(max(dustobscured_unnorm))
+        L_bol_obscured = np.dot(self.dnu,dustobscured_unnorm)
+        #print "L_bol_obscured = %.3e"%(L_bol_obscured)
+        dustmass = L_bol / L_bol_obscured
+        #print "Dust Mass (in M_sun) = %.3e"%(dustmass)
+        #print "Ratio of dust masses derived = %.3e" %(mdust/dustmass)
+        #spec_dustobscured += L_bol * self.dust_em_class.evaluate(self.wave)
+        spec_dustobscured += dustmass*dustobscured_unnorm
 
         # Redshift to observed frame
         csp = np.interp(self.wave, self.wave * (1. + self.redshift),
@@ -514,7 +538,10 @@ WPBWPB units??
 #        print( linefluxCSPdict )
 
         # Correct spectra from 10pc to redshift of the source
-        return csp / self.Dl**2, mass
+        if not DMreturn: 
+            return csp / self.Dl**2, mass
+        else:
+            return csp/self.Dl**2, mass, mdust
 
     def lnprior(self):
         ''' Simple, uniform prior for input variables
@@ -533,15 +560,20 @@ WPBWPB units??
 
     def lnlike(self):
         ''' Calculate the log likelihood and return the value and stellar mass
-        of the model
+        of the model as well as other derived parameters
 
         Returns
         -------
-        log likelihood, mass : float, float
+        log likelihood, mass, t10, t50, t90, sfr10, sfr100 : float, float, float, float, float, float, float
             The log likelihood includes a chi2_term and a parameters term.
             The mass comes from building of the composite stellar population
+            The parameters t10, t50, t90, sfr10, and sfr100 are derived in get_derived_params(self)
         '''
-        self.spectrum, mass = self.build_csp()
+        if not self.dust_em_class.fixed: 
+            self.spectrum, mass, mdust = self.build_csp(DMreturn=True)
+        else:
+            self.spectrum, mass = self.build_csp(DMreturn=False)
+            mdust = None
 
         # compare input and model emission line fluxes
         emline_term = 0.0
@@ -570,26 +602,33 @@ WPBWPB units??
         inv_sigma2 = 1.0 / (self.data_fnu_e**2 + (model_y * self.sigma_m)**2)
         chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
-        return (chi2_term + parm_term + emline_term, mass)
+        sfr10,sfr100,fpdr = self.get_derived_params()
+        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust)
 
     def lnprob(self, theta):
-        ''' Calculate the log probabilty and return the value and stellar mass
+        ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
         of the model
 
         Returns
         -------
-        log prior + log likelihood, mass : float, float
+        log prior + log likelihood, [mass,sfr10,sfr100]: float,float,float,float
             The log probability is just the sum of the logs of the prior and
             likelihood.  The mass comes from the building of the composite
-            stellar population.
+            stellar population. The other derived parameters are calculated in get_derived_params()
         '''
         self.set_class_parameters(theta)
         lp = self.lnprior()
         if np.isfinite(lp):
-            lnl, mass = self.lnlike()
-            return lp + lnl, mass
+            lnl,mass,sfr10,sfr100,fpdr,mdust = self.lnlike()
+            if fpdr is not None:
+                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust])
+            else:
+                return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
-            return -np.inf, -np.inf
+            if not self.dust_em_class.fixed:
+                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+            else:
+                return -np.inf, np.array([-np.inf, -np.inf, -np.inf])
 
     def get_init_walker_values(self, kind='ball', num=None):
         ''' Before running emcee, this function generates starting points
@@ -681,9 +720,9 @@ WPBWPB units??
         ndim = pos.shape[1]
         start = time.time()
         # Time to set up the sampler and run the mcmc
+        #dtype = [("log_mass", float),("t10", float),("t50", float),("t90", float),("sfr10", float),("sfr100", float)] #For blobs
         sampler = emcee.EnsembleSampler(self.nwalkers, ndim, self.lnprob,
                                         a=2.0)
-
         # Do real run
         sampler.run_mcmc(pos, self.nsteps, rstate0=np.random.get_state())
         end = time.time()
@@ -699,26 +738,159 @@ WPBWPB units??
                       (np.mean(sampler.acceptance_fraction)))
         self.log.info("AutoCorrelation Steps: %i, Number of Burn-in Steps: %i"
                       % (np.round(tau), burnin_step))
-        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+2))
-        new_chain[:, :, :-2] = sampler.chain
+        if self.dust_em_class.fixed: 
+            numderpar = 3
+        else: 
+            numderpar = 5
+        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
+        new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
         for i in xrange(len(sampler.blobs)):
             for j in xrange(len(sampler.blobs[0])):
-                x = sampler.blobs[i][j]
-                new_chain[j, i, -2] = np.where((np.isfinite(x)) * (x > 10.),
-                                               np.log10(x), -99.)
+                for k in xrange(len(sampler.blobs[0][0])):
+                    x = sampler.blobs[i][j][k]
+                    if k==0 or k==4: #Stellar mass or Dust mass--can't take log of negative numbers
+                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
+                                               np.log10(x), -99.) #Stellar mass
+                    else: 
+                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
         new_chain[:, :, -1] = sampler.lnprobability
-        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+2))
+        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
+
+    def calc_gaw(self,t,sfr,frac,mass):
+        ''' Calculate time at which the fraction "frac" of the stellar mass in the galaxy was created'''
+        ind = 0
+        #print "Length of t =", len(t)
+        #print "Total SFR integral over mass =", simps(sfr,t)/mass
+        #stellartot = quad(sfr_f,t[0],t[-1])[0]
+        #while quad(sfr_f,t[0],t[ind])[0]/mass < frac: 
+        while (simps(sfr[:ind+1],t[:ind+1])/mass<frac and ind<len(t)-1):
+            ind+=1
+        #forward = quad(sfr_f,t[0],t[ind])[0]/mass - frac
+        forward = simps(sfr[:ind+1],t[:ind+1])/mass - frac
+        #backward = frac - quad(sfr_f,t[0],t[ind-1])[0]/mass
+        backward = frac - simps(sfr[:ind],t[:ind])/mass
+        tot = forward+backward
+        return 1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind]) #Linear interpolation to get more accurate result--put result back into Gyr
+
+    def get_derived_params1(self,params,mass,agenum=None):
+        ''' These are not free parameters in the model, but are instead
+        calculated from free parameters
+        '''
+        if agenum is not None: age = params[agenum]
+        else: age = self.sfh_class.age
+        ageval = 10**age #Age in Gyr
+        t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
+        sfrarray = self.sfh_class.evaluate(t_sfh,force_params=params)
+        t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
+        sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
+        t_gaw*=1.0e9 #Need it in years for calculation
+        #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
+
+        t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
+        t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
+        t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
+        sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
+        sfr100 = np.average(sfrarray)
+
+        return [sfr10,sfr100,t10,t50,t90]
+
+    def get_t_params(self,params,mass,agenum=None):
+        if agenum is not None: age = params[agenum]
+        else: age = self.sfh_class.age
+        ageval = 10**age #Age in Gyr
+        t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
+        sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
+        sfrfull_avg = self.sfh_class.evaluate(t_gaw)
+        #print "Fractional difference between average sfr over time and this particular set of sfh params:", np.linalg.norm(sfrfull-sfrfull_avg)/np.linalg.norm(sfrfull_avg)
+        t_gaw*=1.0e9 #Need it in years for calculation
+        t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
+        t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
+        t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
+        return np.log10(t10),np.log10(t50),np.log10(t90)
+
 
     def get_derived_params(self):
         ''' These are not free parameters in the model, but are instead
         calculated from free parameters
         '''
+        ageval = 10**self.sfh_class.age #Age in Gyr
+        t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
+        sfrarray = self.sfh_class.evaluate(t_sfh)
+        #t_gaw = np.geomspace(1.0e-5,ageval,num=200) #From (10000 years after) birth to present in units of Gyr
+        #sfrfull = self.sfh_class.evaluate(t_gaw)
+        #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
+        #t_gaw*=1.0e9 #Need it in years for calculation
+        #t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
+        #t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
+        #t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
+        #t10 = ageval*0.1
+        #t50 = ageval*0.5
+        #t90 = ageval*0.9
+        sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
+        sfr100 = np.average(sfrarray)
 
-        t20 = None
-        t50 = None
-        sfr10 = None
-        sfr100 = None
+        if self.dust_em_class.fixed:
+            fpdr = None
+        else:
+            umin,gamma,qpah = self.dust_em_class.get_params()
+            umax = 1.0e6
+            fpdr = gamma*np.log(umax/100.) / ((1.-gamma)*(1.-umin/umax) + gamma*np.log(umax/umin))
+            #uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
+            # dusttohratio = 0.0102 #This is almost constant (overall 4% change in value depending on qpah--not worth varying)
+            # mH = 1.6726e-24 #Hydrogen mass in g
+            # wav = 1.0e4*np.array([24.0,71.0,160.0]) #24, 71, and 160 um in Angstroms
+            # nuarr = 2.99792e18 / wav #Frequencies in Hz for 24, 71, and 160 um
+            # Fnu = np.interp(wav,self.wave,spec_em)
+            # jnu = lbol*self.dust_em_class.evaluate(wav)
+            # psi = dusttohratio*mH*uavg/np.dot(nuarr,jnu)
+            # #mdust = dusttohratio*mH*np.dot(nuarr,Fnu)/np.dot(nuarr,jnu) / 1.98847e33 #Mass of dust in solar masses
+            # mdust = psi/uavg * np.dot(nuarr,Fnu) #In grams for now
+            #print r"$\Psi$, jnu, Fnu, L_bol, Mdust:", psi,jnu,Fnu,lbol,mdust
+
+        return sfr10,sfr100,fpdr
+
+
+    def set_median_fit(self,rndsamples=200,lnprobcut=7.5):
+        '''
+        set attributes
+        median spectrum and filter flux densities for rndsamples random samples
+
+        Input
+        -----
+        rndsamples : int
+            number of random samples over which to compute medians
+        lnprobcut : float
+            Some of the emcee chains include outliers.  This value serves as
+            a cut in log probability space with respect to the maximum
+            probability.  For reference, a Gaussian 1-sigma is 2.5 in log prob
+            space.
+
+        Returns
+        -------
+        self.fluxwv : list (1d)
+            wavelengths of filters
+        self.fluxfn : list (1d)
+            median flux densities of filters
+        self.medianspec : list (1d)
+            median spectrum
+        '''
+        chi2sel = (self.samples[:, -1] >
+                   (np.max(self.samples[:, -1], axis=0) - lnprobcut))
+        nsamples = self.samples[chi2sel, :]
+        wv = self.get_filter_wavelengths()
+## WPBWPB delete
+#        rndsamples = 200
+        sp, fn = ([], [])
+        for i in np.arange(rndsamples):
+            ind = np.random.randint(0, nsamples.shape[0])
+            self.set_class_parameters(nsamples[ind, :])
+            fnu = self.get_filter_fluxdensities()
+            sp.append(self.spectrum * 1.)
+            fn.append(fnu * 1.)
+        self.medianspec = np.median(np.array(sp), axis=0)
+        self.fluxwv = wv
+        self.fluxfn = np.median(np.array(fn), axis=0)
 
 
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
@@ -760,36 +932,39 @@ WPBWPB units??
             xtick_pos = [3000, 5000, 10000, 40000, 100000, 1000000]
             xtick_lbl = ['0.3', '0.5', '1', '4', '10', '100']
             xlims = [3000, 2000000]
+            ax3.set_yscale('log')
         ax3.set_xticks(xtick_pos)
         ax3.set_xticklabels(xtick_lbl)
         ax3.set_xlim(xlims)
         ax3.set_xlabel(r'Wavelength $\mu m$')
         ax3.set_ylabel(r'$F_{\nu}$ ($\mu$Jy)')
 
-    def add_subplots(self, ax1, ax2, ax3, nsamples):
+    def add_subplots(self, ax1, ax2, ax3, nsamples, rndsamples=200):
         ''' Add Subplots to Triangle plot below '''
-        wv = self.get_filter_wavelengths()
-        rndsamples = 200
-# WPBWPB edit: might not need hbm list anymore
-        sp, fn, hbm = ([], [], [])
+### WPBWPB -- I think all of this can be deleted - migrated to a separate method that does not require plotting (double-commented lines within this method)
+##        wv = self.get_filter_wavelengths()
+##        rndsamples = 200
+        sp, fn = ([], []) 
         for i in np.arange(rndsamples):
             ind = np.random.randint(0, nsamples.shape[0])
-            self.set_class_parameters(nsamples[ind, :-2])
+            self.set_class_parameters(nsamples[ind, :])
             self.sfh_class.plot(ax1, alpha=0.1)
             self.dust_abs_class.plot(ax2, self.wave, alpha=0.1)
             self.spectrum_plot(ax3, alpha=0.1)
-            fnu = self.get_filter_fluxdensities()
-            sp.append(self.spectrum * 1.)
-            fn.append(fnu * 1.)
-# WPB edit: plotting HBeta line
-# used to have self.hbflux = self.measure_hb() --> changed
-#            hbm.append(self.hbflux * 1.)
-        # Plotting median value:
-        self.medianspec = np.median(np.array(sp), axis=0)
-#        self.hbmedian = np.median(hbm)
+
+##            fnu = self.get_filter_fluxdensities()
+##            sp.append(self.spectrum * 1.)
+##            fn.append(fnu * 1.)
+## WPB edit: plotting HBeta line
+## used to have self.hbflux = self.measure_hb() --> changed
+##            hbm.append(self.hbflux * 1.)
+##        # Plotting median value:
+##        self.medianspec = np.median(np.array(sp), axis=0)
+###        self.hbmedian = np.median(hbm)
         ax3.plot(self.wave, self.medianspec, color='dimgray')
-        self.fluxwv = wv
-        self.fluxfn = np.median(np.array(fn), axis=0)
+##        self.fluxwv = wv
+##        self.fluxfn = np.median(np.array(fn), axis=0)
+
         ax3.scatter(self.fluxwv, self.fluxfn, marker='x', s=200,
                     color='dimgray', zorder=8)
         chi2 = (1. / (len(self.data_fnu) - 1) *
@@ -801,22 +976,28 @@ WPBWPB units??
             self.dust_abs_class.plot(ax2, self.wave, color='k', alpha=1.0)
             self.spectrum_plot(ax3, color='k', alpha=0.5)
         if self.true_fnu is not None:
-            p = ax3.scatter(wv, self.true_fnu, marker='o', s=150,
+            p = ax3.scatter(self.fluxwv, self.true_fnu, marker='o', s=150,
                             color=[0.216, 0.471, 0.749], zorder=9)
             p.set_facecolor('none')
-        ax3.errorbar(wv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
+        ax3.errorbar(self.fluxwv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
                      fillstyle='none', markersize=15,
                      color=[0.510, 0.373, 0.529], zorder=10)
         
-        sel = np.where((wv > 3000.) * (wv < 50000.))[0]
+        sel = np.where((self.fluxwv > 3000.) * (self.fluxwv < 50000.))[0]
         ax3min = np.percentile(self.data_fnu[sel], 5)
+        assert ax3min>0.0
         ax3max = np.percentile(self.data_fnu[sel], 95)
         ax3ran = ax3max - ax3min
-        ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])
+        if not self.dust_em_class.fixed: 
+            ax3max = max(max(self.data_fnu[sel]),max(self.medianspec))
+            ax3.set_ylim([ax3min*0.5, ax3max + 0.4 * ax3ran])
+        else:
+            ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])
         ax3.text(4200, ax3max + 0.2 * ax3ran, r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
 
     def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
         ''' Make a triangle corner plot for samples from fit
+        * Doesn't include the derived parameters t10, t50, t90, sfr10, and sfr100 as that would make the plot too crowded
 
         Input
         -----
@@ -830,6 +1011,7 @@ WPBWPB units??
         imgtype : string
             The file extension of the output plot
         '''
+# WPBWPB: since median fits have already been set, may be able to remove lnprobcut -- just use attributes that are already set.
         # Make selection for three sigma sample
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
@@ -845,12 +1027,19 @@ WPBWPB units??
         percentilerange = [p for i, p in enumerate(self.get_param_lims())
                            if i >= o] + [[7, 11]]
         percentilerange = [.95] * len(names)
-        fig = corner.corner(nsamples[:, o:-1], labels=names,
+        if self.dust_em_class.fixed: 
+            numderpar = 3
+        else: 
+            numderpar = 5
+# WPBWPB delete:
+        print("I'm starting to construct the triangle plot")
+        fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
                             label_kwargs={"fontsize": 18}, show_titles=True,
                             title_kwargs={"fontsize": 16},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
+        print('made the corner')
         # Adding subplots
         ax1 = fig.add_subplot(3, 1, 1)
         ax1.set_position([0.7, 0.60, 0.25, 0.15])
@@ -859,9 +1048,17 @@ WPBWPB units??
         ax3 = fig.add_subplot(3, 1, 3)
         ax3.set_position([0.38, 0.80, 0.57, 0.15])
         self.add_sfr_plot(ax1)
+# WPBWPB delete:
+        print("I've added the sfr plot")
         self.add_dust_plot(ax2)
+# WPBWPB delete:
+        print("I've added the dust plot")
         self.add_spec_plot(ax3)
+# WPBWPB delete:
+        print("I've added the spec plot")
         self.add_subplots(ax1, ax2, ax3, nsamples)
+# WPBWPB delete:
+        print("I've added the subplots")
 # WPB edit: printing HBeta line flux on the figure
 # used to have self.hbflux = self.measure_hb() --> changed
 #        if self.sfh_class.hblim is not None:
@@ -903,18 +1100,55 @@ WPBWPB units??
         fig.savefig("%s.%s" % (outname, imgtype))
         plt.close(fig)
 
-    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5):
-        ''' Assumes that "Ln Prob" is the last column in self.samples
-        '''
+    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5,numsamples=1000,numder=3):
+        ''' Assumes that "Ln Prob" is the last column in self.samples'''
+        if self.dust_em_class.fixed: 
+            numderpar = 3
+        else: 
+            numderpar = 5
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]
+        sfhnum = self.sfh_class.get_nparams()
+        sfhnames = self.sfh_class.get_names()
+        if "Log Age" in sfhnames: 
+            agenum = sfhnames.index("Log Age")
+        else: 
+            agenum=None
+        params = np.zeros((sfhnum,numsamples))
+        t10,t50,t90 = np.zeros(numsamples),np.zeros(numsamples),np.zeros(numsamples)
+        derpar = np.zeros((numsamples,numder))
+        ranarray = np.random.choice(len(nsamples),size=numsamples) #Make sure mass and params all chosen from same random set of nsamples
+        mass = nsamples[:,-numderpar][ranarray]
+        mass = 10**mass #It was in log units before--we want to feed the function get_t_params linear units
+        for k in range(sfhnum): #Get random values of SFH parameters based on their distributions
+            #params[k] = np.random.choice(nsamples[:,k],size=numsamples)
+            params[k] = nsamples[:,k][ranarray]
+
+        for k2 in range(numsamples):
+            derpar[k2] = self.get_t_params(params[:,k2],mass[k2],agenum)
+            if k2%(numsamples/10)==0: print k2,params[:,k2],mass[k2],derpar[k2]
+
         n = len(percentiles)
         for i, per in enumerate(percentiles):
             for j, v in enumerate(np.percentile(nsamples, per, axis=0)):
                 self.table[-1][(i + start_value + j*n)] = v
-        return (i + start_value + j*n)
+        current = i+start_value+j*n
+        for i,per in enumerate(percentiles):
+            for j,v in enumerate(np.percentile(derpar,per,axis=0)):
+                self.table[-1][(current+i+j*n+1)] = v
+        return (i + current + j*n+1)
 
     def add_truth_to_table(self, truth, start_value):
+## WPBWPB generalize: what if sfh parameters are not first? will that ever occur? ensure working for general case
+        sfhnum = self.sfh_class.get_nparams()
+        sfhtruth = truth[:sfhnum]
+        mass = 10**truth[-1] #Stellar mass
+        derpar = self.get_derived_params1(sfhtruth,mass)
+        for par in derpar: 
+            truth.append(np.log10(par))
         for i, tr in enumerate(truth):
             self.table[-1][start_value + i + 1] = tr
+        #last = start_value+i+1
+        #for j in range(len(derpar)):
+         #   self.table[-1][last+j+1]=derpar[j]

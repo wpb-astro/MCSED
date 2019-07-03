@@ -96,25 +96,39 @@ class constant:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
+    def evaluate(self, t, force_params=False):
         ''' Evaluate double power law SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
             time in Gyr
-
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr = self.logsfr
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr, age = force_params
         msfr = 10**self.logsfr * np.ones(t.shape)
         return msfr
 
+# WPBWPB delete
+#    def derived(self,t,params):
+#        assert len(params)==self.get_nparams()
+#        msfr = 10**params[0] * np.ones(t.shape)
+#        return msfr
+
 
 class burst:
-    ''' The constant star formation history '''
+    ''' The burst star formation history '''
     def __init__(self, logsfr=1.0, age=-.5, burst_age=7.2, burst_sigma=0.4,
                  burst_strength=5., logsfr_lims=[-3., 3.], age_lims=[-3., 0.4],
                  burst_age_lims=[6., 7.5], burst_sigma_lims=[0.003, 0.5],
@@ -219,29 +233,49 @@ class burst:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate burst SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
             time in Gyr
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        nage = self.burst_age - 9.
-        norm = (self.burst_strength * 10**self.logsfr /
-                np.sqrt(2. * np.pi * self.burst_sigma))
-        gauss = norm * np.exp(-0.5 * (np.log10(t) - nage)**2 / self.burst_sigma**2)
-        msfr = 10**self.logsfr * np.ones(t.shape)
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr, age, burst_age, burst_strength = self.get_params()
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr, age, burst_age, burst_strength = force_params
+
+        nage = burst_age - 9.
+        norm = (burst_strength * 10**logsfr /
+                np.sqrt(2. * np.pi * burst_sigma))
+        gauss = norm * np.exp(-0.5 * (np.log10(t) - nage)**2 / burst_sigma**2)
+        msfr = 10**logsfr * np.ones(t.shape)
         return msfr + gauss
+
+## WPBWPB delete
+#    def derived(self,t,params):
+#        assert len(params)==self.get_nparams()
+#        nage = params[2] - 9.
+#        norm = (params[3] * 10**params[0] /
+#                np.sqrt(2. * np.pi * self.burst_sigma))
+#        gauss = norm * np.exp(-0.5 * (np.log10(t) - nage)**2 / self.burst_sigma**2)
+#        msfr = 10**params[0] * np.ones(t.shape)
+#        return msfr + gauss
 
 
 class polynomial:
-    ''' The constant star formation history '''
+    ''' The polynomial star formation history '''
     def __init__(self, age_locs=[6.5, 7.5, 8.5], age=-.5,
                  age_lims=[-3., 0.4], age_delta=0.2):
         ''' Initialize this class
@@ -353,28 +387,44 @@ class polynomial:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate polynomial SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
             time in Gyr
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        v = np.array(self.get_params()[:])
+        if isinstance(force_params, bool):
+            if not force_params:
+                v = np.array(self.get_params()[:]) 
+        else:
+            assert len(force_params)==self.get_nparams()
+            v = np.array(force_params[:])
+
         sol = np.linalg.lstsq(self.matrix, v)[0]
         msfr = 10**(np.polyval(sol, np.log10(t) - self.middle_age + 9.))
         return msfr
 
+## WPBWPB delete
+#    def derived(self,t,params):
+#        assert len(params)==self.get_nparams()
+#        v = np.array(params[:])
+#        sol = np.linalg.lstsq(self.matrix, v)[0]
+#        msfr = 10**(np.polyval(sol, np.log10(t) - self.middle_age + 9.))
+#        return msfr
 
 class exponential:
 # WPBWPB comment correct? "constant" sfh?
-    ''' The constant star formation history '''
+    ''' The exponential star formation history '''
     def __init__(self, logsfr=1.0, age=-1.0, tau=-1.5, logsfr_lims=[-3., 3.],
                  age_lims=[-3., 0.4], tau_lims=[-3.5, 3.5],
                  logsfr_delta=0.3, age_delta=0.2, tau_delta=0.4,
@@ -463,26 +513,48 @@ WPB REWRITE PARAMETERS
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate exponential SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
             time in Gyr
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr, age, tau = self.get_params()
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr, age, tau = force_params
+
+# WPBWPB: ensure self.sign properly accounted for when inputing parameters (force_params)
         if self.sign > 0.0:
             var = t
         else:
-            var = 10**self.age - t
+            var = 10**age - t
             var = np.max([var, np.zeros(var.shape)], axis=0)
-        msfr = 10**self.logsfr * np.exp(-1. * var / 10**self.tau)
+        msfr = 10**logsfr * np.exp(-1. * var / 10**tau)
         return msfr
+
+## WPBWPB delete
+#    def derived(self,t,params):
+#        assert len(params)==self.get_nparams()
+#        if self.sign > 0.0:
+#            var = t
+#        else:
+#            var = 10**params[1] - t
+#            var = np.max([var, np.zeros(var.shape)], axis=0)
+#        msfr = 10**params[0] * np.exp(-1. * var / 10**params[2])
+#        return msfr
 
 
 class double_powerlaw:
@@ -601,23 +673,41 @@ WPBWPB add: _delta for remaining parameters
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
+    def evaluate(self, t, force_params=False):
         ''' Evaluate double power law SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
             time in Gyr
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        t1 = 10**self.tau
-        msfr = (10**(self.a) * ((t / t1)**self.b +
-                                (t / t1)**(-self.c))**(-1))
+        if isinstance(force_params, bool):
+            if not force_params:
+                tau, a, b, c, age = self.get_params()
+        else:
+            assert len(force_params)==self.get_nparams()
+            tau, a, b, c, age = force_params
+
+        t1 = 10**tau
+        msfr = (10**(a) * ((t / t1)**b +
+                                (t / t1)**(-c))**(-1))
         return msfr
+
+## WPBWPB delete    
+#    def derived(self,t,params):
+#        assert len(params)==self.get_nparams()
+#        t1 = 10**params[0]
+#        msfr = (10**(params[1]) * ((t / t1)**params[2] +
+#                                (t / t1)**(-params[3]))**(-1))
+#        return msfr
 
 
 class empirical_direct:
@@ -710,23 +800,35 @@ class empirical_direct:
         ax.step(t, sfr, where='pre', color=color, alpha=alpha)
 
 
-    def evaluate(self, t):
+    def evaluate(self, t, force_params=False):
         ''' Evaluate empirical direct SFH
         Parameters
         ----------
         t : numpy array (1 dim)
             time in Gyr
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
+
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
+
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr = np.array(self.get_params())
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr = np.array(force_params)
+
         if type(t) in [float, int]:
             t = np.array([t])
         elif type(t) != np.ndarray:
             t = np.array(t)
         # linear SFR in each SFH time bin
-        sfr_bin = 10. ** np.array(self.get_params()) 
+        sfr_bin = 10. ** logsfr 
         # Ensure that self.ages, t are both in units of log years
         t_logyr = np.log10( t * 1e9 ) 
         bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
@@ -734,6 +836,23 @@ class empirical_direct:
         bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
         sfr = sfr_bin[ bin_indx ]
         return sfr
+
+## WPBWPB delete
+#    def derived(self,t,params):
+#        assert len(params)==self.get_nparams()
+#        if type(t) in [float, int]:
+#            t = np.array([t])
+#        elif type(t) != np.ndarray:
+#            t = np.array(t)
+#        # linear SFR in each SFH time bin
+#        sfr_bin = 10. ** np.array(params) 
+#        # Ensure that self.ages, t are both in units of log years
+#        t_logyr = np.log10( t * 1e9 ) 
+#        bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
+#        # adjust any times falling beyond the last SFH age bin
+#        bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
+#        sfr = sfr_bin[ bin_indx ]
+#        return sfr
 
 
 class empirical:
@@ -847,21 +966,39 @@ class empirical:
         ax.step(10**t, np.hstack([sfr[0], sfr[sel]]), where='pre',
                 color=color, alpha=alpha)
 
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate empirical SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
             time in Gyr
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        v = self.get_params()
+        if isinstance(force_params, bool):
+            if not force_params:
+                v = self.get_params() 
+        else:
+            assert len(force_params)==self.get_nparams()
+            v = force_params 
+
         v.insert(1, self.firstbin)        
         mass = 10**v[0]
         denominator = np.dot(self.tdiff, v[1:])
         return [mass * p / denominator for p in v[1:]]
+
+## WPBWPB delete
+#    def derived(self,t,params):
+#        assert len(params)==self.get_nparams()
+#        v = params
+#        v.insert(1, self.firstbin)        
+#        mass = 10**v[0]
+#        denominator = np.dot(self.tdiff, v[1:])
+#        return [mass * p / denominator for p in v[1:]]
