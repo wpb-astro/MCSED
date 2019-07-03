@@ -16,8 +16,8 @@
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
 """
-import matplotlib
-matplotlib.use("Agg")
+#import matplotlib
+#matplotlib.use("Agg")
 import logging
 import sfh
 import dust_abs
@@ -25,6 +25,8 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import corner
 import time
@@ -922,7 +924,6 @@ WPBWPB units??
     def add_spec_plot(self, ax3):
 # WPBWPB: adjust wavelength range, depending on whether dust emission is fit
         ax3.set_xscale('log')
-        if not self.dust_em_class.fixed: ax3.set_yscale('log')
         if self.dust_em_class.fixed:
             xtick_pos = [3000, 5000, 10000, 20000, 40000]
             xtick_lbl = ['0.3', '0.5', '1', '2', '4']
@@ -931,6 +932,7 @@ WPBWPB units??
             xtick_pos = [3000, 5000, 10000, 40000, 100000, 1000000]
             xtick_lbl = ['0.3', '0.5', '1', '4', '10', '100']
             xlims = [3000, 2000000]
+            ax3.set_yscale('log')
         ax3.set_xticks(xtick_pos)
         ax3.set_xticklabels(xtick_lbl)
         ax3.set_xlim(xlims)
@@ -1029,12 +1031,15 @@ WPBWPB units??
             numderpar = 3
         else: 
             numderpar = 5
+# WPBWPB delete:
+        print("I'm starting to construct the triangle plot")
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
                             label_kwargs={"fontsize": 18}, show_titles=True,
                             title_kwargs={"fontsize": 16},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
+        print('made the corner')
         # Adding subplots
         ax1 = fig.add_subplot(3, 1, 1)
         ax1.set_position([0.7, 0.60, 0.25, 0.15])
@@ -1043,9 +1048,17 @@ WPBWPB units??
         ax3 = fig.add_subplot(3, 1, 3)
         ax3.set_position([0.38, 0.80, 0.57, 0.15])
         self.add_sfr_plot(ax1)
+# WPBWPB delete:
+        print("I've added the sfr plot")
         self.add_dust_plot(ax2)
+# WPBWPB delete:
+        print("I've added the dust plot")
         self.add_spec_plot(ax3)
+# WPBWPB delete:
+        print("I've added the spec plot")
         self.add_subplots(ax1, ax2, ax3, nsamples)
+# WPBWPB delete:
+        print("I've added the subplots")
 # WPB edit: printing HBeta line flux on the figure
 # used to have self.hbflux = self.measure_hb() --> changed
 #        if self.sfh_class.hblim is not None:

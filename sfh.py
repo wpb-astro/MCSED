@@ -111,8 +111,9 @@ class constant:
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        if not force_params:
-            logsfr = self.logsfr
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr = self.logsfr
         else:
             assert len(force_params)==self.get_nparams()
             logsfr = force_params[0]
@@ -248,8 +249,9 @@ class burst:
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        if not force_params:
-            logsfr, age, burst_age, burst_strength = self.get_params()
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr, age, burst_age, burst_strength = self.get_params()
         else:
             assert len(force_params)==self.get_nparams()
             logsfr, age, burst_age, burst_strength = force_params
@@ -401,8 +403,9 @@ class polynomial:
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        if not force_params:
-            v = np.array(self.get_params()[:]) 
+        if isinstance(force_params, bool):
+            if not force_params:
+                v = np.array(self.get_params()[:]) 
         else:
             assert len(force_params)==self.get_nparams()
             v = np.array(force_params[:])
@@ -526,12 +529,14 @@ WPB REWRITE PARAMETERS
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        if not force_params:
-            logsfr, age, tau = self.get_params()
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr, age, tau = self.get_params()
         else:
             assert len(force_params)==self.get_nparams()
             logsfr, age, tau = force_params
 
+# WPBWPB: ensure self.sign properly accounted for when inputing parameters (force_params)
         if self.sign > 0.0:
             var = t
         else:
@@ -684,8 +689,9 @@ WPBWPB add: _delta for remaining parameters
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        if not force_params:
-            tau, a, b, c, age = self.get_params()
+        if isinstance(force_params, bool):
+            if not force_params:
+                tau, a, b, c, age = self.get_params()
         else:
             assert len(force_params)==self.get_nparams()
             tau, a, b, c, age = force_params
@@ -809,8 +815,10 @@ class empirical_direct:
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        if not force_params:
-            logsfr = np.array(self.get_params())
+
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr = np.array(self.get_params())
         else:
             assert len(force_params)==self.get_nparams()
             logsfr = np.array(force_params)
@@ -974,8 +982,9 @@ class empirical:
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        if not force_params:
-            v = self.get_params() 
+        if isinstance(force_params, bool):
+            if not force_params:
+                v = self.get_params() 
         else:
             assert len(force_params)==self.get_nparams()
             v = params 

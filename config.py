@@ -97,7 +97,7 @@ output_dict = {'parameters'    : True,
                'bestfitspec'   : True,
                'fluxdensity'   : True,
                'lineflux'      : True,
-               'triangle plot' : True,
+               'triangle plot' : False,
                'sample plot'   : False,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
