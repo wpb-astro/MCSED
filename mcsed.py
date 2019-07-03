@@ -779,9 +779,9 @@ WPBWPB units??
         else: age = self.sfh_class.age
         ageval = 10**age #Age in Gyr
         t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
-        sfrarray = self.sfh_class.derived(t_sfh,params)
+        sfrarray = self.sfh_class.evaluate(t_sfh,force_params=params)
         t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
-        sfrfull = self.sfh_class.derived(t_gaw,params)
+        sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         t_gaw*=1.0e9 #Need it in years for calculation
         #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
 
@@ -798,7 +798,7 @@ WPBWPB units??
         else: age = self.sfh_class.age
         ageval = 10**age #Age in Gyr
         t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
-        sfrfull = self.sfh_class.derived(t_gaw,params)
+        sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         sfrfull_avg = self.sfh_class.evaluate(t_gaw)
         #print "Fractional difference between average sfr over time and this particular set of sfh params:", np.linalg.norm(sfrfull-sfrfull_avg)/np.linalg.norm(sfrfull_avg)
         t_gaw*=1.0e9 #Need it in years for calculation
@@ -849,6 +849,48 @@ WPBWPB units??
         return sfr10,sfr100,fpdr
 
 
+    def set_median_fit(self,rndsamples=200,lnprobcut=7.5):
+        '''
+        set attributes
+        median spectrum and filter flux densities for rndsamples random samples
+
+        Input
+        -----
+        rndsamples : int
+            number of random samples over which to compute medians
+        lnprobcut : float
+            Some of the emcee chains include outliers.  This value serves as
+            a cut in log probability space with respect to the maximum
+            probability.  For reference, a Gaussian 1-sigma is 2.5 in log prob
+            space.
+
+        Returns
+        -------
+        self.fluxwv : list (1d)
+            wavelengths of filters
+        self.fluxfn : list (1d)
+            median flux densities of filters
+        self.medianspec : list (1d)
+            median spectrum
+        '''
+        chi2sel = (self.samples[:, -1] >
+                   (np.max(self.samples[:, -1], axis=0) - lnprobcut))
+        nsamples = self.samples[chi2sel, :]
+        wv = self.get_filter_wavelengths()
+## WPBWPB delete
+#        rndsamples = 200
+        sp, fn = ([], [])
+        for i in np.arange(rndsamples):
+            ind = np.random.randint(0, nsamples.shape[0])
+            self.set_class_parameters(nsamples[ind, :])
+            fnu = self.get_filter_fluxdensities()
+            sp.append(self.spectrum * 1.)
+            fn.append(fnu * 1.)
+        self.medianspec = np.median(np.array(sp), axis=0)
+        self.fluxwv = wv
+        self.fluxfn = np.median(np.array(fn), axis=0)
+
+
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
         ''' Make spectum plot for current model '''
         self.spectrum, mass = self.build_csp()
@@ -895,30 +937,32 @@ WPBWPB units??
         ax3.set_xlabel(r'Wavelength $\mu m$')
         ax3.set_ylabel(r'$F_{\nu}$ ($\mu$Jy)')
 
-    def add_subplots(self, ax1, ax2, ax3, nsamples):
+    def add_subplots(self, ax1, ax2, ax3, nsamples, rndsamples=200):
         ''' Add Subplots to Triangle plot below '''
-        wv = self.get_filter_wavelengths()
-        rndsamples = 200
-# WPBWPB edit: might not need hbm list anymore
-        sp, fn, hbm = ([], [], [])
+### WPBWPB -- I think all of this can be deleted - migrated to a separate method that does not require plotting (double-commented lines within this method)
+##        wv = self.get_filter_wavelengths()
+##        rndsamples = 200
+        sp, fn = ([], []) 
         for i in np.arange(rndsamples):
             ind = np.random.randint(0, nsamples.shape[0])
             self.set_class_parameters(nsamples[ind, :])
             self.sfh_class.plot(ax1, alpha=0.1)
             self.dust_abs_class.plot(ax2, self.wave, alpha=0.1)
             self.spectrum_plot(ax3, alpha=0.1)
-            fnu = self.get_filter_fluxdensities()
-            sp.append(self.spectrum * 1.)
-            fn.append(fnu * 1.)
-# WPB edit: plotting HBeta line
-# used to have self.hbflux = self.measure_hb() --> changed
-#            hbm.append(self.hbflux * 1.)
-        # Plotting median value:
-        self.medianspec = np.median(np.array(sp), axis=0)
-#        self.hbmedian = np.median(hbm)
+
+##            fnu = self.get_filter_fluxdensities()
+##            sp.append(self.spectrum * 1.)
+##            fn.append(fnu * 1.)
+## WPB edit: plotting HBeta line
+## used to have self.hbflux = self.measure_hb() --> changed
+##            hbm.append(self.hbflux * 1.)
+##        # Plotting median value:
+##        self.medianspec = np.median(np.array(sp), axis=0)
+###        self.hbmedian = np.median(hbm)
         ax3.plot(self.wave, self.medianspec, color='dimgray')
-        self.fluxwv = wv
-        self.fluxfn = np.median(np.array(fn), axis=0)
+##        self.fluxwv = wv
+##        self.fluxfn = np.median(np.array(fn), axis=0)
+
         ax3.scatter(self.fluxwv, self.fluxfn, marker='x', s=200,
                     color='dimgray', zorder=8)
         chi2 = (1. / (len(self.data_fnu) - 1) *
@@ -930,14 +974,14 @@ WPBWPB units??
             self.dust_abs_class.plot(ax2, self.wave, color='k', alpha=1.0)
             self.spectrum_plot(ax3, color='k', alpha=0.5)
         if self.true_fnu is not None:
-            p = ax3.scatter(wv, self.true_fnu, marker='o', s=150,
+            p = ax3.scatter(self.fluxwv, self.true_fnu, marker='o', s=150,
                             color=[0.216, 0.471, 0.749], zorder=9)
             p.set_facecolor('none')
-        ax3.errorbar(wv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
+        ax3.errorbar(self.fluxwv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
                      fillstyle='none', markersize=15,
                      color=[0.510, 0.373, 0.529], zorder=10)
         
-        sel = np.where((wv > 3000.) * (wv < 50000.))[0]
+        sel = np.where((self.fluxwv > 3000.) * (self.fluxwv < 50000.))[0]
         ax3min = np.percentile(self.data_fnu[sel], 5)
         assert ax3min>0.0
         ax3max = np.percentile(self.data_fnu[sel], 95)
@@ -948,24 +992,6 @@ WPBWPB units??
         else:
             ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])
         ax3.text(4200, ax3max + 0.2 * ax3ran, r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
-
-    def no_triangle_asked(self,lnprobcut=7.5):
-        chi2sel = (self.samples[:, -1] >
-                   (np.max(self.samples[:, -1], axis=0) - lnprobcut))
-        nsamples = self.samples[chi2sel, :]
-        wv = self.get_filter_wavelengths()
-        rndsamples = 200
-# WPBWPB edit: might not need hbm list anymore
-        sp, fn = ([], [])
-        for i in np.arange(rndsamples):
-            ind = np.random.randint(0, nsamples.shape[0])
-            self.set_class_parameters(nsamples[ind, :])
-            fnu = self.get_filter_fluxdensities()
-            sp.append(self.spectrum * 1.)
-            fn.append(fnu * 1.)
-        self.medianspec = np.median(np.array(sp), axis=0)
-        self.fluxwv = wv
-        self.fluxfn = np.median(np.array(fn), axis=0)
 
     def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
         ''' Make a triangle corner plot for samples from fit
@@ -983,6 +1009,7 @@ WPBWPB units??
         imgtype : string
             The file extension of the output plot
         '''
+# WPBWPB: since median fits have already been set, may be able to remove lnprobcut -- just use attributes that are already set.
         # Make selection for three sigma sample
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
@@ -1100,6 +1127,7 @@ WPBWPB units??
         return (i + current + j*n+1)
 
     def add_truth_to_table(self, truth, start_value):
+## WPBWPB generalize: what if sfh parameters are not first? will that ever occur? ensure working for general case
         sfhnum = self.sfh_class.get_nparams()
         sfhtruth = truth[:sfhnum]
         mass = 10**truth[-1] #Stellar mass

@@ -27,7 +27,7 @@ EBV_stars_gas = -1
 # If True, fit the dust emission component. 
 # If False, remove all filters redward of rest-frame wave_dust_em microns 
 # and fix dust emission parameters to umin=2.0, gamma=0.05, qpah=2.5 
-fit_dust_em = True #False
+fit_dust_em = True
 wave_dust_em = 2.5 # rest-frame wavelength in microns 
 
 # EMCEE parameters
@@ -97,7 +97,7 @@ output_dict = {'parameters'    : True,
                'bestfitspec'   : True,
                'fluxdensity'   : True,
                'lineflux'      : True,
-               'triangle plot' : False,
+               'triangle plot' : True,
                'sample plot'   : False,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
@@ -107,7 +107,7 @@ param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
 # WPBWPB clarify
-reserved_cores = 0 # integer
+reserved_cores = 2 # integer
 
 
 # Dictionaries
@@ -150,6 +150,7 @@ filt_dict = {0: 'SubB.res', 1: 'SubIB427.res', 2: 'SubIB445.res',
              73: 'wircam_H.res', 74: 'wircam_J.res', 75: 'wircam_Ks.res',
              76: 'MIPS24um.res', 77: 'MIPS70um.res', 78: 'Herschel_PACS_Blue.res',
              79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res'}
+
 # Catalog column name of filter and dictionary value to the filter file
 catalog_filter_dict, catalog_maglim_dict = {}, {}
 catalog_filter_dict['goodss'] = {1: 'ia427', 2: 'ia445', 6: 'ia505',

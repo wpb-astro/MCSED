@@ -962,6 +962,10 @@ def main(argv=None, ssp_info=None):
 #            return
 
             mcsed_model.fit_model()
+
+            # Set attributes: median SED and filter fluxes from random sample
+            # of fits satisfying a chi2 cut
+            mcsed_model.set_median_fit()
 ##WPBWPB delete
 #            print('I"ve reached this point')
 
@@ -980,9 +984,10 @@ def main(argv=None, ssp_info=None):
             if args.output_dict['triangle plot']:
                 mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' %
                                           (fd, oi, args.sfh, args.dust_law, args.output_filename.strip(".dat")), imgtype = args.output_dict['image format'])
-            else:
-                if (args.output_dict['bestfitspec'] or args.output_dict['fluxdensity']):
-                    mcsed_model.no_triangle_asked() #To get mcsed_model.medianspec, .fluxwv, .fluxfn defined
+##WPBWPB delete
+#            else:
+#                if (args.output_dict['bestfitspec'] or args.output_dict['fluxdensity']):
+#                    mcsed_model.no_triangle_asked() #To get mcsed_model.medianspec, .fluxwv, .fluxfn defined
             mcsed_model.table.add_row([fd, oi, zi] + [0.]*(len(labels)-3))
             names = mcsed_model.get_param_names()
             names.append('Log Mass')
