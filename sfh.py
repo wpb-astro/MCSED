@@ -116,7 +116,7 @@ class constant:
                 logsfr = self.logsfr
         else:
             assert len(force_params)==self.get_nparams()
-            logsfr = force_params[0]
+            logsfr, age = force_params
         msfr = 10**self.logsfr * np.ones(t.shape)
         return msfr
 
@@ -987,7 +987,7 @@ class empirical:
                 v = self.get_params() 
         else:
             assert len(force_params)==self.get_nparams()
-            v = params 
+            v = force_params 
 
         v.insert(1, self.firstbin)        
         mass = 10**v[0]
