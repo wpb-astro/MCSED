@@ -495,7 +495,10 @@ WPBWPB units??
         #print "Max(spec_dustfree) = %.3e"%(max(spec_dustfree))
         #print "Max(spec_dustobscured) = %.3e"%(max(spec_dustobscured))
         #print "L_bol = %.3e"%(L_bol)
-        umin,gamma,qpah = self.dust_em_class.get_params()
+        if not self.dust_em_class.fixed: 
+            umin,gamma,qpah = self.dust_em_class.get_params()
+        else:
+            umin,gamma,qpah = 2.0, 0.05, 2.5 #Default values
         umax=1.0e6
         P0 = 135.0 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
         Lbolfac = 2.488e-24 #Convert from uJy*Hz at 10 pc to L_sun

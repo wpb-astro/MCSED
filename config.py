@@ -27,7 +27,7 @@ EBV_stars_gas = -1
 # If True, fit the dust emission component. 
 # If False, remove all filters redward of rest-frame wave_dust_em microns 
 # and fix dust emission parameters to umin=2.0, gamma=0.05, qpah=2.5 
-fit_dust_em = True #False
+fit_dust_em = False #True
 wave_dust_em = 2.5 # rest-frame wavelength in microns 
 
 # EMCEE parameters
@@ -93,11 +93,11 @@ metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 #    Supported formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
 output_dict = {'parameters'    : True,
                'settings'      : True, 
-               'fitposterior'  : True,
+               'fitposterior'  : False,
                'bestfitspec'   : True,
                'fluxdensity'   : True,
                'lineflux'      : True,
-               'triangle plot' : False,
+               'triangle plot' : True,
                'sample plot'   : False,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
