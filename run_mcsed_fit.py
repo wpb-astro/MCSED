@@ -828,6 +828,7 @@ def main(argv=None, ssp_info=None):
     if args.fit_dust_em and not args.test:
         names.append('fPDR')
         names.append('Mdust')
+        names.append("Mdust2")
     names.append('t10')
     names.append('t50')
     names.append('t90')
@@ -991,6 +992,7 @@ def main(argv=None, ssp_info=None):
             if args.fit_dust_em and not args.test:
                 names.append('fPDR')
                 names.append('Mdust')
+                names.append("Mdust2")
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: #The derived parameters t10, t50, and t90 will NOT be in this file
                 T = Table(mcsed_model.samples, names=names)

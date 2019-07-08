@@ -513,6 +513,7 @@ WPBWPB units??
         #print "Max of dustobscured_unnorm = %.3e"%(max(dustobscured_unnorm))
         L_bol_obscured = np.dot(self.dnu,dustobscured_unnorm)
         #print "L_bol_obscured = %.3e"%(L_bol_obscured)
+        dusttohratio = 0.0102 #This is almost constant (overall 4% change in value depending on qpah--not worth varying)
         dustmass = L_bol / L_bol_obscured
         #print "Dust Mass (in M_sun) = %.3e"%(dustmass)
         #print "Ratio of dust masses derived = %.3e" %(mdust/dustmass)
@@ -542,7 +543,7 @@ WPBWPB units??
         if not DMreturn: 
             return csp / self.Dl**2, mass
         else:
-            return csp/self.Dl**2, mass, mdust
+            return csp/self.Dl**2, mass, mdust, dustmass*dusttohratio
 
     def lnprior(self):
         ''' Simple, uniform prior for input variables
@@ -571,7 +572,7 @@ WPBWPB units??
             The parameters t10, t50, t90, sfr10, and sfr100 are derived in get_derived_params(self)
         '''
         if not self.dust_em_class.fixed: 
-            self.spectrum, mass, mdust = self.build_csp(DMreturn=True)
+            self.spectrum, mass, mdust, mdust2 = self.build_csp(DMreturn=True)
         else:
             self.spectrum, mass = self.build_csp(DMreturn=False)
             mdust = None
@@ -604,7 +605,7 @@ WPBWPB units??
         chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
         sfr10,sfr100,fpdr = self.get_derived_params()
-        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust)
+        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust,mdust2)
 
     def lnprob(self, theta):
         ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
@@ -620,14 +621,14 @@ WPBWPB units??
         self.set_class_parameters(theta)
         lp = self.lnprior()
         if np.isfinite(lp):
-            lnl,mass,sfr10,sfr100,fpdr,mdust = self.lnlike()
+            lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
             if fpdr is not None:
-                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust])
+                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust, mdust2])
             else:
                 return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
             if not self.dust_em_class.fixed:
-                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
             else:
                 return -np.inf, np.array([-np.inf, -np.inf, -np.inf])
 
@@ -742,7 +743,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 5
+            numderpar = 6
         new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
         new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
@@ -750,7 +751,7 @@ WPBWPB units??
             for j in xrange(len(sampler.blobs[0])):
                 for k in xrange(len(sampler.blobs[0][0])):
                     x = sampler.blobs[i][j][k]
-                    if k==0 or k==4: #Stellar mass or Dust mass--can't take log of negative numbers
+                    if k==0 or k==4 or k==5: #Stellar mass or Dust mass--can't take log of negative numbers
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
                                                np.log10(x), -99.) #Stellar mass
                     else: 
@@ -1004,7 +1005,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 5
+            numderpar = 6
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
@@ -1068,7 +1069,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 5
+            numderpar = 6
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]
