@@ -435,37 +435,59 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         for j, ind in enumerate(args.filt_dict.keys()):
             ### determine if column is present in catalog or user input file
             # WPB delete - check if present in Skelton catalog
-            if ind in args.catalog_filter_dict[loc].keys():
-                colname  = "f_"+args.catalog_filter_dict[loc][ind]
-                ecolname = "e_"+args.catalog_filter_dict[loc][ind]
-            # WPB delete - if not, check if present in input file
-            elif ind in infilt_dict.keys():
-                colname  = "f_"+infilt_dict[ind].split('.res')[0]
-                ecolname = "e_"+infilt_dict[ind].split('.res')[0]
-                print "We are including a column for the photometric filter %s" %(colname)
-            # WPB delete - if neither, set to zero and move on
+            if loc in args.catalog_filter_dict.keys():
+                if ind in args.catalog_filter_dict[loc].keys():
+                    colname  = "f_"+args.catalog_filter_dict[loc][ind]
+                    ecolname = "e_"+args.catalog_filter_dict[loc][ind]
+                # WPB delete - if not, check if present in input file
+                elif ind in infilt_dict.keys():
+                    colname  = "f_"+infilt_dict[ind].split('.res')[0]
+                    ecolname = "e_"+infilt_dict[ind].split('.res')[0]
+                    print "We are including a column for the photometric filter %s" %(colname)
+                # WPB delete - if neither, set to zero and move on
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             else:
-                y[i, j] = 0.0
-                yerr[i, j] = 0.0
-                flag[i, j] = False
-                continue
+                if ind in infilt_dict.keys():
+                    colname  = "f_"+infilt_dict[ind].split('.res')[0]
+                    ecolname = "e_"+infilt_dict[ind].split('.res')[0]
+                    print "We are including a column for the photometric filter %s" %(colname)
+                # WPB delete - if neither, set to zero and move on
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             ### grab flux and error, if available:
             # WPB delete - check if present in Skelton catalog
-            if colname in field_dict[loc].columns.names:
-                # WPB delete: assume second element (i=1) is the Skelton ID
-                # fi, fie are the flux and error (resp) for given filter and object
-                fi  = field_dict[loc].data[colname][int(datum[1])-1]
-                fie = field_dict[loc].data[ecolname][int(datum[1])-1]
-            # WPB delete - if not, must be present in input file
-            elif colname in F.colnames:
-                fi  = datum[colname]
-                fie = datum[ecolname]
-            else:
-                y[i, j] = 0.0
-                yerr[i, j] = 0.0
-                flag[i, j] = False
-                continue
+            if loc in field_dict.keys():
+                if colname in field_dict[loc].columns.names:
+                    # WPB delete: assume second element (i=1) is the Skelton ID
+                    # fi, fie are the flux and error (resp) for given filter and object
+                    fi  = field_dict[loc].data[colname][int(datum[1])-1]
+                    fie = field_dict[loc].data[ecolname][int(datum[1])-1]
+                # WPB delete - if not, must be present in input file
+                elif colname in F.colnames:
+                    fi  = datum[colname]
+                    fie = datum[ecolname]
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
                 # WPB delete - if null value, flux density is zero
+            else:
+                if colname in F.colnames:
+                    fi  = datum[colname]
+                    fie = datum[ecolname]
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             if (fi > phot_fill_value):
                 y[i, j] = fi*fac
                 flag[i, j] = True

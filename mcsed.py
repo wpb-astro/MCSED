@@ -782,8 +782,12 @@ WPBWPB units??
         if agenum is not None: age = params[agenum]
         else: age = self.sfh_class.age
         ageval = 10**age #Age in Gyr
-        t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
-        sfrarray = self.sfh_class.derived(t_sfh,params)
+        t_sfr100 = np.linspace(0.0,0.1,num=1001) #From 100 Mya to present (observed time)
+        t_sfr10 = np.linspace(0.0,0.01,num=1001) #From 10 Mya to present (observed time)
+        sfrarray = self.sfh_class.derived(t_sfr100,params)
+        sfr100 = np.average(sfrarray)
+        sfrarray = self.sfh_class.derived(t_sfr10,params)
+        sfr10 = np.average(sfrarray)
         t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
         sfrfull = self.sfh_class.derived(t_gaw,params)
         t_gaw*=1.0e9 #Need it in years for calculation
@@ -792,8 +796,6 @@ WPBWPB units??
         t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
         t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
         t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
-        sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
-        sfr100 = np.average(sfrarray)
 
         return [sfr10,sfr100,t10,t50,t90]
 
@@ -817,20 +819,12 @@ WPBWPB units??
         calculated from free parameters
         '''
         ageval = 10**self.sfh_class.age #Age in Gyr
-        t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
-        sfrarray = self.sfh_class.evaluate(t_sfh)
-        #t_gaw = np.geomspace(1.0e-5,ageval,num=200) #From (10000 years after) birth to present in units of Gyr
-        #sfrfull = self.sfh_class.evaluate(t_gaw)
-        #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
-        #t_gaw*=1.0e9 #Need it in years for calculation
-        #t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
-        #t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
-        #t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
-        #t10 = ageval*0.1
-        #t50 = ageval*0.5
-        #t90 = ageval*0.9
-        sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
-        sfr100 = np.average(sfrarray)
+        t_sfr100 = np.linspace(0.0,0.1,num=251) #From 100 Mya to present
+        t_sfr10 = np.linspace(0.0,0.01,num=251) #From 10 Mya to present
+        sfrarray = self.sfh_class.evaluate(t_sfr100)
+        sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
+        sfrarray = self.sfh_class.evaluate(t_sfr10)
+        sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
 
         if self.dust_em_class.fixed:
             fpdr = None
@@ -838,17 +832,6 @@ WPBWPB units??
             umin,gamma,qpah = self.dust_em_class.get_params()
             umax = 1.0e6
             fpdr = gamma*np.log(umax/100.) / ((1.-gamma)*(1.-umin/umax) + gamma*np.log(umax/umin))
-            #uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
-            # dusttohratio = 0.0102 #This is almost constant (overall 4% change in value depending on qpah--not worth varying)
-            # mH = 1.6726e-24 #Hydrogen mass in g
-            # wav = 1.0e4*np.array([24.0,71.0,160.0]) #24, 71, and 160 um in Angstroms
-            # nuarr = 2.99792e18 / wav #Frequencies in Hz for 24, 71, and 160 um
-            # Fnu = np.interp(wav,self.wave,spec_em)
-            # jnu = lbol*self.dust_em_class.evaluate(wav)
-            # psi = dusttohratio*mH*uavg/np.dot(nuarr,jnu)
-            # #mdust = dusttohratio*mH*np.dot(nuarr,Fnu)/np.dot(nuarr,jnu) / 1.98847e33 #Mass of dust in solar masses
-            # mdust = psi/uavg * np.dot(nuarr,Fnu) #In grams for now
-            #print r"$\Psi$, jnu, Fnu, L_bol, Mdust:", psi,jnu,Fnu,lbol,mdust
 
         return sfr10,sfr100,fpdr
 
