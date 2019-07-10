@@ -762,18 +762,18 @@ WPBWPB units??
         self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
 
     def calc_gaw(self,t,sfr,frac,mass):
-        ''' Calculate time at which the fraction "frac" of the stellar mass in the galaxy was created'''
+        ''' Calculate lookback time at which the fraction "frac" of the stellar mass in the galaxy was created'''
         ind = 0
         #print "Length of t =", len(t)
         #print "Total SFR integral over mass =", simps(sfr,t)/mass
         #stellartot = quad(sfr_f,t[0],t[-1])[0]
         #while quad(sfr_f,t[0],t[ind])[0]/mass < frac: 
-        while (simps(sfr[:ind+1],t[:ind+1])/mass<frac and ind<len(t)-1):
+        while (simps(sfr[:ind+1],t[:ind+1])/mass<(1.0-frac) and ind<len(t)-1):
             ind+=1
         #forward = quad(sfr_f,t[0],t[ind])[0]/mass - frac
-        forward = simps(sfr[:ind+1],t[:ind+1])/mass - frac
+        forward = simps(sfr[:ind+1],t[:ind+1])/mass - 1.0 + frac
         #backward = frac - quad(sfr_f,t[0],t[ind-1])[0]/mass
-        backward = frac - simps(sfr[:ind],t[:ind])/mass
+        backward = 1.0-frac - simps(sfr[:ind],t[:ind])/mass
         tot = forward+backward
         return 1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind]) #Linear interpolation to get more accurate result--put result back into Gyr
 
@@ -786,11 +786,11 @@ WPBWPB units??
         ageval = 10**age #Age in Gyr
         t_sfr100 = np.linspace(0.0,0.1,num=1001) #From 100 Mya to present (observed time)
         t_sfr10 = np.linspace(0.0,0.01,num=1001) #From 10 Mya to present (observed time)
-        sfrarray = self.sfh_class.derived(t_sfr100,params)
-        sfr100 = np.average(sfrarray)
-        sfrarray = self.sfh_class.derived(t_sfr10,params)
-        sfr10 = np.average(sfrarray)
-        t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
+        sfrarray = self.sfh_class.evaluate(t_sfr100,force_params=params)
+        sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
+        sfrarray = self.sfh_class.evaluate(t_sfr10,force_params=params)
+        sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
+        t_gaw = np.linspace(0.0,ageval,num=250) #From present day back to birth of galaxy in Gyr
         sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         t_gaw*=1.0e9 #Need it in years for calculation
         #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
@@ -805,7 +805,7 @@ WPBWPB units??
         if agenum is not None: age = params[agenum]
         else: age = self.sfh_class.age
         ageval = 10**age #Age in Gyr
-        t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
+        t_gaw = np.linspace(0.0,ageval,num=250) #From present day back to birth of galaxy in Gyr
         sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         sfrfull_avg = self.sfh_class.evaluate(t_gaw)
         #print "Fractional difference between average sfr over time and this particular set of sfh params:", np.linalg.norm(sfrfull-sfrfull_avg)/np.linalg.norm(sfrfull_avg)
