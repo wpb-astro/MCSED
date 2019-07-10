@@ -497,7 +497,10 @@ WPBWPB units??
         #print "Max(spec_dustfree) = %.3e"%(max(spec_dustfree))
         #print "Max(spec_dustobscured) = %.3e"%(max(spec_dustobscured))
         #print "L_bol = %.3e"%(L_bol)
-        umin,gamma,qpah = self.dust_em_class.get_params()
+        if not self.dust_em_class.fixed: 
+            umin,gamma,qpah = self.dust_em_class.get_params()
+        else:
+            umin,gamma,qpah = 2.0, 0.05, 2.5 #Default values
         umax=1.0e6
         P0 = 135.0 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
         Lbolfac = 2.488e-24 #Convert from uJy*Hz at 10 pc to L_sun
@@ -512,6 +515,7 @@ WPBWPB units??
         #print "Max of dustobscured_unnorm = %.3e"%(max(dustobscured_unnorm))
         L_bol_obscured = np.dot(self.dnu,dustobscured_unnorm)
         #print "L_bol_obscured = %.3e"%(L_bol_obscured)
+        dusttohratio = 0.0102 #This is almost constant (overall 4% change in value depending on qpah--not worth varying)
         dustmass = L_bol / L_bol_obscured
         #print "Dust Mass (in M_sun) = %.3e"%(dustmass)
         #print "Ratio of dust masses derived = %.3e" %(mdust/dustmass)
@@ -541,7 +545,7 @@ WPBWPB units??
         if not DMreturn: 
             return csp / self.Dl**2, mass
         else:
-            return csp/self.Dl**2, mass, mdust
+            return csp/self.Dl**2, mass, mdust, dustmass*dusttohratio
 
     def lnprior(self):
         ''' Simple, uniform prior for input variables
@@ -570,7 +574,7 @@ WPBWPB units??
             The parameters t10, t50, t90, sfr10, and sfr100 are derived in get_derived_params(self)
         '''
         if not self.dust_em_class.fixed: 
-            self.spectrum, mass, mdust = self.build_csp(DMreturn=True)
+            self.spectrum, mass, mdust, mdust2 = self.build_csp(DMreturn=True)
         else:
             self.spectrum, mass = self.build_csp(DMreturn=False)
             mdust = None
@@ -603,7 +607,7 @@ WPBWPB units??
         chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
         sfr10,sfr100,fpdr = self.get_derived_params()
-        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust)
+        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust,mdust2)
 
     def lnprob(self, theta):
         ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
@@ -619,14 +623,14 @@ WPBWPB units??
         self.set_class_parameters(theta)
         lp = self.lnprior()
         if np.isfinite(lp):
-            lnl,mass,sfr10,sfr100,fpdr,mdust = self.lnlike()
+            lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
             if fpdr is not None:
-                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust])
+                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust, mdust2])
             else:
                 return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
             if not self.dust_em_class.fixed:
-                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
             else:
                 return -np.inf, np.array([-np.inf, -np.inf, -np.inf])
 
@@ -741,7 +745,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 5
+            numderpar = 6
         new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
         new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
@@ -749,7 +753,7 @@ WPBWPB units??
             for j in xrange(len(sampler.blobs[0])):
                 for k in xrange(len(sampler.blobs[0][0])):
                     x = sampler.blobs[i][j][k]
-                    if k==0 or k==4: #Stellar mass or Dust mass--can't take log of negative numbers
+                    if k==0 or k==4 or k==5: #Stellar mass or Dust mass--can't take log of negative numbers
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
                                                np.log10(x), -99.) #Stellar mass
                     else: 
@@ -780,8 +784,12 @@ WPBWPB units??
         if agenum is not None: age = params[agenum]
         else: age = self.sfh_class.age
         ageval = 10**age #Age in Gyr
-        t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
-        sfrarray = self.sfh_class.evaluate(t_sfh,force_params=params)
+        t_sfr100 = np.linspace(0.0,0.1,num=1001) #From 100 Mya to present (observed time)
+        t_sfr10 = np.linspace(0.0,0.01,num=1001) #From 10 Mya to present (observed time)
+        sfrarray = self.sfh_class.derived(t_sfr100,params)
+        sfr100 = np.average(sfrarray)
+        sfrarray = self.sfh_class.derived(t_sfr10,params)
+        sfr10 = np.average(sfrarray)
         t_gaw = np.geomspace(1.0e-5,ageval,num=250) #From (10000 years after) birth to present in units of Gyr
         sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         t_gaw*=1.0e9 #Need it in years for calculation
@@ -790,8 +798,6 @@ WPBWPB units??
         t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
         t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
         t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
-        sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
-        sfr100 = np.average(sfrarray)
 
         return [sfr10,sfr100,t10,t50,t90]
 
@@ -815,20 +821,12 @@ WPBWPB units??
         calculated from free parameters
         '''
         ageval = 10**self.sfh_class.age #Age in Gyr
-        t_sfh = np.linspace(ageval-0.1,ageval,num=1000) #From 100 Mya to present
-        sfrarray = self.sfh_class.evaluate(t_sfh)
-        #t_gaw = np.geomspace(1.0e-5,ageval,num=200) #From (10000 years after) birth to present in units of Gyr
-        #sfrfull = self.sfh_class.evaluate(t_gaw)
-        #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
-        #t_gaw*=1.0e9 #Need it in years for calculation
-        #t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
-        #t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
-        #t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
-        #t10 = ageval*0.1
-        #t50 = ageval*0.5
-        #t90 = ageval*0.9
-        sfr10 = np.average(sfrarray[t_sfh>=ageval-0.01])
-        sfr100 = np.average(sfrarray)
+        t_sfr100 = np.linspace(0.0,0.1,num=251) #From 100 Mya to present
+        t_sfr10 = np.linspace(0.0,0.01,num=251) #From 10 Mya to present
+        sfrarray = self.sfh_class.evaluate(t_sfr100)
+        sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
+        sfrarray = self.sfh_class.evaluate(t_sfr10)
+        sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
 
         if self.dust_em_class.fixed:
             fpdr = None
@@ -836,17 +834,6 @@ WPBWPB units??
             umin,gamma,qpah = self.dust_em_class.get_params()
             umax = 1.0e6
             fpdr = gamma*np.log(umax/100.) / ((1.-gamma)*(1.-umin/umax) + gamma*np.log(umax/umin))
-            #uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
-            # dusttohratio = 0.0102 #This is almost constant (overall 4% change in value depending on qpah--not worth varying)
-            # mH = 1.6726e-24 #Hydrogen mass in g
-            # wav = 1.0e4*np.array([24.0,71.0,160.0]) #24, 71, and 160 um in Angstroms
-            # nuarr = 2.99792e18 / wav #Frequencies in Hz for 24, 71, and 160 um
-            # Fnu = np.interp(wav,self.wave,spec_em)
-            # jnu = lbol*self.dust_em_class.evaluate(wav)
-            # psi = dusttohratio*mH*uavg/np.dot(nuarr,jnu)
-            # #mdust = dusttohratio*mH*np.dot(nuarr,Fnu)/np.dot(nuarr,jnu) / 1.98847e33 #Mass of dust in solar masses
-            # mdust = psi/uavg * np.dot(nuarr,Fnu) #In grams for now
-            #print r"$\Psi$, jnu, Fnu, L_bol, Mdust:", psi,jnu,Fnu,lbol,mdust
 
         return sfr10,sfr100,fpdr
 
@@ -1030,9 +1017,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 5
-# WPBWPB delete:
-        print("I'm starting to construct the triangle plot")
+            numderpar = 6
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
@@ -1105,7 +1090,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 5
+            numderpar = 6
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]

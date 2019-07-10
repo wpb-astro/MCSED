@@ -93,11 +93,11 @@ metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 #    Supported formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
 output_dict = {'parameters'    : True,
                'settings'      : True, 
-               'fitposterior'  : True,
+               'fitposterior'  : False,
                'bestfitspec'   : True,
                'fluxdensity'   : True,
                'lineflux'      : True,
-               'triangle plot' : False,
+               'triangle plot' : True,
                'sample plot'   : False,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
@@ -107,7 +107,7 @@ param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
 # WPBWPB clarify
-reserved_cores = 2 # integer
+reserved_cores = 0 # integer
 
 
 # Dictionaries

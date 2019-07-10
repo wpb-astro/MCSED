@@ -435,37 +435,59 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         for j, ind in enumerate(args.filt_dict.keys()):
             ### determine if column is present in catalog or user input file
             # WPB delete - check if present in Skelton catalog
-            if ind in args.catalog_filter_dict[loc].keys():
-                colname  = "f_"+args.catalog_filter_dict[loc][ind]
-                ecolname = "e_"+args.catalog_filter_dict[loc][ind]
-            # WPB delete - if not, check if present in input file
-            elif ind in infilt_dict.keys():
-                colname  = "f_"+infilt_dict[ind].split('.res')[0]
-                ecolname = "e_"+infilt_dict[ind].split('.res')[0]
-                print "We are including a column for the photometric filter %s" %(colname)
-            # WPB delete - if neither, set to zero and move on
+            if loc in args.catalog_filter_dict.keys():
+                if ind in args.catalog_filter_dict[loc].keys():
+                    colname  = "f_"+args.catalog_filter_dict[loc][ind]
+                    ecolname = "e_"+args.catalog_filter_dict[loc][ind]
+                # WPB delete - if not, check if present in input file
+                elif ind in infilt_dict.keys():
+                    colname  = "f_"+infilt_dict[ind].split('.res')[0]
+                    ecolname = "e_"+infilt_dict[ind].split('.res')[0]
+                    print "We are including a column for the photometric filter %s" %(colname)
+                # WPB delete - if neither, set to zero and move on
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             else:
-                y[i, j] = 0.0
-                yerr[i, j] = 0.0
-                flag[i, j] = False
-                continue
+                if ind in infilt_dict.keys():
+                    colname  = "f_"+infilt_dict[ind].split('.res')[0]
+                    ecolname = "e_"+infilt_dict[ind].split('.res')[0]
+                    print "We are including a column for the photometric filter %s" %(colname)
+                # WPB delete - if neither, set to zero and move on
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             ### grab flux and error, if available:
             # WPB delete - check if present in Skelton catalog
-            if colname in field_dict[loc].columns.names:
-                # WPB delete: assume second element (i=1) is the Skelton ID
-                # fi, fie are the flux and error (resp) for given filter and object
-                fi  = field_dict[loc].data[colname][int(datum[1])-1]
-                fie = field_dict[loc].data[ecolname][int(datum[1])-1]
-            # WPB delete - if not, must be present in input file
-            elif colname in F.colnames:
-                fi  = datum[colname]
-                fie = datum[ecolname]
-            else:
-                y[i, j] = 0.0
-                yerr[i, j] = 0.0
-                flag[i, j] = False
-                continue
+            if loc in field_dict.keys():
+                if colname in field_dict[loc].columns.names:
+                    # WPB delete: assume second element (i=1) is the Skelton ID
+                    # fi, fie are the flux and error (resp) for given filter and object
+                    fi  = field_dict[loc].data[colname][int(datum[1])-1]
+                    fie = field_dict[loc].data[ecolname][int(datum[1])-1]
+                # WPB delete - if not, must be present in input file
+                elif colname in F.colnames:
+                    fi  = datum[colname]
+                    fie = datum[ecolname]
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
                 # WPB delete - if null value, flux density is zero
+            else:
+                if colname in F.colnames:
+                    fi  = datum[colname]
+                    fie = datum[ecolname]
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             if (fi > phot_fill_value):
                 y[i, j] = fi*fac
                 flag[i, j] = True
@@ -828,6 +850,7 @@ def main(argv=None, ssp_info=None):
     if args.fit_dust_em and not args.test:
         names.append('fPDR')
         names.append('Mdust')
+        names.append("Mdust2")
     names.append('t10')
     names.append('t50')
     names.append('t90')
@@ -1006,26 +1029,21 @@ def main(argv=None, ssp_info=None):
             if args.fit_dust_em and not args.test:
                 names.append('fPDR')
                 names.append('Mdust')
+                names.append("Mdust2")
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: #The derived parameters t10, t50, and t90 will NOT be in this file
                 T = Table(mcsed_model.samples, names=names)
-#                T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.strip(".dat")), overwrite=True, format='ascii.fixed_width_two_line')
-                T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
                 T = Table([mcsed_model.wave, mcsed_model.medianspec],
                           names=['wavelength', 'spectrum'])
-#                T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.strip(".dat")), overwrite=True, format='ascii.fixed_width_two_line')
-                T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
                 T = Table([mcsed_model.fluxwv, mcsed_model.fluxfn,
                            mcsed_model.data_fnu, mcsed_model.data_fnu_e],
                            names=['wavelength','model_fluxdensity',
                                   'fluxdensity', 'fluxdensityerror'])
-#                T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.strip(".dat")), overwrite=True, format='ascii.fixed_width_two_line')
-                T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if (args.output_dict['lineflux']) & (mcsed_model.use_emline_flux):
                 emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
                 emweights = np.array(mcsed_model.emline_dict.values())[:,1]
@@ -1039,10 +1057,8 @@ def main(argv=None, ssp_info=None):
                           names=['rest_wavelength', 'weight', 'model_lineflux',
                                  'lineflux', 'linefluxerror'])
                 T.sort('rest_wavelength')
-#                T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.strip(".dat")), overwrite=True, format='ascii.fixed_width_two_line')
-                T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
-            print("Reached the point before adding fit info to table")
+                T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+            print "Reached the point before adding fit info to table"
             last = mcsed_model.add_fitinfo_to_table(percentiles)
             print("Reached the point after adding fit info to table")
             print(mcsed_model.table)
