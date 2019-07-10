@@ -1007,14 +1007,14 @@ def main(argv=None, ssp_info=None):
     # WPB field/id
             if args.output_dict['sample plot']:
 #                mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.strip(".dat")), imgtype = args.output_dict['image format'])
-                mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
+                mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),
                                         imgtype = args.output_dict['image format'])
 
             if args.output_dict['triangle plot']:
 #                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' %
 #                                          (fd, oi, args.sfh, args.dust_law, args.output_filename.strip(".dat")), imgtype = args.output_dict['image format'])
-                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s' %
-                                          (fd, oi, args.sfh, args.dust_law),
+                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' %
+                                          (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]),
                                           imgtype = args.output_dict['image format'])
 
 ##WPBWPB delete

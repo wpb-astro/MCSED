@@ -94,9 +94,9 @@ metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 output_dict = {'parameters'    : True,
                'settings'      : True, 
                'fitposterior'  : False,
-               'bestfitspec'   : True,
-               'fluxdensity'   : True,
-               'lineflux'      : True,
+               'bestfitspec'   : False,
+               'fluxdensity'   : False,
+               'lineflux'      : False,
                'triangle plot' : True,
                'sample plot'   : False,
                'image format'  : 'png'}

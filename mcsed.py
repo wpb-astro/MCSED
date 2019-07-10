@@ -807,7 +807,7 @@ WPBWPB units??
         ageval = 10**age #Age in Gyr
         t_gaw = np.linspace(0.0,ageval,num=250) #From present day back to birth of galaxy in Gyr
         sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
-        sfrfull_avg = self.sfh_class.evaluate(t_gaw)
+        #sfrfull_avg = self.sfh_class.evaluate(t_gaw)
         #print "Fractional difference between average sfr over time and this particular set of sfh params:", np.linalg.norm(sfrfull-sfrfull_avg)/np.linalg.norm(sfrfull_avg)
         t_gaw*=1.0e9 #Need it in years for calculation
         t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
