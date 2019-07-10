@@ -578,6 +578,7 @@ WPBWPB units??
         else:
             self.spectrum, mass = self.build_csp(DMreturn=False)
             mdust = None
+            mdust2 = None
 
         # compare input and model emission line fluxes
         emline_term = 0.0
@@ -624,7 +625,7 @@ WPBWPB units??
         lp = self.lnprior()
         if np.isfinite(lp):
             lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
-            if fpdr is not None:
+            if not self.dust_em_class.fixed:
                 return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust, mdust2])
             else:
                 return lp + lnl, np.array([mass, sfr10, sfr100])
