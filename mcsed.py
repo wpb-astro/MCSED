@@ -769,6 +769,11 @@ WPBWPB units??
         #print "Total SFR integral over mass =", simps(sfr,t)/mass
         #stellartot = quad(sfr_f,t[0],t[-1])[0]
         #while quad(sfr_f,t[0],t[ind])[0]/mass < frac: 
+        #print "SFR stats: Max = %.3e, Min = %.3e"%(max(sfr),min(sfr))
+        #indage = (np.abs(t-10**self.sfh_class.age)).argmin()
+        #print "indage =", indage
+        #totmass = simps(sfr[:indage+1],t[:indage+1])/mass
+        #print "Age: %.3f, Mass: %.3f, SFR Integral over time / Mass: %.3f"%(self.sfh_class.age,np.log10(mass),totmass)
         while (simps(sfr[:ind+1],t[:ind+1])/mass<(1.0-frac) and ind<len(t)-1):
             ind+=1
         #forward = quad(sfr_f,t[0],t[ind])[0]/mass - frac
@@ -776,6 +781,7 @@ WPBWPB units??
         #backward = frac - quad(sfr_f,t[0],t[ind-1])[0]/mass
         backward = abs(1.0-frac - simps(sfr[:ind],t[:ind])/mass) #This SHOULD be positive even without abs()
         tot = forward+backward
+        #print "Time given for txx: %.3f"%(np.log10(1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind])))
         return 1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind]) #Linear interpolation to get more accurate result--put result back into Gyr; Note--this may not be as accurate IF either forward or backward were negative before the absolute value--but even in those cases, the solution should be quite close. The only case where this should theoretically happen is if the integral of SFR over time doesn't go over (1-frac)*mass before the age of the universe at the time of observation is reached--this should really hopefully not happen.
 
     def get_derived_params1(self,params,mass):
@@ -810,7 +816,7 @@ WPBWPB units??
         #ageval = 10**age #Age in Gyr
         C = cosmology.Cosmology()
         ageval = C.lookback_time(20)-C.lookback_time(self.redshift) #Don't want to restrict txx parameters to estimated age
-        t_gaw = np.linspace(0.0,ageval,num=250) #From present day back to birth of galaxy in Gyr
+        t_gaw = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
         sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         #sfrfull_avg = self.sfh_class.evaluate(t_gaw)
         #print "Fractional difference between average sfr over time and this particular set of sfh params:", np.linalg.norm(sfrfull-sfrfull_avg)/np.linalg.norm(sfrfull_avg)
@@ -1101,10 +1107,10 @@ WPBWPB units??
         nsamples = self.samples[chi2sel, :-1]
         sfhnum = self.sfh_class.get_nparams()
         sfhnames = self.sfh_class.get_names()
-        if "Log Age" in sfhnames: 
-            agenum = sfhnames.index("Log Age")
-        else: 
-            agenum=None
+        # if "Log Age" in sfhnames: 
+        #     agenum = sfhnames.index("Log Age")
+        # else: 
+        #     agenum=None
         params = np.zeros((sfhnum,numsamples))
         t10,t50,t90 = np.zeros(numsamples),np.zeros(numsamples),np.zeros(numsamples)
         derpar = np.zeros((numsamples,numder))
@@ -1116,7 +1122,7 @@ WPBWPB units??
             params[k] = nsamples[:,k][ranarray]
 
         for k2 in range(numsamples):
-            derpar[k2] = self.get_t_params(params[:,k2],mass[k2],agenum)
+            derpar[k2] = self.get_t_params(params[:,k2],mass[k2])
             if k2%(numsamples/10)==0: print k2,params[:,k2],mass[k2],derpar[k2]
 
         n = len(percentiles)
