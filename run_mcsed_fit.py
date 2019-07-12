@@ -1071,6 +1071,7 @@ def main(argv=None, ssp_info=None):
                                     formats=formats, overwrite=True)
         if args.output_dict['settings']:
             filename = open('output/%s.args' % args.output_filename, 'w')
+            del args.log
             filename.write( str( vars(args) ) )
             filename.close()
 if __name__ == '__main__':

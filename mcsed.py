@@ -772,19 +772,21 @@ WPBWPB units??
         while (simps(sfr[:ind+1],t[:ind+1])/mass<(1.0-frac) and ind<len(t)-1):
             ind+=1
         #forward = quad(sfr_f,t[0],t[ind])[0]/mass - frac
-        forward = simps(sfr[:ind+1],t[:ind+1])/mass - 1.0 + frac
+        forward = abs(simps(sfr[:ind+1],t[:ind+1])/mass - 1.0 + frac) #This SHOULD be positive even without abs()
         #backward = frac - quad(sfr_f,t[0],t[ind-1])[0]/mass
-        backward = 1.0-frac - simps(sfr[:ind],t[:ind])/mass
+        backward = abs(1.0-frac - simps(sfr[:ind],t[:ind])/mass) #This SHOULD be positive even without abs()
         tot = forward+backward
-        return 1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind]) #Linear interpolation to get more accurate result--put result back into Gyr
+        return 1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind]) #Linear interpolation to get more accurate result--put result back into Gyr; Note--this may not be as accurate IF either forward or backward were negative before the absolute value--but even in those cases, the solution should be quite close. The only case where this should theoretically happen is if the integral of SFR over time doesn't go over (1-frac)*mass before the age of the universe at the time of observation is reached--this should really hopefully not happen.
 
-    def get_derived_params1(self,params,mass,agenum=None):
+    def get_derived_params1(self,params,mass):
         ''' These are not free parameters in the model, but are instead
         calculated from free parameters
         '''
-        if agenum is not None: age = params[agenum]
-        else: age = self.sfh_class.age
-        ageval = 10**age #Age in Gyr
+        #if agenum is not None: age = params[agenum]
+        #else: age = self.sfh_class.age
+        #ageval = 10**age #Age in Gyr
+        C = cosmology.Cosmology()
+        ageval = C.lookback_time(20)-C.lookback_time(self.redshift) #Don't want to restrict txx parameters to estimated age
         t_sfr100 = np.linspace(0.0,0.1,num=1001) #From 100 Mya to present (observed time)
         t_sfr10 = np.linspace(0.0,0.01,num=1001) #From 10 Mya to present (observed time)
         sfrarray = self.sfh_class.evaluate(t_sfr100,force_params=params)
@@ -802,10 +804,12 @@ WPBWPB units??
 
         return [sfr10,sfr100,t10,t50,t90]
 
-    def get_t_params(self,params,mass,agenum=None):
-        if agenum is not None: age = params[agenum]
-        else: age = self.sfh_class.age
-        ageval = 10**age #Age in Gyr
+    def get_t_params(self,params,mass):
+        #if agenum is not None: age = params[agenum]
+        #else: age = self.sfh_class.age
+        #ageval = 10**age #Age in Gyr
+        C = cosmology.Cosmology()
+        ageval = C.lookback_time(20)-C.lookback_time(self.redshift) #Don't want to restrict txx parameters to estimated age
         t_gaw = np.linspace(0.0,ageval,num=250) #From present day back to birth of galaxy in Gyr
         sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         #sfrfull_avg = self.sfh_class.evaluate(t_gaw)
