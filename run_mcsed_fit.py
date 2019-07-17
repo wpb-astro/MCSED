@@ -165,6 +165,10 @@ def parse_args(argv=None):
                         help='''Number of test objects''',
                         type=int, default=None)
 
+    parser.add_argument("-sma", "--ssp_max_age",
+                        help='''Max age taken from files for any given simple stellar population''',
+                        type=float, default=9.5)
+
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
     args.log = setup_logging()
@@ -333,6 +337,27 @@ def get_maglim_filters(args):
             maglim = args.catalog_maglim_dict[args.test_field][i]
             photerror[i] = 10**(-0.4 * (maglim - 23.9)) / 5.
     return photerror
+
+
+def get_max_ssp_age(args):
+    '''This function reads a very specific input file and uses the lowest redshift to determine a limit on the SSP ages considered. The input file should have the following columns: FIELD, ID, Z
+    
+        Parameters
+        ----------
+        args: class
+        The args class is carried from function to function with information
+        from command line input and config.py
+
+        Returns
+        -------
+        Nothing (args.max_ssp_age is modified)
+        '''
+    F = Table.read(args.filename, format='ascii')
+    z = F['z']
+    zmin = min(z)
+    C = Cosmology()
+    maxage = C.lookback_time(20)-C.lookback_time(zmin) #Linear age in Gyr
+    args.max_ssp_age = np.log10(maxage)+9.0 #Age in log years
 
 
 def read_input_file(args):
@@ -752,7 +777,8 @@ def main(argv=None, ssp_info=None):
 #        ages, masses, wave, SSP, met = read_ssp(args)
 #        np.savez('spectra_together',wave=wave,age=ages,spec=SSP)
 #        return
-
+        if not args.test: #Get maximum SSP age before reading in SSP model--default value taken for test mode
+            get_max_ssp_age()
         args.log.info('Reading in SSP model')
         ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)
 

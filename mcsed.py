@@ -799,7 +799,7 @@ WPBWPB units??
         sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
         sfrarray = self.sfh_class.evaluate(t_sfr10,force_params=params)
         sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
-        t_gaw = np.linspace(0.0,ageval,num=250) #From present day back to birth of galaxy in Gyr
+        t_gaw = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
         sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
         t_gaw*=1.0e9 #Need it in years for calculation
         #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")

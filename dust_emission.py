@@ -71,10 +71,10 @@ class DL07:
         shape = DE1.shape
         self.interpumin = LinearNDInterpolator(X, DE1.reshape(shape[0] *
                                                               shape[1],
-                                                              shape[2]))
+                                                              shape[2],order='F'))
         self.interpumax = LinearNDInterpolator(X, DE2.reshape(shape[0] *
                                                               shape[1],
-                                                              shape[2]))
+                                                              shape[2],order='F'))
         #self.interpumin2 = LinearNDInterpolator(X, DE1mod.reshape(shape[0] *
         #                                                      shape[1],
         #                                                      shape[2]))
@@ -147,16 +147,24 @@ class DL07:
         dustem = self.evaluate(wave)
         ax.plot(wave, dustem, color=color, alpha=alpha)
 
-    # def plotpractice(self, wave, norm=True):
-    #     if norm: dustem = self.evaluate(wave)
-    #     else: dustem = self.evaluate2(wave)
-    #     plt.figure()
-    #     plt.plot(wave/1.0e4, dustem, 'b-')
-    #     plt.xlabel(r"$\lambda$ ($\mu m$)")
-    #     if norm: plt.ylabel(r"Normalized dust emissivity (Hz$^{-1}$)")
-    #     else: plt.ylabel(r"Dust emissivity (Jy cm$^2$ sr$^{-1}$ H$^{-1}$) ")
-    #     plt.savefig("%.1f%.1f%.1f_%s.png"%(self.umin,self.gamma,self.qpah,norm))
-    #     plt.close()
+    def plotpractice(self, wave, D=17.4): #Distance in Mpc
+        dustem = self.evaluate(wave)
+        dustem/=(1.0e5*D)**2 #Divide by distance ^ 2 (to get flux)
+        dustem*=1.0e-29 #Go from uJy to erg/cm^2/s/Hz
+        nu = 3.0e18/wave
+        plt.figure()
+        plt.loglog(wave/1.0e4, nu*dustem, 'b-')
+        plt.xlim(2.0,1000.)
+        #plt.ylim(nu[-1]*dustem[-1],nu[-1]*dustem[-1]/3.0 * 2.0e5)
+        yl = 5.0e20*1.0e-29/(1.0e5*D)**2
+        yu = 3.0e25*1.0e-29/(1.0e5*D)**2
+        plt.ylim(yl,yu)
+        plt.xlabel(r"$\lambda$ ($\mu m$)")
+        #plt.ylabel(r"Dust emissivity ($\mu$Jy (10pc)$^2$ Hz M$_{sun}^{-1}$) ")
+        plt.ylabel(r"Dust emissivity (erg cm$^{-2}$ s$^{-1}$ M$_{sun}^{-1}$) ")
+        plt.savefig("%.2f_%.6f_%.2f.png"%(self.umin,self.gamma,self.qpah))
+        plt.show()
+        #plt.close()
 
     def evaluate(self, wave):
         ''' Evaluate Dust Law

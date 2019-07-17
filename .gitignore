@@ -2,4 +2,7 @@
 *.o
 *.dat
 *~
+*.png
+*.jpg
+*.pptx
 output/
