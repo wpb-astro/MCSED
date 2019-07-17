@@ -333,7 +333,7 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
 #        print(self.lineSSP.shape)
         return self.SSP, self.lineSSP
 
-    def build_csp(self, sfr=None,DMreturn=False):
+    def build_csp(self, sfr=None):
         '''Build a composite stellar population model for a given star
         formation history, dust attenuation law, and dust emission law.
 
@@ -492,35 +492,25 @@ WPBWPB units??
 
 # WPB: exclude dust emission component altogether? Does it make a difference?
         # Change in bolometric Luminosity
-        L_bol = (np.dot(self.dnu, spec_dustfree) -
-                 np.dot(self.dnu, spec_dustobscured))
+        # L_bol = (np.dot(self.dnu, spec_dustfree) -
+        #          np.dot(self.dnu, spec_dustobscured))
         #print "Max(spec_dustfree) = %.3e"%(max(spec_dustfree))
         #print "Max(spec_dustobscured) = %.3e"%(max(spec_dustobscured))
         #print "L_bol = %.3e"%(L_bol)
-        if not self.dust_em_class.fixed: 
-            umin,gamma,qpah = self.dust_em_class.get_params()
-        else:
-            umin,gamma,qpah = 2.0, 0.05, 2.5 #Default values
-        umax=1.0e6
-        P0 = 135.0 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
-        Lbolfac = 2.488e-24 #Convert from uJy*Hz at 10 pc to L_sun
-        uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
-        mdust = L_bol*Lbolfac/uavg/P0
+        # if not self.dust_em_class.fixed: 
+        #     umin,gamma,qpah = self.dust_em_class.get_params()
+        # else:
+        #     umin,gamma,qpah = 2.0, 0.05, 2.5 #Default values
+        # umax=1.0e6
+        # P0 = 135.0 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
+        # Lbolfac = 2.488e-24 #Convert from uJy*Hz at 10 pc to L_sun
+        # uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
+        # mdust = L_bol*Lbolfac/uavg/P0
         # if L_bol<0 or uavg<0 or ~np.isfinite(L_bol) or ~np.isfinite(uavg):
         #     print "Lbol = %.3e; <U> = %.3f; M_dust = %.3e"%(L_bol*Lbolfac,uavg,mdust)
 
         # Add dust emission
-        dustobscured_unnorm = self.dust_em_class.evaluate(self.wave) #Units uJy*(10pc)^2/M_sun
-        #dustobscured_unnorm /= self.Dl**2 #Units uJy/M_sun I think we divide by a unit of 10pc, not the luminosity distance
-        #print "Max of dustobscured_unnorm = %.3e"%(max(dustobscured_unnorm))
-        L_bol_obscured = np.dot(self.dnu,dustobscured_unnorm)
-        #print "L_bol_obscured = %.3e"%(L_bol_obscured)
-        dusttohratio = 0.0102 #This is almost constant (overall 4% change in value depending on qpah--not worth varying)
-        dustmass = L_bol / L_bol_obscured
-        #print "Dust Mass (in M_sun) = %.3e"%(dustmass)
-        #print "Ratio of dust masses derived = %.3e" %(mdust/dustmass)
-        #spec_dustobscured += L_bol * self.dust_em_class.evaluate(self.wave)
-        spec_dustobscured += dustmass*dustobscured_unnorm
+        spec_dustobscured += self.dust_em_class.evaluate(self.wave)
 
         # Redshift to observed frame
         csp = np.interp(self.wave, self.wave * (1. + self.redshift),
@@ -542,10 +532,11 @@ WPBWPB units??
 #        print( linefluxCSPdict )
 
         # Correct spectra from 10pc to redshift of the source
-        if not DMreturn: 
-            return csp / self.Dl**2, mass
-        else:
-            return csp/self.Dl**2, mass, mdust, dustmass*dusttohratio
+        return csp / self.Dl**2, mass
+        # if not DMreturn: 
+        #     return csp / self.Dl**2, mass
+        # else:
+        #     return csp/self.Dl**2, mass, mdust, dustmass*dusttohratio
 
     def lnprior(self):
         ''' Simple, uniform prior for input variables
@@ -573,12 +564,13 @@ WPBWPB units??
             The mass comes from building of the composite stellar population
             The parameters t10, t50, t90, sfr10, and sfr100 are derived in get_derived_params(self)
         '''
-        if not self.dust_em_class.fixed: 
-            self.spectrum, mass, mdust, mdust2 = self.build_csp(DMreturn=True)
-        else:
-            self.spectrum, mass = self.build_csp(DMreturn=False)
-            mdust = None
-            mdust2 = None
+        # if not self.dust_em_class.fixed: 
+        #     self.spectrum, mass, mdust, mdust2 = self.build_csp(DMreturn=True)
+        # else:
+        #     self.spectrum, mass = self.build_csp(DMreturn=False)
+        #     mdust = None
+        #     mdust2 = None
+        self.spectrum, mass = self.build_csp()
 
         # compare input and model emission line fluxes
         emline_term = 0.0
@@ -608,7 +600,8 @@ WPBWPB units??
         chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
         sfr10,sfr100,fpdr = self.get_derived_params()
-        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust,mdust2)
+        #return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust,mdust2)
+        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr)
 
     def lnprob(self, theta):
         ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
@@ -616,7 +609,7 @@ WPBWPB units??
 
         Returns
         -------
-        log prior + log likelihood, [mass,sfr10,sfr100]: float,float,float,float
+        log prior + log likelihood, [mass,sfr10,sfr100,fpdr]: float,float,float,float,float
             The log probability is just the sum of the logs of the prior and
             likelihood.  The mass comes from the building of the composite
             stellar population. The other derived parameters are calculated in get_derived_params()
@@ -624,14 +617,17 @@ WPBWPB units??
         self.set_class_parameters(theta)
         lp = self.lnprior()
         if np.isfinite(lp):
-            lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
+            #lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
+            lnl,mass,sfr10,sfr100,fpdr = self.lnlike()
             if not self.dust_em_class.fixed:
-                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust, mdust2])
+                #return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust, mdust2])
+                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr])
             else:
                 return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
             if not self.dust_em_class.fixed:
-                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+                #return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf])
             else:
                 return -np.inf, np.array([-np.inf, -np.inf, -np.inf])
 
@@ -746,7 +742,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 6
+            numderpar = 4
         new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
         new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
@@ -754,7 +750,8 @@ WPBWPB units??
             for j in xrange(len(sampler.blobs[0])):
                 for k in xrange(len(sampler.blobs[0][0])):
                     x = sampler.blobs[i][j][k]
-                    if k==0 or k==4 or k==5: #Stellar mass or Dust mass--can't take log of negative numbers
+                    #if k==0 or k==4 or k==5: #Stellar mass or Dust mass--can't take log of negative numbers
+                    if k==0: #Stellar mass--can't take log of negative numbers; also, want reasonable values
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
                                                np.log10(x), -99.) #Stellar mass
                     else: 
@@ -793,8 +790,8 @@ WPBWPB units??
         #ageval = 10**age #Age in Gyr
         C = cosmology.Cosmology()
         ageval = C.lookback_time(20)-C.lookback_time(self.redshift) #Don't want to restrict txx parameters to estimated age
-        t_sfr100 = np.linspace(0.0,0.1,num=1001) #From 100 Mya to present (observed time)
-        t_sfr10 = np.linspace(0.0,0.01,num=1001) #From 10 Mya to present (observed time)
+        t_sfr100 = np.linspace(1.0e-9,0.1,num=1001) #From 100 Mya to present (observed time); avoid t=0 for log purposes
+        t_sfr10 = np.linspace(1.0e-9,0.01,num=1001) #From 10 Mya to present (observed time); avoid t=0 for log purposes
         sfrarray = self.sfh_class.evaluate(t_sfr100,force_params=params)
         sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
         sfrarray = self.sfh_class.evaluate(t_sfr10,force_params=params)
@@ -832,8 +829,8 @@ WPBWPB units??
         calculated from free parameters
         '''
         ageval = 10**self.sfh_class.age #Age in Gyr
-        t_sfr100 = np.linspace(0.0,0.1,num=251) #From 100 Mya to present
-        t_sfr10 = np.linspace(0.0,0.01,num=251) #From 10 Mya to present
+        t_sfr100 = np.linspace(1.0e-9,0.1,num=251) #From 100 Mya to present (observed time); avoid t=0 for log purposes
+        t_sfr10 = np.linspace(1.0e-9,0.01,num=251) #From 10 Mya to present (observed time); avoid t=0 for log purposes
         sfrarray = self.sfh_class.evaluate(t_sfr100)
         sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
         sfrarray = self.sfh_class.evaluate(t_sfr10)
@@ -842,7 +839,7 @@ WPBWPB units??
         if self.dust_em_class.fixed:
             fpdr = None
         else:
-            umin,gamma,qpah = self.dust_em_class.get_params()
+            umin,gamma,qpah,mdust = self.dust_em_class.get_params()
             umax = 1.0e6
             fpdr = gamma*np.log(umax/100.) / ((1.-gamma)*(1.-umin/umax) + gamma*np.log(umax/umin))
 
@@ -1028,7 +1025,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 6
+            numderpar = 4
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
@@ -1101,7 +1098,7 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 6
+            numderpar = 4
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]

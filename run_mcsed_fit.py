@@ -778,7 +778,7 @@ def main(argv=None, ssp_info=None):
 #        np.savez('spectra_together',wave=wave,age=ages,spec=SSP)
 #        return
         if not args.test: #Get maximum SSP age before reading in SSP model--default value taken for test mode
-            get_max_ssp_age()
+            get_max_ssp_age(args)
         args.log.info('Reading in SSP model')
         ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)
 
@@ -875,8 +875,6 @@ def main(argv=None, ssp_info=None):
     names.append('SFR100')
     if args.fit_dust_em and not args.test:
         names.append('fPDR')
-        names.append('Mdust')
-        names.append("Mdust2")
     names.append('t10')
     names.append('t50')
     names.append('t90')
@@ -1054,8 +1052,6 @@ def main(argv=None, ssp_info=None):
             names.append('SFR100')
             if args.fit_dust_em and not args.test:
                 names.append('fPDR')
-                names.append('Mdust')
-                names.append("Mdust2")
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: #The derived parameters t10, t50, and t90 will NOT be in this file
                 T = Table(mcsed_model.samples, names=names)
