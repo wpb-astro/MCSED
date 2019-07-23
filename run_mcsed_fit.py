@@ -937,11 +937,12 @@ def main(argv=None, ssp_info=None):
                                                      restframe=True)
 
             mcsed_model.fit_model()
+            mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:
-                mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
+                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
             if args.output_dict['triangle plot']:
-                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
+                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
 
             mcsed_model.table.add_row(['Test', cnt, zi] + [0.]*(len(labels)-3))
             print "Reached point before adding fit info to table"

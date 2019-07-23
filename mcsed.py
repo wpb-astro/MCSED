@@ -979,12 +979,11 @@ WPBWPB units??
                      color=[0.510, 0.373, 0.529], zorder=10)
         
         sel = np.where((self.fluxwv > 3000.) * (self.fluxwv < 50000.))[0]
-        ax3min = np.percentile(self.data_fnu[sel], 5)
-        assert ax3min>0.0
-        ax3max = np.percentile(self.data_fnu[sel], 95)
+        ax3min = np.percentile(self.data_fnu[sel][data_fnu[sel]>0.0], 5)
+        ax3max = np.percentile(self.data_fnu[sel][data_fnu[sel]>0.0], 95)
         ax3ran = ax3max - ax3min
         if not self.dust_em_class.fixed: 
-            ax3max = max(max(self.data_fnu[sel]),max(self.medianspec))
+            ax3max = max(max(self.data_fnu),max(self.medianspec))
             ax3.set_ylim([ax3min*0.5, ax3max + 0.4 * ax3ran])
         else:
             ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])

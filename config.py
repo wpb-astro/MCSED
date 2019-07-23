@@ -27,7 +27,7 @@ EBV_stars_gas = -1
 # If True, fit the dust emission component. 
 # If False, remove all filters redward of rest-frame wave_dust_em microns 
 # and fix dust emission parameters to umin=2.0, gamma=0.05, qpah=2.5 
-fit_dust_em = True
+fit_dust_em = False
 wave_dust_em = 2.5 # rest-frame wavelength in microns 
 
 # EMCEE parameters
@@ -94,9 +94,9 @@ metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 output_dict = {'parameters'    : True,
                'settings'      : True, 
                'fitposterior'  : False,
-               'bestfitspec'   : False,
-               'fluxdensity'   : False,
-               'lineflux'      : False,
+               'bestfitspec'   : True,
+               'fluxdensity'   : True,
+               'lineflux'      : True,
                'triangle plot' : True,
                'sample plot'   : False,
                'image format'  : 'png'}
@@ -149,7 +149,8 @@ filt_dict = {0: 'SubB.res', 1: 'SubIB427.res', 2: 'SubIB445.res',
              70: 'newfirm_H1.res', 71: 'newfirm_H2.res', 72: 'newfirm_Ks.res',
              73: 'wircam_H.res', 74: 'wircam_J.res', 75: 'wircam_Ks.res',
              76: 'MIPS24um.res', 77: 'MIPS70um.res', 78: 'Herschel_PACS_Blue.res',
-             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res'}
+             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res', 81: 'herschel-spire-250um.res',
+             82: 'herschel-spire-350um.res'}
 
 # Catalog column name of filter and dictionary value to the filter file
 catalog_filter_dict, catalog_maglim_dict = {}, {}
