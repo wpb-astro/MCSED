@@ -510,7 +510,9 @@ WPBWPB units??
         #     print "Lbol = %.3e; <U> = %.3f; M_dust = %.3e"%(L_bol*Lbolfac,uavg,mdust)
 
         # Add dust emission
+        if min(spec_dustobscured[self.wave>5.0e4])<0.0: print("Before adding dust: min(spec_dustobscured[wave>5.0 um]) =",min(spec_dustobscured[self.wave>5.0e4]))
         spec_dustobscured += self.dust_em_class.evaluate(self.wave)
+        #print("After adding dust: min(spec_dustobscured[wave>5.0 um]) =",min(spec_dustobscured[self.wave>5.0e4]))
 
         # Redshift to observed frame
         csp = np.interp(self.wave, self.wave * (1. + self.redshift),
@@ -979,12 +981,13 @@ WPBWPB units??
                      color=[0.510, 0.373, 0.529], zorder=10)
         
         sel = np.where((self.fluxwv > 3000.) * (self.fluxwv < 50000.))[0]
-        ax3min = np.percentile(self.data_fnu[sel][data_fnu[sel]>0.0], 5)
-        ax3max = np.percentile(self.data_fnu[sel][data_fnu[sel]>0.0], 95)
+        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 5)
+        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 95)
         ax3ran = ax3max - ax3min
         if not self.dust_em_class.fixed: 
             ax3max = max(max(self.data_fnu),max(self.medianspec))
             ax3.set_ylim([ax3min*0.5, ax3max + 0.4 * ax3ran])
+            ax3.set_xlim(right=max(max(self.fluxwv),max(self.wave)))
         else:
             ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])
         ax3.text(4200, ax3max + 0.2 * ax3ran, r'${\chi}_{\nu}^2 = $%0.2f' % chi2)

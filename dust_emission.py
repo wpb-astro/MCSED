@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 class DL07:
     ''' Prescription for dust emission comes from Draine & Li (2007) '''
     def __init__(self, umin=2.0, gamma=0.05, qpah=2.5, mdust=7.0, umin_lims=[0.1, 25.0],
-                 gamma_lims=[0, 1.], qpah_lims=[0.47, 4.58], mdust_lims=[4.5,9.5],umin_delta=0.4,
+                 gamma_lims=[0, 1.], qpah_lims=[0.47, 4.58], mdust_lims=[4.5,10.0],umin_delta=0.4,
                  gamma_delta=0.02, qpah_delta=1.0, mdust_delta=0.3, fixed=True):
         ''' Initialize Class
 
@@ -150,24 +150,30 @@ class DL07:
         dustem = self.evaluate(wave)
         ax.plot(wave, dustem, color=color, alpha=alpha)
 
-    # def plotpractice(self, wave, D=17.4): #Distance in Mpc
-    #     dustem = self.evaluate(wave)
-    #     dustem/=(1.0e5*D)**2 #Divide by distance ^ 2 (to get flux)
-    #     #dustem*=1.0e-29 #Go from uJy to erg/cm^2/s/Hz
-    #     nu = 3.0e18/wave
-    #     plt.figure()
-    #     plt.loglog(wave/1.0e4, nu*dustem, 'b-')
-    #     plt.xlim(2.0,1000.)
-    #     #plt.ylim(nu[-1]*dustem[-1],nu[-1]*dustem[-1]/3.0 * 2.0e5)
-    #     yl = 5.0e20*1.0e-29/(1.0e5*D)**2
-    #     yu = 3.0e25*1.0e-29/(1.0e5*D)**2
-    #     #plt.ylim(yl,yu)
-    #     plt.xlabel(r"$\lambda$ ($\mu m$)")
-    #     #plt.ylabel(r"Dust emissivity ($\mu$Jy (10pc)$^2$ Hz M$_{sun}^{-1}$) ")
-    #     plt.ylabel(r"Dust emissivity ($\mu$Jy Hz) ")
-    #     plt.savefig("DustTesting/%.2f_%.6f_%.2f.png"%(self.umin,self.gamma,self.qpah))
-    #     plt.show()
-    #     #plt.close()
+    def plotpractice(self, wave, z): #Distance in Mpc
+        from cosmology import Cosmology
+        C = Cosmology()
+        D = C.luminosity_distance(z)
+        dustem1 = self.evaluate(wave)
+        dustem = np.interp(wave, wave * (1. + z),
+                        dustem1 * (1. + z))
+        dustem/=D**2 #Divide by distance ^ 2 (to get flux)
+        dustem*=1.0e-29 #Go from uJy to erg/cm^2/s/Hz
+        nu = 3.0e18/wave
+        plt.figure()
+        plt.loglog(wave/1.0e4, nu*dustem, 'b-')
+        xlims = np.array([2.0,1000.])/(1.+z)
+        plt.xlim(xlims)
+        #plt.ylim(nu[-1]*dustem[-1],nu[-1]*dustem[-1]/3.0 * 2.0e5)
+        #yl = 5.0e20*1.0e-29/(1.0e5*D)**2
+        #yu = 3.0e25*1.0e-29/(1.0e5*D)**2
+        #plt.ylim(yl,yu)
+        plt.xlabel(r"$\lambda$ ($\mu m$)")
+        #plt.ylabel(r"Dust emissivity ($\mu$Jy (10pc)$^2$ Hz M$_{sun}^{-1}$) ")
+        plt.ylabel(r"Dust emissivity (erg cm$^{-1}$ s$^{-1}$) ")
+        plt.savefig("DustTesting/%.2f_%.4f_%.2f_%.3f.png"%(self.umin,self.gamma,self.qpah,self.mdust))
+        plt.show()
+        #plt.close()
 
     def evaluate(self, wave):
         ''' Evaluate Dust Law

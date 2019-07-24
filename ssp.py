@@ -480,7 +480,7 @@ WPBWPB: operate under assumption that spec, linespec are in same units
         # do not smooth the emission line grid
         wave0 = wave.copy()
         if args.fit_dust_em:
-            wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=200e4)
+            wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=350e4)
         else:
             wave, spec = get_coarser_wavelength_fsps(wave0, spec)
 ## WPBWPB delete -- appears unused
