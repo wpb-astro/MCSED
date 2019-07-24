@@ -879,15 +879,23 @@ WPBWPB units??
 ## WPBWPB delete
 #        rndsamples = 200
         sp, fn = ([], [])
+        #start = time.time()
         for i in np.arange(rndsamples):
+        #for i in range(len(nsamples)):
             ind = np.random.randint(0, nsamples.shape[0])
             self.set_class_parameters(nsamples[ind, :])
+            #self.set_class_parameters(nsamples[i, :])
+            self.spectrum, mass = self.build_csp()
             fnu = self.get_filter_fluxdensities()
             sp.append(self.spectrum * 1.)
             fn.append(fnu * 1.)
+            #if i%(len(nsamples)/20)==0: print("Finished %d/20 of making spectra"%(20*i/len(nsamples)))
         self.medianspec = np.median(np.array(sp), axis=0)
         self.fluxwv = wv
         self.fluxfn = np.median(np.array(fn), axis=0)
+        #end = time.time()
+        #elapsed = end-start
+        #self.log.info("Total time taken for creating medianspec: %0.2f s" % elapsed)
 
 
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
