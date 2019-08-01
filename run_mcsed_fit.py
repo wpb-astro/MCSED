@@ -219,6 +219,11 @@ def parse_args(argv=None):
     try:
         if args.metallicity not in ['0','1']:
             args.metallicity = float(args.metallicity)
+        else:
+            if args.metallicity=='0': 
+                args.metallicity = False
+            else:
+                args.metallicity = True
     except ValueError:
         args.metallicity = str2bool(str(args.metallicity),args.log)
         print((args.metallicity, type(args.metallicity)))
@@ -779,6 +784,7 @@ def main(argv=None, ssp_info=None):
 #        return
         if not args.test: #Get maximum SSP age before reading in SSP model--default value taken for test mode
             get_max_ssp_age(args)
+            print("Max_SSP_age (in log years) is", args.max_ssp_age)
         args.log.info('Reading in SSP model')
         ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)
 
