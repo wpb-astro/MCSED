@@ -510,7 +510,9 @@ WPBWPB units??
         #     print "Lbol = %.3e; <U> = %.3f; M_dust = %.3e"%(L_bol*Lbolfac,uavg,mdust)
 
         # Add dust emission
-        if min(spec_dustobscured[self.wave>5.0e4])<0.0: print("Before adding dust: min(spec_dustobscured[wave>5.0 um]) =",min(spec_dustobscured[self.wave>5.0e4]))
+        if min(spec_dustobscured[self.wave>5.0e4])<0.0: 
+            print("Before adding dust: min(spec_dustobscured[wave>5.0 um]) =",
+                  min(spec_dustobscured[self.wave>5.0e4]))
         spec_dustobscured += self.dust_em_class.evaluate(self.wave)
         #print("After adding dust: min(spec_dustobscured[wave>5.0 um]) =",min(spec_dustobscured[self.wave>5.0e4]))
 
@@ -1036,6 +1038,7 @@ WPBWPB units??
             numderpar = 3
         else: 
             numderpar = 4
+        print("I'm starting to construct the triangle plot")
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
@@ -1103,7 +1106,8 @@ WPBWPB units??
         fig.savefig("%s.%s" % (outname, imgtype))
         plt.close(fig)
 
-    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5,numsamples=1000,numder=3):
+    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5,
+                             numsamples=1000,numder=3):
         ''' Assumes that "Ln Prob" is the last column in self.samples'''
         if self.dust_em_class.fixed: 
             numderpar = 3
