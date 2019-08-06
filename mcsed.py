@@ -893,7 +893,8 @@ WPBWPB units??
 
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
         ''' Make spectum plot for current model '''
-        self.spectrum, mass = self.build_csp()
+### WPBWPB I think I can delete this:
+#        self.spectrum, mass = self.build_csp()
         ax.plot(self.wave, self.spectrum, color=color, alpha=alpha)
 
     def add_sfr_plot(self, ax1):
