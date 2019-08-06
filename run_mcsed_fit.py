@@ -908,7 +908,7 @@ def main(argv=None, ssp_info=None):
     # WPB field/id
     mcsed_model.table = Table(names=labels, dtype=['S7', 'i4'] +
                               ['f8']*(len(labels)-2))
-    print "Created the table (but no data rows yet)"
+    print("Created the table (but no data rows yet)")
 
     # MAIN FUNCTIONALITY
     if args.test:
@@ -946,16 +946,16 @@ def main(argv=None, ssp_info=None):
             mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:
-                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
+                mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
             if args.output_dict['triangle plot']:
-                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
+                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
 
             mcsed_model.table.add_row(['Test', cnt, zi] + [0.]*(len(labels)-3))
-            print "Reached point before adding fit info to table"
+            print("Reached point before adding fit info to table")
             last = mcsed_model.add_fitinfo_to_table(percentiles)
-            print "Reached point after adding fit info to table but not yet truth info"
+            print("Reached point after adding fit info to table but not yet truth info")
             mcsed_model.add_truth_to_table(tr, last)
-            print "Reached point after adding truth info to table"
+            print("Reached point after adding truth info to table")
             print(mcsed_model.table)
     else:
     # WPB field/id
