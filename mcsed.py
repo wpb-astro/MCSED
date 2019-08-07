@@ -774,7 +774,7 @@ WPBWPB units??
     def calc_t_mfrac(self,t,sfr,frac,mass):
         '''Calculate lookback time at which the fraction "frac" of the 
         stellar mass in the galaxy was created'''
-# WPBWPB clean things up -- need time in same units as age
+# WPBWPB clarify time units -- age or lookback time?
 
         ind = 0
         #print "Length of t =", len(t)
