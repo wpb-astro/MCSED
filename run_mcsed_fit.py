@@ -165,10 +165,6 @@ def parse_args(argv=None):
                         help='''Number of test objects''',
                         type=int, default=None)
 
-    parser.add_argument("-sma", "--max_ssp_age",
-                        help='''Max age (log years) for any given simple stellar population''',
-                        type=float, default=9.5)
-
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
     args.log = setup_logging()
@@ -187,7 +183,8 @@ def parse_args(argv=None):
     arg_inputs = ['ssp', 'metallicity', 'isochrone', 'sfh', 'dust_law',
                   't_birth',
                   'nwalkers', 'nsteps', 'add_nebular', 'logU', 'fit_dust_em',
-                  'phot_floor_error', 'emline_floor_error', 'nobjects',
+                  'phot_floor_error', 'emline_floor_error', 
+                  'nobjects', 'test_zrange',
                   'dust_em', 'Rv', 'EBV_stars_gas', 'wave_dust_em',
                   'emline_list_dict', 'emline_factor', 'use_input_data',
                   'metallicity_mass_relationship', 'metallicity_dict',
@@ -204,11 +201,11 @@ def parse_args(argv=None):
     if '-tf' in argv:
         args.test = True
 
-    # Set the maximum SSP age (if test mode, leave it as default value)
-    if not args.test:
-        args.max_ssp_age = get_max_ssp_age(args.filename)
-## WPBWPB delete
-#    print('This is max ssp age: %s' % args.max_ssp_age)
+    # Set the maximum SSP age
+    args.max_ssp_age = get_max_ssp_age(args)
+# WPBWPB delete
+    print('This is max ssp age: %s' % args.max_ssp_age)
+
 
 #WPBWPB delete
 #    print('test, fitdustem, nebular, parallel: %s, %s, %s, %s' % (args.test, args.fit_dust_em, args.add_nebular, args.parallel) )
@@ -350,15 +347,16 @@ def get_maglim_filters(args):
     return photerror
 
 
-def get_max_ssp_age(filename):
+def get_max_ssp_age(args):
     '''This function reads a very specific input file and uses the 
     lowest redshift to determine a limit on the SSP ages considered. 
     The input file should have the following columns: FIELD, ID, Z
     
     Parameters
     ----------
-    filename : str
-        name of input file
+    args : class
+        The args class is carried from function to function with information
+        from command line input and config.py
 
     Returns
     -------
@@ -366,9 +364,13 @@ def get_max_ssp_age(filename):
         maximum age (in log years) of objects in input file
     '''
 
-    F = Table.read(filename, format='ascii')
-    z = F['z']
-    zmin = min(z)
+    if not args.test:
+        F = Table.read(args.filename, format='ascii')
+        z = F['z']
+        zmin = min(z)
+    else:
+        zmin = args.test_zrange[0]
+
     C = Cosmology()
     maxage = C.lookback_time(20)-C.lookback_time(zmin) #Linear age in Gyr
     maxage = np.log10(maxage) + 9.0 # Age in log years
@@ -658,7 +660,8 @@ WPBWPB: modify, document all outputs
 # WPB: modify, redshift range
     np.random.seed()
     thetas = mcsed_model.get_init_walker_values(num=nsamples, kind='ball')
-    zobs = draw_uniform_dist(nsamples, 1.9, 2.35)
+    zmin, zmax = args.test_zrange
+    zobs = draw_uniform_dist(nsamples, zmin, zmax)
     params, y, yerr, true_y = [], [], [], []
 
     # add emission line fluxes

@@ -36,6 +36,7 @@ nsteps = 1000 # 1000
 
 # Number of test objects
 nobjects = 5
+test_zrange = (1.9, 2.35) # redshift range of test objects (uniform prior)
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
