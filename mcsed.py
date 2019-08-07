@@ -771,8 +771,11 @@ WPBWPB units??
         new_chain[:, :, -1] = sampler.lnprobability
         self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+naddon))
 
-    def calc_gaw(self,t,sfr,frac,mass):
-        ''' Calculate lookback time at which the fraction "frac" of the stellar mass in the galaxy was created'''
+    def calc_t_mfrac(self,t,sfr,frac,mass):
+        '''Calculate lookback time at which the fraction "frac" of the 
+        stellar mass in the galaxy was created'''
+# WPBWPB clean things up -- need time in same units as age
+
         ind = 0
         #print "Length of t =", len(t)
         #print "Total SFR integral over mass =", simps(sfr,t)/mass
@@ -808,14 +811,14 @@ WPBWPB units??
         sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
         sfrarray = self.sfh_class.evaluate(t_sfr10,force_params=params)
         sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
-        t_gaw = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
-        sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
-        t_gaw*=1.0e9 #Need it in years for calculation
-        #sfr_f = interp1d(t_gaw,sfrfull,kind='cubic',fill_value="extrapolate")
+        t_mfrac = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
+        sfrfull = self.sfh_class.evaluate(t_mfrac,force_params=params)
+        t_mfrac*=1.0e9 #Need it in years for calculation
+        #sfr_f = interp1d(t_mfrac,sfrfull,kind='cubic',fill_value="extrapolate")
 
-        t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
-        t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
-        t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
+        t10 = self.calc_t_mfrac(t_mfrac,sfrfull,0.1,mass)
+        t50 = self.calc_t_mfrac(t_mfrac,sfrfull,0.5,mass)
+        t90 = self.calc_t_mfrac(t_mfrac,sfrfull,0.9,mass)
 
         return [sfr10,sfr100,t10,t50,t90]
 
@@ -825,14 +828,14 @@ WPBWPB units??
         #ageval = 10**age #Age in Gyr
         C = cosmology.Cosmology()
         ageval = C.lookback_time(20)-C.lookback_time(self.redshift) #Don't want to restrict txx parameters to estimated age
-        t_gaw = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
-        sfrfull = self.sfh_class.evaluate(t_gaw,force_params=params)
-        #sfrfull_avg = self.sfh_class.evaluate(t_gaw)
+        t_mfrac = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
+        sfrfull = self.sfh_class.evaluate(t_mfrac,force_params=params)
+        #sfrfull_avg = self.sfh_class.evaluate(t_mfrac)
         #print "Fractional difference between average sfr over time and this particular set of sfh params:", np.linalg.norm(sfrfull-sfrfull_avg)/np.linalg.norm(sfrfull_avg)
-        t_gaw*=1.0e9 #Need it in years for calculation
-        t10 = self.calc_gaw(t_gaw,sfrfull,0.1,mass)
-        t50 = self.calc_gaw(t_gaw,sfrfull,0.5,mass)
-        t90 = self.calc_gaw(t_gaw,sfrfull,0.9,mass)
+        t_mfrac*=1.0e9 #Need it in years for calculation
+        t10 = self.calc_t_mfrac(t_mfrac,sfrfull,0.1,mass)
+        t50 = self.calc_t_mfrac(t_mfrac,sfrfull,0.5,mass)
+        t90 = self.calc_t_mfrac(t_mfrac,sfrfull,0.9,mass)
         return np.log10(t10),np.log10(t50),np.log10(t90)
 
 
