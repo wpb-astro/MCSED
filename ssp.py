@@ -7,13 +7,17 @@ Single Stellar Population module for loading models
 """
 import sfh
 import sys
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use("Agg")
+#import matplotlib.pyplot as plt
 import numpy as np
 import os.path as op
 import scipy.interpolate as scint
 from astropy.convolution import Gaussian1DKernel, convolve
+
+
+import matplotlib.pyplot as plt
+plt.ioff()
 
 
 def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
@@ -214,7 +218,7 @@ def read_fsps(args, metallicity):
     spec = np.array(spec).swapaxes(0, 1) * solar_microjansky
     ages, masses = (np.array(ages), np.array(masses))
     # Total mass including remnants, so set to 1.
-    sel = (ages <= 9.5) * (ages >= 6.)
+    sel = (ages <= args.ssp_max_age) * (ages >= 6.)
     return 10**(ages[sel]-9), np.ones(ages[sel].shape), wave, spec[:, sel]
 
 def get_nebular_emission(ages, wave, spec, logU, metallicity,
@@ -480,7 +484,7 @@ WPBWPB: operate under assumption that spec, linespec are in same units
         # do not smooth the emission line grid
         wave0 = wave.copy()
         if args.fit_dust_em:
-            wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=200e4)
+            wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=350e4)
         else:
             wave, spec = get_coarser_wavelength_fsps(wave0, spec)
 ## WPBWPB delete -- appears unused

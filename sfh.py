@@ -3,9 +3,12 @@
 
 1) Star Formation Histories:
     a) constant
-    b) exponential
-    c) double powerlaw
-    d) empirical
+    b) burst
+    c) polynomial
+    d) exponential
+    e) double powerlaw
+    f) empirical direct
+    g) empirical
 
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
@@ -24,7 +27,7 @@ class constant:
         Parameters
         ----------
         logsfr : float
-            Constant SFR in log based 10
+            Constant SFR in log based 10 (M_sun / year)
         age : float
             Age of the galaxy when observed in log Gyrs
         logsfr_lims : list
@@ -102,10 +105,11 @@ class constant:
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
         force_params : bool or list
             if list, use these values to compute SFR
-            same length and order as in get_params() method 
+            same length and order as in get_params() method  
+
         Returns
         -------
         msfr : numpy array (1 dim)
@@ -140,16 +144,37 @@ class burst:
         Parameters
         ----------
         logsfr : float
-            Constant SFR in log based 10
+            constant SFR in log based 10--base onto which burst is added
         age : float
             Age of the galaxy when observed in log Gyrs
+        burst_age: float
+            Time in log yrs (NOT Gyrs) since burst
+        burst_sigma: float
+            Gaussian width (standard deviation) of burst in log Gyrs (basically duration of burst)
+        burst_strength: float
+            Measure of the star formation during the burst compared to quiescent times
         logsfr_lims : list
+            A two valued list for lower and upper boundary values for logsfr
         age_lims : list
             A two valued list for lower and upper boundary values for age
+        burst_age_lims: list
+            A two valued list for lower and upper boundary values for burst age
+        burst_sigma_lims: list
+            A two valued list for lower and upper boundary values for burst sigma
+        burst_strength_lims: list
+            A two valued list for lower and upper boundary values for burst strength
         logsfr_delta : float
             sigma to draw from a normal distribution when simulating galaxies
         age_delta : float
             sigma to draw from a normal distribution when simulating galaxies
+        burst_age_delta : float
+            sigma to draw from a normal distribution when simulating galaxies
+        burst_sigma_delta : float
+            sigma to draw from a normal distribution when simulating galaxies
+        burst_strength_delta: float
+            sigma to draw from a normal distribution when simulating galaxies
+        
+
         '''
         self.logsfr = logsfr
         self.age = age
@@ -239,7 +264,7 @@ class burst:
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
         force_params : bool or list
             if list, use these values to compute SFR
             same length and order as in get_params() method 
@@ -282,16 +307,12 @@ class polynomial:
 
         Parameters
         ----------
-        logsfr : float
-            Constant SFR in log based 10
+        agelocs : list
+            TODO: Need to explain this list--it's a little confusing what happens in this SFH
         age : float
             Age of the galaxy when observed in log Gyrs
-        logsfr_lims : list
-            A two valued list for lower and upper boundary values for logsfr
         age_lims : list
             A two valued list for lower and upper boundary values for age
-        logsfr_delta : float
-            sigma to draw from a normal distribution when simulating galaxies
         age_delta : float
             sigma to draw from a normal distribution when simulating galaxies
         '''
@@ -393,10 +414,11 @@ class polynomial:
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
         force_params : bool or list
             if list, use these values to compute SFR
             same length and order as in get_params() method 
+            
 
         Returns
         -------
@@ -423,7 +445,6 @@ class polynomial:
 #        return msfr
 
 class exponential:
-# WPBWPB comment correct? "constant" sfh?
     ''' The exponential star formation history '''
     def __init__(self, logsfr=1.0, age=-1.0, tau=-1.5, logsfr_lims=[-3., 3.],
                  age_lims=[-3., 0.4], tau_lims=[-3.5, 3.5],
@@ -433,19 +454,27 @@ class exponential:
 
         Parameters
         ----------
-WPB REWRITE PARAMETERS
         logsfr : float
-            Constant SFR in log based 10
+            Constant SFR in log based 10--amplitude/coefficient of exponential
         age : float
             Age of the galaxy when observed in log Gyrs
+        tau: float
+            Amount of time in log Gyrs for star formation rate to change (increase or decrease) by a factor of e (like a scale height)
         logsfr_lims : list
             A two valued list for lower and upper boundary values for logsfr
         age_lims : list
             A two valued list for lower and upper boundary values for age
+        tau_lims : list
+            A two valued list for lower and upper boundary values for tau
         logsfr_delta : float
             sigma to draw from a normal distribution when simulating galaxies
         age_delta : float
             sigma to draw from a normal distribution when simulating galaxies
+        tau_delta : float
+            sigma to draw from a normal distribution when simulating galaxies
+        sign: float
+            If sign is positive (ex: 1.0), SFR increases exponentially with time moving forward (exponential decay with lookback time)
+            If sign is negative (ex: -1.0), SFR decreases exponentially with time moving forward (exponential growth with lookback time)
         '''
         self.logsfr = logsfr
         self.age = age
@@ -519,7 +548,7 @@ WPB REWRITE PARAMETERS
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
         force_params : bool or list
             if list, use these values to compute SFR
             same length and order as in get_params() method 
@@ -679,7 +708,7 @@ WPBWPB add: _delta for remaining parameters
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
         force_params : bool or list
             if list, use these values to compute SFR
             same length and order as in get_params() method 
@@ -718,7 +747,16 @@ class empirical_direct:
         ''' Initialize this class
         Parameters
         ----------
-        TODO Fill these in
+        init_log_sfr: float
+            Not a class element--this is not one of the SFH parameters
+            It is a blind estimate of the current SFR; we base all initial SFR bin values on it
+        init_log_sfr_lims: list
+            A two valued list for lower and upper boundary values for the SFR in each bin
+        init_log_sfr_delta: float
+            sigma to draw from a normal distribution when simulating galaxies
+        ages: list
+            Right-hand side of (lookback) time bins in log yrs (NOT Gyrs)
+            For example, if ages[0]=8., the first time bin is the last 100 million years (till the time of observation)
         '''
         self.ages = ages
         self.nums = np.arange(1, self.get_nparams()+1, dtype=int)
@@ -805,7 +843,7 @@ class empirical_direct:
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
         force_params : bool or list
             if list, use these values to compute SFR
             same length and order as in get_params() method 
@@ -863,7 +901,13 @@ class empirical:
 
         Parameters
         ----------
-        TODO Fill these in
+        TODO Fill in details on these parameters
+        mass: float
+        mass_lims: list
+        mass_delta: list
+        ages: list
+            Right-hand side of (lookback) time bins in log yrs (NOT Gyrs)
+            For example, if ages[0]=7., the first time bin is the last 10 million years (till the time of observation)
         '''
         self.ages = ages
         self.nums = np.arange(1, self.get_nparams(), dtype=int)
@@ -972,7 +1016,7 @@ class empirical:
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
         force_params : bool or list
             if list, use these values to compute SFR
             same length and order as in get_params() method 

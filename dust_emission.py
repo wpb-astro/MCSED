@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 
 class DL07:
     ''' Prescription for dust emission comes from Draine & Li (2007) '''
-    def __init__(self, umin=2.0, gamma=0.05, qpah=2.5, umin_lims=[0.1, 25.0],
-                 gamma_lims=[0, 1.], qpah_lims=[0.47, 4.58], umin_delta=0.4,
-                 gamma_delta=0.02, qpah_delta=1.0, fixed=True):
+    def __init__(self, umin=2.0, gamma=0.05, qpah=2.5, mdust=7.0, umin_lims=[0.1, 25.0],
+                 gamma_lims=[0, 1.], qpah_lims=[0.47, 4.58], mdust_lims=[4.5,10.0],umin_delta=0.4,
+                 gamma_delta=0.02, qpah_delta=1.0, mdust_delta=0.3, fixed=True):
         ''' Initialize Class
 
         Parameters
@@ -25,16 +25,21 @@ class DL07:
             Fraction of distribution in incident intensity greater than umin
         qpah : float
             Percentage of PAH emission
+        mdust: float
+            Log10(M_dust/M_sun), where M_dust is the total mass of dust in the galaxy
         '''
         self.umin = umin
         self.gamma = gamma
         self.qpah = qpah
+        self.mdust = mdust
         self.umin_lims = umin_lims
         self.gamma_lims = gamma_lims
         self.qpah_lims = qpah_lims
+        self.mdust_lims = mdust_lims
         self.umin_delta = umin_delta
         self.gamma_delta = gamma_delta
         self.qpah_delta = qpah_delta
+        self.mdust_delta = mdust_delta
         self.fixed = fixed
         self.get_dust_emission_matrix()
 
@@ -48,12 +53,12 @@ class DL07:
         DE1, DE2 = (np.zeros((7, 22, 1001)), np.zeros((7, 22, 1001)))
         #DE1mod, DE2mod = (np.zeros((7, 22, 1001)), np.zeros((7, 22, 1001)))
         self.qpaharray = np.array([0.47, 1.12, 1.77, 2.50, 3.19, 3.90, 4.58]) #Set of qpah values in Draine & Li tables
+        self.htodarray = np.array([100., 100., 99.010, 98.039, 98.039, 97.087, 96.154]) #Ratio of total hydrogen to dust mass in the model for each qpah value
         self.uminarray = np.array([0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8,
                                    1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 7.0,
                                    8.0, 12.0, 15.0, 20.0, 25.0]) #Set of umin values in Draine & Li tables
         Xgrid, Ygrid = np.meshgrid(self.qpaharray, self.uminarray)
         X = np.vstack([Xgrid.ravel(), Ygrid.ravel()]).swapaxes(0, 1)
-        norm = 1.569e25 #Converting from Jy*cm^2*sr^-1*H^-1 to uJy*(10pc)^2*M_sun^-1, assuming isotropic emission
 
         for j, i in enumerate(np.arange(0, 70, 10)):
             de = np.loadtxt('DUSTEMISSION/DL07/DL07_MW3.1_%02d.dat' % i)
@@ -61,60 +66,55 @@ class DL07:
             dnue = np.abs(np.hstack([0, np.diff(3e18 / self.wave)]))
             for k, v in enumerate(np.arange(1, de.shape[1], 2)):
                 #norm = np.dot(dnue, de[:, v])
-                DE1[j, k, :] = de[:, v] * norm
+                DE1[j, k, :] = de[:, v]
                 #DE1mod[j,k,:] = de[:,v]
                 #norm = np.dot(dnue, de[:, v+1])
-                DE2[j, k, :] = de[:, v+1] * norm
+                DE2[j, k, :] = de[:, v+1]
                 #DE2mod[j,k,:] = de[:,v+1]
                 #print "DE1[%d,%d,0] = %.3e"%(j,k,DE1[j,k,0])
                 #print "DE2[%d,%d,0] = %.3e"%(j,k,DE2[j,k,0])
         shape = DE1.shape
         self.interpumin = LinearNDInterpolator(X, DE1.reshape(shape[0] *
                                                               shape[1],
-                                                              shape[2]))
+                                                              shape[2],order='F'))
         self.interpumax = LinearNDInterpolator(X, DE2.reshape(shape[0] *
                                                               shape[1],
-                                                              shape[2]))
-        #self.interpumin2 = LinearNDInterpolator(X, DE1mod.reshape(shape[0] *
-        #                                                      shape[1],
-        #                                                      shape[2]))
-        #self.interpumax2 = LinearNDInterpolator(X, DE2mod.reshape(shape[0] *
-        #                                                      shape[1],
-        #                                                      shape[2]))
+                                                              shape[2],order='F'))
+    
     def get_nparams(self):
         ''' Return number of parameters '''
         if self.fixed:
             return 0
         else:
-            return 3 
+            return 4 
 
     def get_params(self):
         ''' Return current parameters '''
         if self.fixed:
             return []
         else:
-            return [self.umin, self.gamma, self.qpah]
+            return [self.umin, self.gamma, self.qpah, self.mdust]
 
     def get_param_lims(self):
         ''' Return current parameter limits '''
         if self.fixed:
             return []
         else:
-            return [self.umin_lims, self.gamma_lims, self.qpah_lims]
+            return [self.umin_lims, self.gamma_lims, self.qpah_lims, self.mdust_lims]
 
     def get_param_deltas(self):
         ''' Return current parameter deltas '''
         if self.fixed:
             return []
         else:
-            return [self.umin_delta, self.gamma_delta, self.qpah_delta]
+            return [self.umin_delta, self.gamma_delta, self.qpah_delta, self.mdust_delta]
 
     def get_names(self):
         ''' Return names of each parameter '''
         if self.fixed:
             return []
         else:
-            return ['Umin', '$\gamma$', '$q_{pah}$']
+            return ['Umin', '$\gamma$', '$q_{pah}$', '$M_{dust}$']
 
     def prior(self):
         ''' Uniform prior based on boundaries '''
@@ -124,7 +124,9 @@ class DL07:
                       (self.gamma < self.gamma_lims[1]))
         qpah_flag = ((self.qpah > self.qpah_lims[0]) *
                      (self.qpah < self.qpah_lims[1]))
-        return umin_flag * gamma_flag * qpah_flag
+        mdust_flag = ((self.mdust > self.mdust_lims[0]) *
+                     (self.mdust < self.mdust_lims[1]))
+        return umin_flag * gamma_flag * qpah_flag * mdust_flag
 
     def set_parameters_from_list(self, input_list, start_value):
         ''' Set parameters from a list and a start_value
@@ -141,22 +143,37 @@ class DL07:
             self.umin = input_list[start_value]
             self.gamma = input_list[start_value+1]
             self.qpah = input_list[start_value+2]
+            self.mdust = input_list[start_value+3]
 
     def plot(self, ax, wave, color=[0/255., 175/255., 202/255.], alpha=0.2):
         ''' Plot Dust Law for given set of parameters '''
         dustem = self.evaluate(wave)
         ax.plot(wave, dustem, color=color, alpha=alpha)
 
-    # def plotpractice(self, wave, norm=True):
-    #     if norm: dustem = self.evaluate(wave)
-    #     else: dustem = self.evaluate2(wave)
-    #     plt.figure()
-    #     plt.plot(wave/1.0e4, dustem, 'b-')
-    #     plt.xlabel(r"$\lambda$ ($\mu m$)")
-    #     if norm: plt.ylabel(r"Normalized dust emissivity (Hz$^{-1}$)")
-    #     else: plt.ylabel(r"Dust emissivity (Jy cm$^2$ sr$^{-1}$ H$^{-1}$) ")
-    #     plt.savefig("%.1f%.1f%.1f_%s.png"%(self.umin,self.gamma,self.qpah,norm))
-    #     plt.close()
+    def plotpractice(self, wave, z): #Distance in Mpc
+        from cosmology import Cosmology
+        C = Cosmology()
+        D = C.luminosity_distance(z)
+        dustem1 = self.evaluate(wave)
+        dustem = np.interp(wave, wave * (1. + z),
+                        dustem1 * (1. + z))
+        dustem/=D**2 #Divide by distance ^ 2 (to get flux)
+        dustem*=1.0e-29 #Go from uJy to erg/cm^2/s/Hz
+        nu = 3.0e18/wave
+        plt.figure()
+        plt.loglog(wave/1.0e4, nu*dustem, 'b-')
+        xlims = np.array([2.0,1000.])/(1.+z)
+        plt.xlim(xlims)
+        #plt.ylim(nu[-1]*dustem[-1],nu[-1]*dustem[-1]/3.0 * 2.0e5)
+        #yl = 5.0e20*1.0e-29/(1.0e5*D)**2
+        #yu = 3.0e25*1.0e-29/(1.0e5*D)**2
+        #plt.ylim(yl,yu)
+        plt.xlabel(r"$\lambda$ ($\mu m$)")
+        #plt.ylabel(r"Dust emissivity ($\mu$Jy (10pc)$^2$ Hz M$_{sun}^{-1}$) ")
+        plt.ylabel(r"Dust emissivity (erg cm$^{-1}$ s$^{-1}$) ")
+        plt.savefig("DustTesting/%.2f_%.4f_%.2f_%.3f.png"%(self.umin,self.gamma,self.qpah,self.mdust))
+        plt.show()
+        #plt.close()
 
     def evaluate(self, wave):
         ''' Evaluate Dust Law
@@ -169,10 +186,13 @@ class DL07:
         Returns
         -------
         DustE : numpy array (1 dim)
-            Dust emission spectrum (units of uJy*(10pc)^2/M_sun)--linear combination of emission from dust heated by starlight at Umin and dust heated by starlight at U>Umin
+            Dust emission spectrum (flux in uJy 10 pc)--linear combination of emission from dust heated by starlight at Umin and dust heated by starlight at U>Umin
         '''
         DustE = (self.interpumin(self.qpah, self.umin) * (1. - self.gamma) +
-                 self.interpumax(self.qpah, self.umin) * self.gamma)
+                 self.interpumax(self.qpah, self.umin) * self.gamma) #Units Jy*cm^2/sr/H (hydrogen atom)--luminosity/solid angle/mass
+
+        DustE *= 1.249e24 #Converting from Jy*cm^2/sr/H to units uJy/M_sun (flux/mass unit) at 10 pc assuming isotropic emission
+        DustE *= np.interp(self.qpah,self.qpaharray,self.htodarray) * 10**self.mdust #Multiplying by total hydrogen mass to get to flux in uJy at 10 pc
 
         return np.interp(wave, self.wave, DustE)
 
