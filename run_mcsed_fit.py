@@ -165,7 +165,7 @@ def parse_args(argv=None):
                         help='''Number of test objects''',
                         type=int, default=None)
 
-    parser.add_argument("-sma", "--ssp_max_age",
+    parser.add_argument("-sma", "--max_ssp_age",
                         help='''Max age (log years) for any given simple stellar population''',
                         type=float, default=9.5)
 
@@ -207,7 +207,8 @@ def parse_args(argv=None):
     # Set the maximum SSP age (if test mode, leave it as default value)
     if not args.test:
         args.max_ssp_age = get_max_ssp_age(args.filename)
-
+## WPBWPB delete
+#    print('This is max ssp age: %s' % args.max_ssp_age)
 
 #WPBWPB delete
 #    print('test, fitdustem, nebular, parallel: %s, %s, %s, %s' % (args.test, args.fit_dust_em, args.add_nebular, args.parallel) )
