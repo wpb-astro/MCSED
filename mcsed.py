@@ -1038,21 +1038,7 @@ WPBWPB units??
             numderpar = 3
         else: 
             numderpar = 4
-## WPBWPB: fixing triangle plot issues
-#        print("this is nsamples:")
-##        print(type(nsamples))
-#        print(nsamples[0])
-#        print('This is the shape of nsamples and percentilerange:')
-#        print(np.shape(nsamples))
-#        print(len(percentilerange))
-#        print('This is names:')
-#        print(names)
-#        print('This is nsamples[0] after cutting the derived params')
-#        print(nsamples[0, o:-numderpar])
-#        print('this is percentilerange:')
-#        print(percentilerange)
-#        T = Table(nsamples[:, o:-numderpar])
-#        T.write('nsamples.dat',format='ascii')
+# WPBWPB delete:
         print("I'm starting to construct the triangle plot")
         start = time.time()
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
