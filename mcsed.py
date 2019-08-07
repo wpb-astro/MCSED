@@ -16,8 +16,6 @@
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
 """
-#import matplotlib
-#matplotlib.use("Agg")
 import logging
 import sfh
 import dust_abs
@@ -25,9 +23,9 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use("Agg")
+#import matplotlib.pyplot as plt
 import corner
 import time
 # WPBWPB delete astrpy table
@@ -36,6 +34,13 @@ from scipy.integrate import simps
 from scipy.interpolate import interp1d
 
 import numpy as np
+
+
+
+import matplotlib.pyplot as plt
+plt.ioff()
+
+
 
 #WPBWPB re organize the arguments (aesthetic purposes)
 class Mcsed:
@@ -743,12 +748,15 @@ WPBWPB units??
                       (np.mean(sampler.acceptance_fraction)))
         self.log.info("AutoCorrelation Steps: %i, Number of Burn-in Steps: %i"
                       % (np.round(tau), burnin_step))
+## WPBWPB: need to clean this up eventually (don't hard code numderpar)
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
             numderpar = 4
-        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
-        new_chain[:, :, :-(numderpar+1)] = sampler.chain
+## WPBWPB: naive bug fix: naddon used to be 2 (in original version) changed to 1 after derived params added. once track down issue, hardcode it back in.
+        naddon = 1
+        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+naddon))
+        new_chain[:, :, :-(numderpar+naddon)] = sampler.chain
         self.chain = sampler.chain
         for i in xrange(len(sampler.blobs)):
             for j in xrange(len(sampler.blobs[0])):
@@ -756,12 +764,12 @@ WPBWPB units??
                     x = sampler.blobs[i][j][k]
                     #if k==0 or k==4 or k==5: #Stellar mass or Dust mass--can't take log of negative numbers
                     if k==0: #Stellar mass--can't take log of negative numbers; also, want reasonable values
-                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
+                        new_chain[j, i, -(numderpar+naddon)+k] = np.where((np.isfinite(x)) * (x > 10.),
                                                np.log10(x), -99.) #Stellar mass
                     else: 
-                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
+                        new_chain[j, i, -(numderpar+naddon)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
         new_chain[:, :, -1] = sampler.lnprobability
-        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
+        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+naddon))
 
     def calc_gaw(self,t,sfr,frac,mass):
         ''' Calculate lookback time at which the fraction "frac" of the stellar mass in the galaxy was created'''
@@ -1030,14 +1038,31 @@ WPBWPB units??
             numderpar = 3
         else: 
             numderpar = 4
+## WPBWPB: fixing triangle plot issues
+#        print("this is nsamples:")
+##        print(type(nsamples))
+#        print(nsamples[0])
+#        print('This is the shape of nsamples and percentilerange:')
+#        print(np.shape(nsamples))
+#        print(len(percentilerange))
+#        print('This is names:')
+#        print(names)
+#        print('This is nsamples[0] after cutting the derived params')
+#        print(nsamples[0, o:-numderpar])
+#        print('this is percentilerange:')
+#        print(percentilerange)
+#        T = Table(nsamples[:, o:-numderpar])
+#        T.write('nsamples.dat',format='ascii')
         print("I'm starting to construct the triangle plot")
+        start = time.time()
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
                             label_kwargs={"fontsize": 18}, show_titles=True,
                             title_kwargs={"fontsize": 16},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
-        print('made the corner')
+        end = time.time()
+        print('made the corner. it took me %s s' % (end - start))
         # Adding subplots
         ax1 = fig.add_subplot(3, 1, 1)
         ax1.set_position([0.7, 0.60, 0.25, 0.15])

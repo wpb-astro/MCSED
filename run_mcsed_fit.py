@@ -166,7 +166,7 @@ def parse_args(argv=None):
                         type=int, default=None)
 
     parser.add_argument("-sma", "--ssp_max_age",
-                        help='''Max age taken from files for any given simple stellar population''',
+                        help='''Max age (log years) for any given simple stellar population''',
                         type=float, default=9.5)
 
     # Initialize arguments and log
@@ -203,6 +203,11 @@ def parse_args(argv=None):
     # If a test field is specified on the command line, initialize test mode
     if '-tf' in argv:
         args.test = True
+
+    # Set the maximum SSP age (if test mode, leave it as default value)
+    if not args.test:
+        args.max_ssp_age = get_max_ssp_age(args.filename)
+
 
 #WPBWPB delete
 #    print('test, fitdustem, nebular, parallel: %s, %s, %s, %s' % (args.test, args.fit_dust_em, args.add_nebular, args.parallel) )
@@ -275,8 +280,8 @@ def build_filter_matrix(args, wave):
         As mentioned above, the Fil_matrix has rows of wavelength and
         columns for each filter in args.filt_dict/config.filt_dict
     '''
-#WPBWPB delete
-    start_time = time.time()
+##WPBWPB delete
+#    start_time = time.time()
     nfilters = len(args.filt_dict)
     Fil_matrix = np.zeros((len(wave), nfilters))
     for i in np.arange(nfilters):
@@ -287,9 +292,9 @@ def build_filter_matrix(args, wave):
         if S == 0.:
             S = 1.
         Fil_matrix[:, i] = new_through / S
-# WPBWPB -- could remove 
-    ellapsed_time = time.time() - start_time
-    print('Time to build filter matrix: %s sec' % ellapsed_time)
+## WPBWPB -- could remove 
+#    ellapsed_time = time.time() - start_time
+#    print('Time to build filter matrix: %s sec' % ellapsed_time)
 
     return Fil_matrix
 
@@ -344,31 +349,35 @@ def get_maglim_filters(args):
     return photerror
 
 
-def get_max_ssp_age(args):
-    '''This function reads a very specific input file and uses the lowest redshift to determine a limit on the SSP ages considered. The input file should have the following columns: FIELD, ID, Z
+def get_max_ssp_age(filename):
+    '''This function reads a very specific input file and uses the 
+    lowest redshift to determine a limit on the SSP ages considered. 
+    The input file should have the following columns: FIELD, ID, Z
     
-        Parameters
-        ----------
-        args: class
-        The args class is carried from function to function with information
-        from command line input and config.py
+    Parameters
+    ----------
+    filename : str
+        name of input file
 
-        Returns
-        -------
-        Nothing (args.max_ssp_age is modified)
-        '''
-    F = Table.read(args.filename, format='ascii')
+    Returns
+    -------
+    maxage : float
+        maximum age (in log years) of objects in input file
+    '''
+
+    F = Table.read(filename, format='ascii')
     z = F['z']
     zmin = min(z)
     C = Cosmology()
     maxage = C.lookback_time(20)-C.lookback_time(zmin) #Linear age in Gyr
-    args.max_ssp_age = np.log10(maxage)+9.0 #Age in log years
+    maxage = np.log10(maxage) + 9.0 # Age in log years
+    return maxage
 
 
 def read_input_file(args):
     '''This function reads a very specific input file and joins it with
     archived 3dhst catalogs.  The input file should have the following columns:
-    WPB
+    WPBWPB CHECK COLUMN NAMES (case, etc)
     FIELD, ID, Z
 
 WPBWPB: describe how emission line and filter dictionaries may be modified
@@ -441,13 +450,13 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
             else:
                 print('*CAUTION* %s.res filter curve does not exist:' % fname)
 
-    # update master filter curve dictionary with filters in user input file
-    print "Before, Nfilters =", len(args.filt_dict)
+#    # update master filter curve dictionary with filters in user input file
+#    print "Before, Nfilters =", len(args.filt_dict)
     args.filt_dict.update(infilt_dict)
 
 # APPEND TO FILT_DICT
     nfilters = len(args.filt_dict)
-    print "After. Nfilters =", nfilters
+#    print "After. Nfilters =", nfilters
     y = np.zeros((nobj, nfilters))
     yerr = np.zeros((nobj, nfilters))
     flag = np.zeros((nobj, nfilters), dtype=bool)
@@ -782,9 +791,7 @@ def main(argv=None, ssp_info=None):
 #        ages, masses, wave, SSP, met = read_ssp(args)
 #        np.savez('spectra_together',wave=wave,age=ages,spec=SSP)
 #        return
-        if not args.test: #Get maximum SSP age before reading in SSP model--default value taken for test mode
-            get_max_ssp_age(args)
-            print("Max_SSP_age (in log years) is", args.max_ssp_age)
+
         args.log.info('Reading in SSP model')
         ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)
 
@@ -877,6 +884,7 @@ def main(argv=None, ssp_info=None):
     names = mcsed_model.get_param_names()
     names.append('Log Mass')
     ##GRN Adding the derived parameters; order matters
+## WPBWPB: need to clean this up eventually (don't hard code numderpar)
     names.append('SFR10')
     names.append('SFR100')
     if args.fit_dust_em and not args.test:

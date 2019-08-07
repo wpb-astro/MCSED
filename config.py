@@ -10,8 +10,8 @@ ssp = 'fsps'  # options include: 'fsps'
 isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'empirical_direct', 'empirical',
-sfh =  'empirical_direct'
-dust_law = 'noll' #'calzetti' # options include: 'noll', 'calzetti'
+sfh = 'empirical_direct'
+dust_law = 'noll' # options include: 'noll', 'calzetti'
 dust_em = 'DL07'  # options include: 'DL07'
 
 t_birth = 7. # age of the birth cloud (log years)
@@ -27,7 +27,7 @@ EBV_stars_gas = -1
 # If True, fit the dust emission component. 
 # If False, remove all filters redward of rest-frame wave_dust_em microns 
 # and fix dust emission parameters to umin=2.0, gamma=0.05, qpah=2.5 
-fit_dust_em = True
+fit_dust_em = False 
 wave_dust_em = 2.5 # rest-frame wavelength in microns 
 
 # EMCEE parameters
@@ -93,7 +93,7 @@ metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 #    Supported formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
 output_dict = {'parameters'    : True,
                'settings'      : True, 
-               'fitposterior'  : False,
+               'fitposterior'  : True,
                'bestfitspec'   : True,
                'fluxdensity'   : True,
                'lineflux'      : True,
@@ -107,7 +107,7 @@ param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
 # WPBWPB clarify
-reserved_cores = 0 # integer
+reserved_cores = 1 # integer
 
 
 # Dictionaries
