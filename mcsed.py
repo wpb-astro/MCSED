@@ -23,9 +23,9 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
-#import matplotlib
-#matplotlib.use("Agg")
-#import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import corner
 import time
 # WPBWPB delete astrpy table
@@ -37,8 +37,8 @@ import numpy as np
 
 
 
-import matplotlib.pyplot as plt
-plt.ioff()
+#import matplotlib.pyplot as plt
+#plt.ioff()
 
 
 
@@ -753,10 +753,8 @@ WPBWPB units??
             numderpar = 3
         else: 
             numderpar = 4
-## WPBWPB: naive bug fix: naddon used to be 2 (in original version) changed to 1 after derived params added. once track down issue, hardcode it back in.
-        naddon = 1
-        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+naddon))
-        new_chain[:, :, :-(numderpar+naddon)] = sampler.chain
+        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
+        new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
         for i in xrange(len(sampler.blobs)):
             for j in xrange(len(sampler.blobs[0])):
@@ -764,12 +762,12 @@ WPBWPB units??
                     x = sampler.blobs[i][j][k]
                     #if k==0 or k==4 or k==5: #Stellar mass or Dust mass--can't take log of negative numbers
                     if k==0: #Stellar mass--can't take log of negative numbers; also, want reasonable values
-                        new_chain[j, i, -(numderpar+naddon)+k] = np.where((np.isfinite(x)) * (x > 10.),
+                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
                                                np.log10(x), -99.) #Stellar mass
                     else: 
-                        new_chain[j, i, -(numderpar+naddon)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
+                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
         new_chain[:, :, -1] = sampler.lnprobability
-        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+naddon))
+        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
 
     def calc_t_mfrac(self,t,sfr,frac,mass):
         '''Calculate lookback time at which the fraction "frac" of the 
