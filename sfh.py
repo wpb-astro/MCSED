@@ -124,13 +124,6 @@ class constant:
         msfr = 10**self.logsfr * np.ones(t.shape)
         return msfr
 
-# WPBWPB delete
-#    def derived(self,t,params):
-#        assert len(params)==self.get_nparams()
-#        msfr = 10**params[0] * np.ones(t.shape)
-#        return msfr
-
-
 class burst:
     ''' The burst star formation history '''
     def __init__(self, logsfr=1.0, age=-.5, burst_age=7.2, burst_sigma=0.4,
@@ -288,17 +281,6 @@ class burst:
         msfr = 10**logsfr * np.ones(t.shape)
         return msfr + gauss
 
-## WPBWPB delete
-#    def derived(self,t,params):
-#        assert len(params)==self.get_nparams()
-#        nage = params[2] - 9.
-#        norm = (params[3] * 10**params[0] /
-#                np.sqrt(2. * np.pi * self.burst_sigma))
-#        gauss = norm * np.exp(-0.5 * (np.log10(t) - nage)**2 / self.burst_sigma**2)
-#        msfr = 10**params[0] * np.ones(t.shape)
-#        return msfr + gauss
-
-
 class polynomial:
     ''' The polynomial star formation history '''
     def __init__(self, age_locs=[6.5, 7.5, 8.5], age=-.5,
@@ -436,14 +418,6 @@ class polynomial:
         msfr = 10**(np.polyval(sol, np.log10(t) - self.middle_age + 9.))
         return msfr
 
-## WPBWPB delete
-#    def derived(self,t,params):
-#        assert len(params)==self.get_nparams()
-#        v = np.array(params[:])
-#        sol = np.linalg.lstsq(self.matrix, v)[0]
-#        msfr = 10**(np.polyval(sol, np.log10(t) - self.middle_age + 9.))
-#        return msfr
-
 class exponential:
     ''' The exponential star formation history '''
     def __init__(self, logsfr=1.0, age=-1.0, tau=-1.5, logsfr_lims=[-3., 3.],
@@ -573,17 +547,6 @@ class exponential:
             var = np.max([var, np.zeros(var.shape)], axis=0)
         msfr = 10**logsfr * np.exp(-1. * var / 10**tau)
         return msfr
-
-## WPBWPB delete
-#    def derived(self,t,params):
-#        assert len(params)==self.get_nparams()
-#        if self.sign > 0.0:
-#            var = t
-#        else:
-#            var = 10**params[1] - t
-#            var = np.max([var, np.zeros(var.shape)], axis=0)
-#        msfr = 10**params[0] * np.exp(-1. * var / 10**params[2])
-#        return msfr
 
 
 class double_powerlaw:
@@ -730,15 +693,6 @@ WPBWPB add: _delta for remaining parameters
                                 (t / t1)**(-c))**(-1))
         return msfr
 
-## WPBWPB delete    
-#    def derived(self,t,params):
-#        assert len(params)==self.get_nparams()
-#        t1 = 10**params[0]
-#        msfr = (10**(params[1]) * ((t / t1)**params[2] +
-#                                (t / t1)**(-params[3]))**(-1))
-#        return msfr
-
-
 class empirical_direct:
     ''' The empirical SFH includes 6 bins of SFR at discrete time intervals '''
     def __init__(self, init_log_sfr=1.2, init_log_sfr_lims=[-5., 3.],
@@ -875,22 +829,141 @@ class empirical_direct:
         sfr = sfr_bin[ bin_indx ]
         return sfr
 
-## WPBWPB delete
-#    def derived(self,t,params):
-#        assert len(params)==self.get_nparams()
-#        if type(t) in [float, int]:
-#            t = np.array([t])
-#        elif type(t) != np.ndarray:
-#            t = np.array(t)
-#        # linear SFR in each SFH time bin
-#        sfr_bin = 10. ** np.array(params) 
-#        # Ensure that self.ages, t are both in units of log years
-#        t_logyr = np.log10( t * 1e9 ) 
-#        bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
-#        # adjust any times falling beyond the last SFH age bin
-#        bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
-#        sfr = sfr_bin[ bin_indx ]
-#        return sfr
+class empirical_direct_z0:
+    ''' The empirical SFH includes 6 bins of SFR at discrete time intervals '''
+    def __init__(self, init_log_sfr=1.2, init_log_sfr_lims=[-5., 3.],
+                 init_log_sfr_delta=0.7,
+                 ages=[8., 8.5, 9., 9.5, 9.8, 10.13]):
+        ''' Initialize this class
+        Parameters
+        ----------
+        init_log_sfr: float
+            Not a class element--this is not one of the SFH parameters
+            It is a blind estimate of the current SFR; we base all initial SFR bin values on it
+        init_log_sfr_lims: list
+            A two valued list for lower and upper boundary values for the SFR in each bin
+        init_log_sfr_delta: float
+            sigma to draw from a normal distribution when simulating galaxies
+        ages: list
+            Right-hand side of (lookback) time bins in log yrs (NOT Gyrs)
+            For example, if ages[0]=8., the first time bin is the last 100 million years (till the time of observation)
+        '''
+        self.ages = ages
+        self.nums = np.arange(1, self.get_nparams()+1, dtype=int)
+        for num in self.nums:
+            setattr(self, 'sfr_' + str(num), init_log_sfr - num**1.2 * 0.3)
+            setattr(self, 'sfr_' + str(num) + '_lims', init_log_sfr_lims)
+            setattr(self, 'sfr_' + str(num) + '_delta', init_log_sfr_delta)
+        self.sfr_1_delta = 0.3
+        self.sfr_2_delta = 0.3
+        self.age_lims = [-3., self.ages[-1]-9.]
+        self.age = self.age_lims[1] * 1.
+
+    def set_agelim(self, redshift):
+        ''' Set the Age limit based on age of the universe '''
+        C = Cosmology()
+        self.age = np.log10(C.lookback_time(20.) -
+                            C.lookback_time(redshift))
+
+    def get_nparams(self):
+        ''' Return number of parameters '''
+        return len(self.ages)
+
+    def get_params(self):
+        ''' Return current parameters '''
+        l = []
+        for num in self.nums:
+            l.append(getattr(self, 'sfr_' + str(num)))
+        return l
+
+    def get_param_lims(self):
+        ''' Return current parameters limits '''
+        l = []
+        for num in self.nums:
+            l.append(getattr(self, 'sfr_' + str(num) + '_lims'))
+        return l
+
+    def get_param_deltas(self):
+        ''' Return current parameter deltas '''
+        l = []
+        for num in self.nums:
+            l.append(getattr(self, 'sfr_' + str(num) + '_delta'))
+        return l
+
+    def get_names(self):
+        ''' Return names of each parameter '''
+        l = []
+        for num in self.nums:
+            l.append('sfr_' + str(num))
+        return l
+
+    def prior(self):
+        ''' Uniform prior based on boundaries '''
+        flag = True
+        for num in self.nums:
+            val = getattr(self, 'sfr_' + str(num))
+            lims = getattr(self, 'sfr_' + str(num) + '_lims')
+            flag *= ((val > lims[0]) * (val < lims[1]))
+        return flag
+
+    def set_parameters_from_list(self, input_list, start_value):
+        ''' Set parameters from a list and a start_value
+        Parameters
+        ----------
+        input_list : list
+            list of input parameters (could be much larger than number of
+            parameters to be set)
+        start_value : int
+            initial index from list to read out parameters
+        '''
+        for num in self.nums:
+            setattr(self, 'sfr_' + str(num), input_list[start_value + num - 1])
+
+    def plot(self, ax, color=[238/255., 90/255., 18/255.], alpha=0.2):
+        ''' Plot SFH for given set of parameters '''
+        t = 10**(np.array([6] + self.ages) - 9.)
+        sfr = self.evaluate(t)
+#        ax.step(10**t, np.hstack([sfr[0], sfr]), where='pre',
+#                color=color, alpha=alpha)
+        ax.step(t, sfr, where='pre', color=color, alpha=alpha)
+
+
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate empirical direct SFH
+        Parameters
+        ----------
+        t : numpy array (1 dim)
+            lookback time in Gyr (time = 0 is observation of galaxy)
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
+
+        Returns
+        -------
+        msfr : numpy array (1 dim)
+            Star formation rate at given time in time array
+        '''
+
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr = np.array(self.get_params())
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr = np.array(force_params)
+
+        if type(t) in [float, int]:
+            t = np.array([t])
+        elif type(t) != np.ndarray:
+            t = np.array(t)
+        # linear SFR in each SFH time bin
+        sfr_bin = 10. ** logsfr
+        # Ensure that self.ages, t are both in units of log years
+        t_logyr = np.log10( t * 1e9 )
+        bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
+        # adjust any times falling beyond the last SFH age bin
+        bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
+        sfr = sfr_bin[ bin_indx ]
+        return sfr
 
 
 class empirical:
@@ -1038,11 +1111,3 @@ class empirical:
         denominator = np.dot(self.tdiff, v[1:])
         return [mass * p / denominator for p in v[1:]]
 
-## WPBWPB delete
-#    def derived(self,t,params):
-#        assert len(params)==self.get_nparams()
-#        v = params
-#        v.insert(1, self.firstbin)        
-#        mass = 10**v[0]
-#        denominator = np.dot(self.tdiff, v[1:])
-#        return [mass * p / denominator for p in v[1:]]
