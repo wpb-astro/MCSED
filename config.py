@@ -92,12 +92,12 @@ metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 #   settings: user-defined options for the run
 # 'image format' is the file type extension of the figures
 #    Supported formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
-output_dict = {'parameters'    : True,
-               'settings'      : True, 
-               'fitposterior'  : True,
-               'bestfitspec'   : True,
-               'fluxdensity'   : True,
-               'lineflux'      : True,
+output_dict = {'parameters'    : False,
+               'settings'      : False, 
+               'fitposterior'  : False,
+               'bestfitspec'   : False,
+               'fluxdensity'   : False,
+               'lineflux'      : False,
                'triangle plot' : True,
                'sample plot'   : False,
                'image format'  : 'png'}

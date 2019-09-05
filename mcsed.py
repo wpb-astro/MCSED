@@ -442,7 +442,7 @@ WPBWPB units??
                     weight_birth[B] = weight_age[B]
 
         # Finally, do the matrix multiplication using the weights
-        #print "Max(SSP) = %.3e"%(np.amax(self.SSP))
+        #print("Max(SSP) = %.3e"%(np.amax(self.SSP)))
         spec_dustfree = np.dot(self.SSP, weight)
         spec_birth_dustfree = np.dot(self.SSP, weight_birth)
         linespec_dustfree = np.dot(self.lineSSP, weight_birth)
@@ -1137,7 +1137,8 @@ WPBWPB units??
 
         for k2 in range(numsamples):
             derpar[k2] = self.get_t_params(params[:,k2],mass[k2])
-            if k2%(numsamples/10)==0: print k2,params[:,k2],mass[k2],derpar[k2]
+            if k2%(numsamples/10)==0:
+                print(k2,params[:,k2],mass[k2],derpar[k2])
 
         n = len(percentiles)
         for i, per in enumerate(percentiles):
