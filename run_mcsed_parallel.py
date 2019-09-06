@@ -164,6 +164,7 @@ def main_parallel(argv=None):
                     formats=results[0][1], overwrite=True)
     if args.output_dict['settings']:
         filename = open('output/%s.args' % args.output_filename, 'w')
+        del args.log
         filename.write( str( vars(args) ) )
         filename.close()
 

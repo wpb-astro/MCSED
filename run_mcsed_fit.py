@@ -165,6 +165,10 @@ def parse_args(argv=None):
                         help='''Number of test objects''',
                         type=int, default=None)
 
+    parser.add_argument("-sma", "--max_ssp_age",
+                        help='''Max age taken from files for any given simple stellar population''',
+                        type=float, default=9.5)
+
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
     args.log = setup_logging()
@@ -959,13 +963,13 @@ def main(argv=None, ssp_info=None):
             mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:
-                mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
+                # mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
 # WPBWPB delete
-#                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
+                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
             if args.output_dict['triangle plot']:
-                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
+                # mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
 # WPBWPB delete
-#                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
+                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
 
             mcsed_model.table.add_row(['Test', cnt, zi] + [0.]*(len(labels)-3))
             print("Reached point before adding fit info to table")
@@ -1043,17 +1047,17 @@ def main(argv=None, ssp_info=None):
 
     # WPB field/id
             if args.output_dict['sample plot']:
-                mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
-                                        imgtype = args.output_dict['image format'])
+                # mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
+                #                         imgtype = args.output_dict['image format'])
 # WPBWPB delete
-#                mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),imgtype = args.output_dict['image format'])
+                mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),imgtype = args.output_dict['image format'])
 
             if args.output_dict['triangle plot']:
-                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s' %
-                                          (fd, oi, args.sfh, args.dust_law),
-                                          imgtype = args.output_dict['image format'])
+                # mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s' %
+                #                           (fd, oi, args.sfh, args.dust_law),
+                #                           imgtype = args.output_dict['image format'])
 # WPBWPB delete
-#                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), imgtype = args.output_dict['image format'])
+                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), imgtype = args.output_dict['image format'])
 
             mcsed_model.table.add_row([fd, oi, zi] + [0.]*(len(labels)-3))
             names = mcsed_model.get_param_names()
@@ -1065,26 +1069,26 @@ def main(argv=None, ssp_info=None):
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: 
                 T = Table(mcsed_model.samples, names=names)
-                T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                # T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                #         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
                 T = Table([mcsed_model.wave, mcsed_model.medianspec],
                           names=['wavelength', 'spectrum'])
-                T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                # T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                #         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
                 T = Table([mcsed_model.fluxwv, mcsed_model.fluxfn,
                            mcsed_model.data_fnu, mcsed_model.data_fnu_e],
                            names=['wavelength','model_fluxdensity',
                                   'fluxdensity', 'fluxdensityerror'])
-                T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                # T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                #         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if (args.output_dict['lineflux']) & (mcsed_model.use_emline_flux):
                 emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
                 emweights = np.array(mcsed_model.emline_dict.values())[:,1]
@@ -1098,10 +1102,10 @@ def main(argv=None, ssp_info=None):
                           names=['rest_wavelength', 'weight', 'model_lineflux',
                                  'lineflux', 'linefluxerror'])
                 T.sort('rest_wavelength')
-                T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                # T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                #         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             last = mcsed_model.add_fitinfo_to_table(percentiles)
             print(mcsed_model.table)
     if args.parallel:
@@ -1113,6 +1117,7 @@ def main(argv=None, ssp_info=None):
                                     formats=formats, overwrite=True)
         if args.output_dict['settings']:
             filename = open('output/%s.args' % args.output_filename, 'w')
+            del args.log
             filename.write( str( vars(args) ) )
             filename.close()
 if __name__ == '__main__':

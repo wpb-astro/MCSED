@@ -1038,8 +1038,6 @@ WPBWPB units??
             numderpar = 3
         else: 
             numderpar = 4
-# WPBWPB delete:
-        print("I'm starting to construct the triangle plot")
         start = time.time()
         fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
                             range=percentilerange,
@@ -1078,6 +1076,8 @@ WPBWPB units??
         # fig.set_size_inches(15.0, 15.0)
         fig.savefig("%s.%s" % (outname, imgtype), dpi=150)
         plt.close(fig)
+        end = time.time()
+        print("Time taken to make triangle plot: %.3f s"%(end-start))
 
     def sample_plot(self, outname, imgtype='png'):
         ''' Make a sample plot
