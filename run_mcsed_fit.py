@@ -97,6 +97,14 @@ def parse_args(argv=None):
                         help='''File to be read for galaxy data''',
                         type=str, default=None)
 
+    parser.add_argument("-o", "--output_filename",
+                        help='''Output filename for given run''',
+                        type=str, default='test.dat')
+
+    parser.add_argument("-p", "--parallel",
+                        help='''Running in parallel?''',
+                        action="count", default=0)
+
     parser.add_argument("-s", "--ssp",
                         help='''SSP Models, default fsps''',
                         type=str, default=None)
@@ -116,18 +124,6 @@ def parse_args(argv=None):
     parser.add_argument("-dl", "--dust_law",
                         help='''Dust law, e.g. calzetti''',
                         type=str, default=None)
-
-    parser.add_argument("-t", "--test",
-                        help='''Test script with fake data''',
-                        action="count", default=0)
-
-    parser.add_argument("-tf", "--test_field",
-                        help='''Test filters will match the given field''',
-                        type=str, default='cosmos')
-
-    parser.add_argument("-o", "--output_filename",
-                        help='''Output filename for given run''',
-                        type=str, default='test.dat')
 
     parser.add_argument("-nw", "--nwalkers",
                         help='''Number of walkers for EMCEE''',
@@ -157,13 +153,17 @@ def parse_args(argv=None):
                         help='''Error floor for emission lines''',
                         type=float, default=None)
 
+    parser.add_argument("-t", "--test",
+                        help='''Test script with fake data''',
+                        action="count", default=0)
+
+    parser.add_argument("-tf", "--test_field",
+                        help='''Test filters will match the given field''',
+                        type=str, default='cosmos')
+
     parser.add_argument("-no", "--nobjects",
                         help='''Number of test objects''',
                         type=int, default=None)
-
-    parser.add_argument("-p", "--parallel",
-                        help='''Running in parallel?''',
-                        action="count", default=0)
 
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
@@ -183,7 +183,8 @@ def parse_args(argv=None):
     arg_inputs = ['ssp', 'metallicity', 'isochrone', 'sfh', 'dust_law',
                   't_birth',
                   'nwalkers', 'nsteps', 'add_nebular', 'logU', 'fit_dust_em',
-                  'phot_floor_error', 'emline_floor_error', 'nobjects',
+                  'phot_floor_error', 'emline_floor_error', 
+                  'nobjects', 'test_zrange',
                   'dust_em', 'Rv', 'EBV_stars_gas', 'wave_dust_em',
                   'emline_list_dict', 'emline_factor', 'use_input_data',
                   'metallicity_mass_relationship', 'metallicity_dict',
@@ -200,6 +201,12 @@ def parse_args(argv=None):
     if '-tf' in argv:
         args.test = True
 
+    # Set the maximum SSP age
+    args.max_ssp_age = get_max_ssp_age(args)
+## WPBWPB delete
+#    print('This is max ssp age: %s' % args.max_ssp_age)
+
+
 #WPBWPB delete
 #    print('test, fitdustem, nebular, parallel: %s, %s, %s, %s' % (args.test, args.fit_dust_em, args.add_nebular, args.parallel) )
 
@@ -215,6 +222,11 @@ def parse_args(argv=None):
     try:
         if args.metallicity not in ['0','1']:
             args.metallicity = float(args.metallicity)
+        else:
+            if args.metallicity=='0': 
+                args.metallicity = False
+            else:
+                args.metallicity = True
     except ValueError:
         args.metallicity = str2bool(str(args.metallicity),args.log)
         print((args.metallicity, type(args.metallicity)))
@@ -266,8 +278,8 @@ def build_filter_matrix(args, wave):
         As mentioned above, the Fil_matrix has rows of wavelength and
         columns for each filter in args.filt_dict/config.filt_dict
     '''
-#WPBWPB delete
-    start_time = time.time()
+##WPBWPB delete
+#    start_time = time.time()
     nfilters = len(args.filt_dict)
     Fil_matrix = np.zeros((len(wave), nfilters))
     for i in np.arange(nfilters):
@@ -278,9 +290,9 @@ def build_filter_matrix(args, wave):
         if S == 0.:
             S = 1.
         Fil_matrix[:, i] = new_through / S
-# WPBWPB -- could remove 
-    ellapsed_time = time.time() - start_time
-    print('Time to build filter matrix: %s sec' % ellapsed_time)
+## WPBWPB -- could remove 
+#    ellapsed_time = time.time() - start_time
+#    print('Time to build filter matrix: %s sec' % ellapsed_time)
 
     return Fil_matrix
 
@@ -335,10 +347,40 @@ def get_maglim_filters(args):
     return photerror
 
 
+def get_max_ssp_age(args):
+    '''This function reads a very specific input file and uses the 
+    lowest redshift to determine a limit on the SSP ages considered. 
+    The input file should have the following columns: FIELD, ID, Z
+    
+    Parameters
+    ----------
+    args : class
+        The args class is carried from function to function with information
+        from command line input and config.py
+
+    Returns
+    -------
+    maxage : float
+        maximum age (in log years) of objects in input file
+    '''
+
+    if not args.test:
+        F = Table.read(args.filename, format='ascii')
+        z = F['z']
+        zmin = min(z)
+    else:
+        zmin = args.test_zrange[0]
+
+    C = Cosmology()
+    maxage = C.lookback_time(20)-C.lookback_time(zmin) #Linear age in Gyr
+    maxage = np.log10(maxage) + 9.0 # Age in log years
+    return maxage
+
+
 def read_input_file(args):
     '''This function reads a very specific input file and joins it with
     archived 3dhst catalogs.  The input file should have the following columns:
-    WPB
+    WPBWPB CHECK COLUMN NAMES (case, etc)
     FIELD, ID, Z
 
 WPBWPB: describe how emission line and filter dictionaries may be modified
@@ -391,16 +433,18 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
 
     # check whether any additional photometry is provided by the user
     # WPBWPB: need to adjust if change naming convention of emission lines
-    input_filters = [col.split('_')[1] for col in Fcols if (len(col)>1) & (col[0:2]=='f_')]
-    print "Input filters: ", input_filters
+    #input_filters = [col.split('_')[1] for col in Fcols if (len(col)>1) & (col[0:2]=='f_')]
+    input_filters = [col.strip('f_') for col in Fcols if (len(col)>1) & (col[0:2]=='f_')]
+    print("Input filters:", input_filters)
     infilt_dict = {}
     if args.use_input_data:
         for fname in input_filters:
             if op.exists('FILTERS/%s.res' % fname):
                 if '%s.res' % fname not in args.filt_dict.values():
-                    findex = max(args.filt_dict.keys())+1
+                    findex = max(args.filt_dict.keys())+1                    
                 else:
                     findex = args.filt_dict.keys()[args.filt_dict.values().index('%s.res' % fname)]
+                print("Findex for filter not in dictionary:", findex)
                 infilt_dict[ findex ] = '%s.res' % fname
                 Fcols = [c for c in Fcols if c not in ['f_'+fname, 'e_'+fname]]
                 print('Reading %s photometry from input file' % fname)
@@ -409,11 +453,13 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
             else:
                 print('*CAUTION* %s.res filter curve does not exist:' % fname)
 
-    # update master filter curve dictionary with filters in user input file
+#    # update master filter curve dictionary with filters in user input file
+#    print("Before, Nfilters =", len(args.filt_dict))
     args.filt_dict.update(infilt_dict)
 
 # APPEND TO FILT_DICT
     nfilters = len(args.filt_dict)
+#    print("After. Nfilters =", nfilters)
     y = np.zeros((nobj, nfilters))
     yerr = np.zeros((nobj, nfilters))
     flag = np.zeros((nobj, nfilters), dtype=bool)
@@ -431,37 +477,59 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         for j, ind in enumerate(args.filt_dict.keys()):
             ### determine if column is present in catalog or user input file
             # WPB delete - check if present in Skelton catalog
-            if ind in args.catalog_filter_dict[loc].keys():
-                colname  = "f_"+args.catalog_filter_dict[loc][ind]
-                ecolname = "e_"+args.catalog_filter_dict[loc][ind]
-            # WPB delete - if not, check if present in input file
-            elif ind in infilt_dict.keys():
-                colname  = "f_"+infilt_dict[ind].split('.res')[0]
-                ecolname = "e_"+infilt_dict[ind].split('.res')[0]
-                print "We are including a column for the photometric filter %s" %(colname)
-            # WPB delete - if neither, set to zero and move on
+            if loc in args.catalog_filter_dict.keys():
+                if ind in args.catalog_filter_dict[loc].keys():
+                    colname  = "f_"+args.catalog_filter_dict[loc][ind]
+                    ecolname = "e_"+args.catalog_filter_dict[loc][ind]
+                # WPB delete - if not, check if present in input file
+                elif ind in infilt_dict.keys():
+                    colname  = "f_"+infilt_dict[ind].split('.res')[0]
+                    ecolname = "e_"+infilt_dict[ind].split('.res')[0]
+                    print("We are including a column for the photometric filter %s" %(colname))
+                # WPB delete - if neither, set to zero and move on
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             else:
-                y[i, j] = 0.0
-                yerr[i, j] = 0.0
-                flag[i, j] = False
-                continue
+                if ind in infilt_dict.keys():
+                    colname  = "f_"+infilt_dict[ind].split('.res')[0]
+                    ecolname = "e_"+infilt_dict[ind].split('.res')[0]
+                    print("We are including a column for the photometric filter %s" %(colname))
+                # WPB delete - if neither, set to zero and move on
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             ### grab flux and error, if available:
             # WPB delete - check if present in Skelton catalog
-            if colname in field_dict[loc].columns.names:
-                # WPB delete: assume second element (i=1) is the Skelton ID
-                # fi, fie are the flux and error (resp) for given filter and object
-                fi  = field_dict[loc].data[colname][int(datum[1])-1]
-                fie = field_dict[loc].data[ecolname][int(datum[1])-1]
-            # WPB delete - if not, must be present in input file
-            elif colname in F.colnames:
-                fi  = datum[colname]
-                fie = datum[ecolname]
-            else:
-                y[i, j] = 0.0
-                yerr[i, j] = 0.0
-                flag[i, j] = False
-                continue
+            if loc in field_dict.keys():
+                if colname in field_dict[loc].columns.names:
+                    # WPB delete: assume second element (i=1) is the Skelton ID
+                    # fi, fie are the flux and error (resp) for given filter and object
+                    fi  = field_dict[loc].data[colname][int(datum[1])-1]
+                    fie = field_dict[loc].data[ecolname][int(datum[1])-1]
+                # WPB delete - if not, must be present in input file
+                elif colname in F.colnames:
+                    fi  = datum[colname]
+                    fie = datum[ecolname]
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
                 # WPB delete - if null value, flux density is zero
+            else:
+                if colname in F.colnames:
+                    fi  = datum[colname]
+                    fie = datum[ecolname]
+                else:
+                    y[i, j] = 0.0
+                    yerr[i, j] = 0.0
+                    flag[i, j] = False
+                    continue
             if (fi > phot_fill_value):
                 y[i, j] = fi*fac
                 flag[i, j] = True
@@ -592,7 +660,8 @@ WPBWPB: modify, document all outputs
 # WPB: modify, redshift range
     np.random.seed()
     thetas = mcsed_model.get_init_walker_values(num=nsamples, kind='ball')
-    zobs = draw_uniform_dist(nsamples, 1.9, 2.35)
+    zmin, zmax = args.test_zrange
+    zobs = draw_uniform_dist(nsamples, zmin, zmax)
     params, y, yerr, true_y = [], [], [], []
 
     # add emission line fluxes
@@ -738,6 +807,13 @@ def main(argv=None, ssp_info=None):
 #    print(ages)
 #    return
 
+### WPBWPB delete
+#    ### useful for saving SSP grid
+#    np.savez('mcsed_model_spectra', wave=wave, age=ages, ssp=SSP, met=met)
+#    return
+
+
+
     # Adjust filter dictionary and emission line dictionary, if applicable
     if (not args.test) & (not args.use_input_data):
         input_file_data = read_input_file(args) 
@@ -811,6 +887,16 @@ def main(argv=None, ssp_info=None):
     # Build names for parameters and labels for table
     names = mcsed_model.get_param_names()
     names.append('Log Mass')
+    ##GRN Adding the derived parameters; order matters
+## WPBWPB: need to clean this up eventually (don't hard code numderpar)
+    names.append('SFR10')
+    names.append('SFR100')
+    if args.fit_dust_em and not args.test:
+        names.append('fPDR')
+    names.append('t10')
+    names.append('t50')
+    names.append('t90')
+
     percentiles = args.param_percentiles 
     # WPB field/id
     labels = ['Field', 'ID', 'z']
@@ -834,6 +920,8 @@ def main(argv=None, ssp_info=None):
     # WPB field/id
     mcsed_model.table = Table(names=labels, dtype=['S7', 'i4'] +
                               ['f8']*(len(labels)-2))
+## WPBWPB delete
+#    print("Created the table (but no data rows yet)")
 
     # MAIN FUNCTIONALITY
     if args.test:
@@ -868,15 +956,23 @@ def main(argv=None, ssp_info=None):
                                                      restframe=True)
 
             mcsed_model.fit_model()
+            mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:
                 mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
+# WPBWPB delete
+#                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
             if args.output_dict['triangle plot']:
                 mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
+# WPBWPB delete
+#                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
 
             mcsed_model.table.add_row(['Test', cnt, zi] + [0.]*(len(labels)-3))
+            print("Reached point before adding fit info to table")
             last = mcsed_model.add_fitinfo_to_table(percentiles)
+            print("Reached point after adding fit info to table but not yet truth info")
             mcsed_model.add_truth_to_table(tr, last)
+            print("Reached point after adding truth info to table")
             print(mcsed_model.table)
     else:
     # WPB field/id
@@ -910,21 +1006,16 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_emline = emi
             mcsed_model.data_emline_e = emie
 
-## WPB delete
-#            fwave = mcsed_model.get_filter_wavelengths()
-#            print('these are filter wavelengths:')
-#            print(np.sort(fwave))
-#            dummy = mcsed_model.remove_waverange_filters(79560.,1e9,restframe=False)
-#            fwave = mcsed_model.get_filter_wavelengths()
-#            print(np.sort(fwave))
-#            return
-
             # Remove filters containing Lyman-alpha (and those blueward)
             mcsed_model.remove_waverange_filters(0., 1216., restframe=True)
             # Remove filters dominated by dust emission, if applicable
             if not args.fit_dust_em:
                 mcsed_model.remove_waverange_filters(args.wave_dust_em*1e4,1e10, 
                                                      restframe=True)
+
+#            # Mask the dust bump
+#            Ebwave, dwave = 2175, 225
+#            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
 
 ## WPB delete
 #            fwave = mcsed_model.get_filter_wavelengths()
@@ -933,36 +1024,67 @@ def main(argv=None, ssp_info=None):
 #            return
 
             mcsed_model.fit_model()
+
+# WPB delete
+            print("I've fit the model")
+
+            # Set attributes: median SED and filter fluxes from random sample
+            # of fits satisfying a chi2 cut
+            mcsed_model.set_median_fit()
 ##WPBWPB delete
-#            print('I"ve reached this point')
+            print("I've set the median fit.")
+
+## WPBWPB delete
+#            ### useful for saving SSP grid
+#            mcsed_model_csp, csp_mass = mcsed_model.build_csp()
+#            star_ssp, line_ssp = mcsed_model.get_ssp_spectrum()
+#            np.savez('mcsed_model_spectra', wave=mcsed_model.wave, age=mcsed_model.ssp_ages, ssp=star_ssp, csp=mcsed_model_csp, mass=np.array([csp_mass])) 
+#            return
+
     # WPB field/id
             if args.output_dict['sample plot']:
-                mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi), 
+                mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
                                         imgtype = args.output_dict['image format'])
+# WPBWPB delete
+#                mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),imgtype = args.output_dict['image format'])
+
             if args.output_dict['triangle plot']:
                 mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s' %
                                           (fd, oi, args.sfh, args.dust_law),
                                           imgtype = args.output_dict['image format'])
+# WPBWPB delete
+#                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), imgtype = args.output_dict['image format'])
+
             mcsed_model.table.add_row([fd, oi, zi] + [0.]*(len(labels)-3))
             names = mcsed_model.get_param_names()
             names.append('Log Mass')
+            names.append('SFR10')
+            names.append('SFR100')
+            if args.fit_dust_em and not args.test:
+                names.append('fPDR')
             names.append('Ln Prob')
-            if args.output_dict['fitposterior']:
+            if args.output_dict['fitposterior']: 
                 T = Table(mcsed_model.samples, names=names)
-                T.write('output/fitposterior_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
+# WPBWPB delete
+#                T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
                 T = Table([mcsed_model.wave, mcsed_model.medianspec],
                           names=['wavelength', 'spectrum'])
-                T.write('output/bestfitspec_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
+# WPBWPB delete
+#                T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
                 T = Table([mcsed_model.fluxwv, mcsed_model.fluxfn,
                            mcsed_model.data_fnu, mcsed_model.data_fnu_e],
                            names=['wavelength','model_fluxdensity',
                                   'fluxdensity', 'fluxdensityerror'])
-                T.write('output/filterflux_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
+# WPBWPB delete
+#                T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if (args.output_dict['lineflux']) & (mcsed_model.use_emline_flux):
                 emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
                 emweights = np.array(mcsed_model.emline_dict.values())[:,1]
@@ -976,8 +1098,10 @@ def main(argv=None, ssp_info=None):
                           names=['rest_wavelength', 'weight', 'model_lineflux',
                                  'lineflux', 'linefluxerror'])
                 T.sort('rest_wavelength')
-                T.write('output/lineflux_%s_%05d_%s.dat' % (fd, oi, args.sfh),
+                T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
+# WPBWPB delete
+#                T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             last = mcsed_model.add_fitinfo_to_table(percentiles)
             print(mcsed_model.table)
     if args.parallel:

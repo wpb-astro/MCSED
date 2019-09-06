@@ -7,11 +7,17 @@ Single Stellar Population module for loading models
 """
 import sfh
 import sys
-
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import os.path as op
 import scipy.interpolate as scint
 from astropy.convolution import Gaussian1DKernel, convolve
+
+
+#import matplotlib.pyplot as plt
+#plt.ioff()
 
 
 def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
@@ -50,6 +56,20 @@ def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
         nspec[:, i] = np.hstack([sp[:nsel[0]], hsp, sp[(nsel[-1]+1):]])
     return nwave, nspec
 
+## WPBWPB delete: need to uncomment a line in get_ssp function too
+#def bin_ages_fsps(args, ages, spec):
+#    sfh_class = getattr(sfh, args.sfh)()
+#    sel = ages >= 6.
+#    ages, spec = (ages[sel], spec[:, sel])
+#    weight = np.diff(np.hstack([0., 10**ages]))
+#    agebin = np.hstack([0., sfh_class.ages])
+#    nspec = np.zeros((spec.shape[0], len(sfh_class.ages)))
+#    for i in np.arange(len(sfh_class.ages)):
+#        sel = np.where((ages >= agebin[i]) * (ages < agebin[i+1]))[0]
+#        nspec[:, i] = np.dot(spec[:, sel], weight[sel]) / weight[sel].sum()
+#        print('%s\n%s\n%s\n\n' % (i, sel, weight[sel]))
+#    return 10**(np.array(sfh_class.ages)-9.), nspec
+
 
 def bin_ages_fsps(args, ages, spec):
     ''' FILL IN
@@ -76,7 +96,11 @@ def bin_ages_fsps(args, ages, spec):
     sfh_ages_Gyr = 10.**(np.array(sfh_class.ages)-9.)
 ## WPBWPB delete
 #    print('these are sfh_ages_Gyr:\n%s' % sfh_ages_Gyr)
-    agebin_list = [10.**(args.t_birth-9.), sfh_ages_Gyr]
+    if args.t_birth:
+        agebin_list = [10.**(args.t_birth-9.), sfh_ages_Gyr]
+    else:
+        agebin_list = list(sfh_ages_Gyr)
+
     # Add any SSPs older than last SFH age grid point
     if max(ages) > max(sfh_ages_Gyr):
         agebin_list.append( max(ages) )
@@ -85,6 +109,8 @@ def bin_ages_fsps(args, ages, spec):
     for i in np.arange(nspec.shape[1]):
         sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
         nspec[:, i] = np.dot(spec[:, sel], weight[sel]) / weight[sel].sum()
+## WPBWPB delete
+#        print('%s\n%s\n%s\n\n' % (i, sel,weight[sel]))
     return agebin[1:], nspec
 
 
@@ -192,7 +218,8 @@ def read_fsps(args, metallicity):
     spec = np.array(spec).swapaxes(0, 1) * solar_microjansky
     ages, masses = (np.array(ages), np.array(masses))
     # Total mass including remnants, so set to 1.
-    sel = (ages <= 9.5) * (ages >= 6.)
+    sel = (ages <= args.max_ssp_age) * (ages >= 6.)
+    print('The max age in the SSP grid is %s' % (max(10**(ages[sel]-9))))
     return 10**(ages[sel]-9), np.ones(ages[sel].shape), wave, spec[:, sel]
 
 def get_nebular_emission(ages, wave, spec, logU, metallicity,
@@ -427,10 +454,6 @@ def read_ssp(args):
 WPBWPB: need to determine units of all outputs
 WPBWPB: operate under assumption that spec, linespec are in same units
     '''
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    plt.ioff()
 
 ## WPBWPB: m list unused
 #    s, ls, m = ([], [], [])
@@ -454,13 +477,15 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 # WPBWPB add comment
         if args.sfh == 'empirical' or args.sfh == 'empirical_direct':
             ages0 = ages.copy()
+## WPBWPB delete: useful if comparing to old "bin ages" function
+#            ages0 = np.log10(ages0)+9.
             ages, spec = bin_ages_fsps(args, ages0, spec)
             ages9, linespec = bin_ages_fsps(args, ages0, linespec)
         masses = np.ones(ages.shape)
         # do not smooth the emission line grid
         wave0 = wave.copy()
         if args.fit_dust_em:
-            wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=200e4)
+            wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=350e4)
         else:
             wave, spec = get_coarser_wavelength_fsps(wave0, spec)
 ## WPBWPB delete -- appears unused

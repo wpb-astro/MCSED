@@ -10,3 +10,6 @@ output/
 *.png
 #Ignore modified versions or whatever they are
 *~
+*.pyc
+*.o
+*.pptx
