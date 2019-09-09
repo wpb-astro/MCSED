@@ -23,9 +23,9 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use("Agg")
+#import matplotlib.pyplot as plt
 import corner
 import time
 # WPBWPB delete astrpy table
@@ -37,8 +37,8 @@ import numpy as np
 
 
 
-#import matplotlib.pyplot as plt
-#plt.ioff()
+import matplotlib.pyplot as plt
+plt.ioff()
 
 
 
@@ -318,7 +318,10 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
 #                print('self.SSP is not None!')
                 return self.SSP, self.lineSSP
         Z = np.log10(self.ssp_met)
-        z = self.ssp_class.met + np.log10(0.019)
+        Zsolar = 0.019
+        z = self.ssp_class.met + np.log10(Zsolar)
+        print('this is self.ssp_class.fix_met: %s' % self.ssp_class.fix_met)
+        print('this is self.ssp_class.met: %s' % self.ssp_class.met)
         X = Z - z
         wei = np.exp(-(X)**2 / (2. * 0.15**2))
         wei /= wei.sum()

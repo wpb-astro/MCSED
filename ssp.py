@@ -7,17 +7,17 @@ Single Stellar Population module for loading models
 """
 import sfh
 import sys
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use("Agg")
+#import matplotlib.pyplot as plt
 import numpy as np
 import os.path as op
 import scipy.interpolate as scint
 from astropy.convolution import Gaussian1DKernel, convolve
 
 
-#import matplotlib.pyplot as plt
-#plt.ioff()
+import matplotlib.pyplot as plt
+plt.ioff()
 
 
 def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
@@ -219,7 +219,8 @@ def read_fsps(args, metallicity):
     ages, masses = (np.array(ages), np.array(masses))
     # Total mass including remnants, so set to 1.
     sel = (ages <= args.max_ssp_age) * (ages >= 6.)
-    print('The max age in the SSP grid is %s' % (max(10**(ages[sel]-9))))
+## WPBWPB delete
+#    print('The max age in the SSP grid is %s' % (max(10**(ages[sel]-9))))
     return 10**(ages[sel]-9), np.ones(ages[sel].shape), wave, spec[:, sel]
 
 def get_nebular_emission(ages, wave, spec, logU, metallicity,

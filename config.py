@@ -85,6 +85,8 @@ metallicity_mass_relationship = False
 # else, must be float: fixed metallicity of SSP models
 # if True, metallicity is fixed at 0.0077 (38.5% solar)
 metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
+#Zsolar = 0.019 # solar metallicity
+# WPBWPB clarify this description
 
 # Output files
 # refer to XXXXX for description of each file
