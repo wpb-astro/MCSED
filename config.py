@@ -86,20 +86,23 @@ metallicity_mass_relationship = False
 # if True, metallicity is fixed at 0.0077 (38.5% solar)
 metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
 
+assume_energy_balance = False #If true, use energy balance between dust attenuation and emission to normalize dust IR spectrum
+# If false, dust IR spectrum normalization is a free parameter
+
 # Output files
 # refer to XXXXX for description of each file
 #   parameters: fitted parameters for each object
 #   settings: user-defined options for the run
 # 'image format' is the file type extension of the figures
 #    Supported formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
-output_dict = {'parameters'    : False,
-               'settings'      : False, 
-               'fitposterior'  : False,
-               'bestfitspec'   : False,
-               'fluxdensity'   : False,
-               'lineflux'      : False,
+output_dict = {'parameters'    : True,
+               'settings'      : True, 
+               'fitposterior'  : True,
+               'bestfitspec'   : True,
+               'fluxdensity'   : True,
+               'lineflux'      : True,
                'triangle plot' : True,
-               'sample plot'   : False,
+               'sample plot'   : True,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
 
@@ -108,7 +111,7 @@ param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
 # WPBWPB clarify
-reserved_cores = 1 # integer
+reserved_cores = 0 # integer
 
 
 # Dictionaries

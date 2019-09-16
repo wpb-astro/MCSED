@@ -14,7 +14,7 @@ class DL07:
     ''' Prescription for dust emission comes from Draine & Li (2007) '''
     def __init__(self, umin=2.0, gamma=0.05, qpah=2.5, mdust=7.0, umin_lims=[0.1, 25.0],
                  gamma_lims=[0, 1.], qpah_lims=[0.47, 4.58], mdust_lims=[4.5,10.0],umin_delta=0.4,
-                 gamma_delta=0.02, qpah_delta=1.0, mdust_delta=0.3, fixed=True):
+                 gamma_delta=0.02, qpah_delta=1.0, mdust_delta=0.3, fixed=True, assume_energy_balance=False):
         ''' Initialize Class
 
         Parameters
@@ -27,6 +27,9 @@ class DL07:
             Percentage of PAH emission
         mdust: float
             Log10(M_dust/M_sun), where M_dust is the total mass of dust in the galaxy
+        assume_energy_balance: 
+            If true, use energy balance between dust attenuation and emission to normalize dust IR spectrum
+            If false, dust IR spectrum normalization is a free parameter
         '''
         self.umin = umin
         self.gamma = gamma
@@ -41,6 +44,7 @@ class DL07:
         self.qpah_delta = qpah_delta
         self.mdust_delta = mdust_delta
         self.fixed = fixed
+        self.assume_energy_balance = assume_energy_balance
         self.get_dust_emission_matrix()
 
     def get_dust_emission_matrix(self):
@@ -86,35 +90,50 @@ class DL07:
         if self.fixed:
             return 0
         else:
-            return 4 
+            if self.assume_energy_balance:
+                return 3
+            else:
+                return 4 
 
     def get_params(self):
         ''' Return current parameters '''
         if self.fixed:
             return []
         else:
-            return [self.umin, self.gamma, self.qpah, self.mdust]
+            if self.assume_energy_balance:
+                return [self.umin, self.gamma, self.qpah]
+            else:
+                return [self.umin, self.gamma, self.qpah, self.mdust]
 
     def get_param_lims(self):
         ''' Return current parameter limits '''
         if self.fixed:
             return []
         else:
-            return [self.umin_lims, self.gamma_lims, self.qpah_lims, self.mdust_lims]
+            if self.assume_energy_balance:
+                return [self.umin_lims, self.gamma_lims, self.qpah_lims]
+            else:
+                return [self.umin_lims, self.gamma_lims, self.qpah_lims, self.mdust_lims]
 
     def get_param_deltas(self):
         ''' Return current parameter deltas '''
         if self.fixed:
             return []
         else:
-            return [self.umin_delta, self.gamma_delta, self.qpah_delta, self.mdust_delta]
+            if self.assume_energy_balance:
+                return [self.umin_delta, self.gamma_delta, self.qpah_delta]
+            else:
+                return [self.umin_delta, self.gamma_delta, self.qpah_delta, self.mdust_delta]
 
     def get_names(self):
         ''' Return names of each parameter '''
         if self.fixed:
             return []
         else:
-            return ['Umin', '$\gamma$', '$q_{pah}$', '$M_{dust}$']
+            if self.assume_energy_balance:
+                return ['Umin', '$\gamma$', '$q_{pah}$']
+            else:
+                return ['Umin', '$\gamma$', '$q_{pah}$', '$M_{dust}$']
 
     def prior(self):
         ''' Uniform prior based on boundaries '''
@@ -126,7 +145,10 @@ class DL07:
                      (self.qpah < self.qpah_lims[1]))
         mdust_flag = ((self.mdust > self.mdust_lims[0]) *
                      (self.mdust < self.mdust_lims[1]))
-        return umin_flag * gamma_flag * qpah_flag * mdust_flag
+        if self.assume_energy_balance:
+            return umin_flag * gamma_flag * qpah_flag
+        else:
+            return umin_flag * gamma_flag * qpah_flag * mdust_flag
 
     def set_parameters_from_list(self, input_list, start_value):
         ''' Set parameters from a list and a start_value
@@ -143,7 +165,8 @@ class DL07:
             self.umin = input_list[start_value]
             self.gamma = input_list[start_value+1]
             self.qpah = input_list[start_value+2]
-            self.mdust = input_list[start_value+3]
+            if not self.assume_energy_balance:
+                self.mdust = input_list[start_value+3]
 
     def plot(self, ax, wave, color=[0/255., 175/255., 202/255.], alpha=0.2):
         ''' Plot Dust Law for given set of parameters '''
@@ -191,8 +214,9 @@ class DL07:
         DustE = (self.interpumin(self.qpah, self.umin) * (1. - self.gamma) +
                  self.interpumax(self.qpah, self.umin) * self.gamma) #Units Jy*cm^2/sr/H (hydrogen atom)--luminosity/solid angle/mass
 
-        DustE *= 1.249e24 #Converting from Jy*cm^2/sr/H to units uJy/M_sun (flux/mass unit) at 10 pc assuming isotropic emission
-        DustE *= np.interp(self.qpah,self.qpaharray,self.htodarray) * 10**self.mdust #Multiplying by total hydrogen mass to get to flux in uJy at 10 pc
+        DustE *= 1.249e24 * np.interp(self.qpah,self.qpaharray,self.htodarray) #Converting from Jy*cm^2/sr/H to units uJy/M_sun (flux/mass unit) at 10 pc assuming isotropic emission and then multiplying by Hydrogen to dust mass ratio so that the factor to get quantity so that it just needs to be multiplied by dust mass to get the proper normalization
+        if not self.assume_energy_balance:
+            DustE *= 10**self.mdust #Multiplying by total dust mass to get to flux in uJy at 10 pc
 
         return np.interp(wave, self.wave, DustE)
 

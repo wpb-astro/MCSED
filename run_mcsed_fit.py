@@ -169,6 +169,10 @@ def parse_args(argv=None):
                         help='''Max age taken from files for any given simple stellar population''',
                         type=float, default=9.5)
 
+    parser.add_argument("-aeb", "--assume_energy_balance",
+                        help='''If true, normalization of dust IR emission based on attenuation amount''',
+                        action="count", default=0)
+
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
     args.log = setup_logging()
@@ -193,7 +197,7 @@ def parse_args(argv=None):
                   'emline_list_dict', 'emline_factor', 'use_input_data',
                   'metallicity_mass_relationship', 'metallicity_dict',
                   'filt_dict', 'catalog_filter_dict', 'catalog_maglim_dict', 
-                  'output_dict', 'param_percentiles', 'reserved_cores']
+                  'output_dict', 'param_percentiles', 'reserved_cores', 'assume_energy_balance']
     for arg_i in arg_inputs:
         try:
             if getattr(args, arg_i) in [None, 0]:
@@ -886,7 +890,21 @@ def main(argv=None, ssp_info=None):
     if not args.fit_dust_em:
         mcsed_model.dust_em_class.fixed = True
     else:
-        mcsed_model.dust_em_class.fixed = False
+        if args.test:
+            mcsed_model.dust_em_class.fixed = True
+            print("Since you are in test mode, we are setting the Boolean variable fit_dust_em to False")
+        else:
+            mcsed_model.dust_em_class.fixed = False
+
+    # Specify whether energy balance is assumed
+    if args.assume_energy_balance:
+        if args.fit_dust_em:
+            mcsed_model.dust_em_class.assume_energy_balance = True
+        else:
+            mcsed_model.dust_em_class.assume_energy_balance = False
+            print("Since you are not fitting dust emission, the dust emission spectrum will not be fit, so we are setting the Boolean variable assume_energy_balance to False")
+    else:
+        mcsed_model.dust_em_class.assume_energy_balance = False
 
     # Build names for parameters and labels for table
     names = mcsed_model.get_param_names()
@@ -895,8 +913,10 @@ def main(argv=None, ssp_info=None):
 ## WPBWPB: need to clean this up eventually (don't hard code numderpar)
     names.append('SFR10')
     names.append('SFR100')
-    if args.fit_dust_em and not args.test:
+    if not mcsed_model.dust_em_class.fixed:
         names.append('fPDR')
+    if mcsed_model.dust_em_class.assume_energy_balance:
+        names.append("Mdust_EB")
     names.append('t10')
     names.append('t50')
     names.append('t90')
@@ -1064,8 +1084,10 @@ def main(argv=None, ssp_info=None):
             names.append('Log Mass')
             names.append('SFR10')
             names.append('SFR100')
-            if args.fit_dust_em and not args.test:
+            if not mcsed_model.dust_em_class.fixed:
                 names.append('fPDR')
+            if mcsed_model.dust_em_class.assume_energy_balance:
+                names.append('Mdust_EB')
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: 
                 T = Table(mcsed_model.samples, names=names)
