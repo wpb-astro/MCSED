@@ -229,7 +229,6 @@ def parse_args(argv=None):
                 args.metallicity = True
     except ValueError:
         args.metallicity = str2bool(str(args.metallicity),args.log)
-        print((args.metallicity, type(args.metallicity)))
         if args.metallicity:
             print("Fixing metallicity at z = 0.0077")
             args.metallicity = 0.0077
@@ -881,7 +880,6 @@ def main(argv=None, ssp_info=None):
     if args.metallicity:
         mcsed_model.ssp_class.fix_met = True
         mcsed_model.ssp_class.met = np.log10(args.metallicity/Zsolar)
-        print('This is mcsed_model.ssp_class.met (within run_mcsed_fit): %s' % mcsed_model.ssp_class.met)
     else:
         mcsed_model.ssp_class.fix_met = False
 
@@ -1033,13 +1031,13 @@ def main(argv=None, ssp_info=None):
             mcsed_model.fit_model()
 
 # WPB delete
-            print("I've fit the model")
+#            print("I've fit the model")
 
             # Set attributes: median SED and filter fluxes from random sample
             # of fits satisfying a chi2 cut
             mcsed_model.set_median_fit()
 ##WPBWPB delete
-            print("I've set the median fit.")
+#            print("I've set the median fit.")
 
 ## WPBWPB delete
 #            ### useful for saving SSP grid

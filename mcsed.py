@@ -40,6 +40,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ioff()
 
+import seaborn as sns
+sns.set_context("talk") # options include: talk, poster, paper
+sns.set_style("ticks")
+sns.set_style({"xtick.direction": "in","ytick.direction": "in",
+               "xtick.top":True, "ytick.right":True,
+               "xtick.major.size":12, "xtick.minor.size":4,
+               "ytick.major.size":12, "ytick.minor.size":4,
+               })
+
+
 
 
 #WPBWPB re organize the arguments (aesthetic purposes)
@@ -320,8 +330,6 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         Z = np.log10(self.ssp_met)
         Zsolar = 0.019
         z = self.ssp_class.met + np.log10(Zsolar)
-        print('this is self.ssp_class.fix_met: %s' % self.ssp_class.fix_met)
-        print('this is self.ssp_class.met: %s' % self.ssp_class.met)
         X = Z - z
         wei = np.exp(-(X)**2 / (2. * 0.15**2))
         wei /= wei.sum()
@@ -927,7 +935,7 @@ WPBWPB units??
         ax2.set_xticks(xtick_pos)
         ax2.set_xticklabels(xtick_lbl)
         ax2.set_xlim([1000, 20000])
-        ax2.set_ylim([0, 8])
+        ax2.set_ylim([0, 4])
         ax2.set_ylabel(r'Dust Attenuation (mag)')
         ax2.set_xlabel(r'Wavelength $\AA$')
 
@@ -993,17 +1001,18 @@ WPBWPB units??
                      fillstyle='none', markersize=15,
                      color=[0.510, 0.373, 0.529], zorder=10)
         
-        sel = np.where((self.fluxwv > 3000.) * (self.fluxwv < 50000.))[0]
-        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 5)
-        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 95)
+        sel = np.where((self.fluxwv > ax3.get_xlim()[0]) * (self.fluxwv < ax3.get_xlim()[1]))[0]
+        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 0)
+        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 100)
         ax3ran = ax3max - ax3min
         if not self.dust_em_class.fixed: 
             ax3max = max(max(self.data_fnu),max(self.medianspec))
             ax3.set_ylim([ax3min*0.5, ax3max + 0.4 * ax3ran])
             ax3.set_xlim(right=max(max(self.fluxwv),max(self.wave)))
         else:
-            ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])
-        ax3.text(4200, ax3max + 0.2 * ax3ran, r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
+            ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.6 * ax3ran])
+        ax3.text(4200, ax3max, # + 0.2 * ax3ran, 
+                 r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
 
     def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
         ''' Make a triangle corner plot for samples from fit
@@ -1042,35 +1051,51 @@ WPBWPB units??
         else: 
             numderpar = 4
 # WPBWPB delete:
-        print("I'm starting to construct the triangle plot")
-        start = time.time()
-        fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
+#        print("I'm starting to construct the triangle plot")
+#        start = time.time()
+# WPBWPB: indarr --> o:-numderpar is a workaround - need to integrate Gautam's mods
+        indarr = np.arange(o,len(nsamples[0])-numderpar)
+        fsgrad = 11+int(round(0.75*len(indarr)))
+#        fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
+        fig = corner.corner(nsamples[:, indarr], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
-                            label_kwargs={"fontsize": 18}, show_titles=True,
-                            title_kwargs={"fontsize": 16},
+                            show_titles=True,
+#                            label_kwargs={"fontsize": 18},
+#                            title_kwargs={"fontsize": 14},
+                            label_kwargs={"fontsize": fsgrad},
+                            title_kwargs={"fontsize": fsgrad-2},
+                            hist_kwargs={"color":"k"},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
-        end = time.time()
-        print('made the corner. it took me %s s' % (end - start))
+# WPBWPB delete:
+#        end = time.time()
+#        print('made the corner. it took me %s s' % (end - start))
         # Adding subplots
+        w = fig.get_figwidth()
+        fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         ax1 = fig.add_subplot(3, 1, 1)
-        ax1.set_position([0.7, 0.60, 0.25, 0.15])
+#        ax1.set_position([0.7, 0.60, 0.25, 0.15])
+        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 
+                          0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
         ax2 = fig.add_subplot(3, 1, 2)
-        ax2.set_position([0.7, 0.40, 0.25, 0.15])
+#        ax2.set_position([0.7, 0.40, 0.25, 0.15])
+        ax2.set_position([0.7+0.008*(15-len(indarr)), 0.39, 0.28-0.008*(15-len(indarr)), 0.15])
         ax3 = fig.add_subplot(3, 1, 3)
-        ax3.set_position([0.38, 0.80, 0.57, 0.15])
+#        ax3.set_position([0.38, 0.80, 0.57, 0.15])
+        ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 
+                          0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
         self.add_sfr_plot(ax1)
 # WPBWPB delete:
-        print("I've added the sfr plot")
+#        print("I've added the sfr plot")
         self.add_dust_plot(ax2)
 # WPBWPB delete:
-        print("I've added the dust plot")
+#        print("I've added the dust plot")
         self.add_spec_plot(ax3)
 # WPBWPB delete:
-        print("I've added the spec plot")
+#        print("I've added the spec plot")
         self.add_subplots(ax1, ax2, ax3, nsamples)
 # WPBWPB delete:
-        print("I've added the subplots")
+#        print("I've added the subplots")
 # WPB edit: printing HBeta line flux on the figure
 # used to have self.hbflux = self.measure_hb() --> changed
 #        if self.sfh_class.hblim is not None:
@@ -1079,6 +1104,11 @@ WPBWPB units??
 #        fig.text(.5, .70, r'H$\beta$ model: %0.2f' % (self.hbmedian * 1e17),
 #                 fontsize=18)
         # fig.set_size_inches(15.0, 15.0)
+
+        for ax_loc in fig.axes:
+            ax_loc.minorticks_on() 
+
+
         fig.savefig("%s.%s" % (outname, imgtype), dpi=150)
         plt.close(fig)
 
@@ -1109,6 +1139,10 @@ WPBWPB units??
                 a.plot([0, self.chain.shape[1]], [truths[i], truths[i]], 'r--')
             if i == len(ax)-1:
                 a.set_xlabel("Step")
+
+        for ax_loc in fig.axes:
+            ax_loc.minorticks_on()
+
         fig.savefig("%s.%s" % (outname, imgtype))
         plt.close(fig)
 
@@ -1140,8 +1174,9 @@ WPBWPB units??
 
         for k2 in range(numsamples):
             derpar[k2] = self.get_t_params(params[:,k2],mass[k2])
-            if k2%(numsamples/10)==0:
-                print(k2,params[:,k2],mass[k2],derpar[k2])
+# WPBWPB delete:
+#            if k2%(numsamples/10)==0:
+#                print(k2,params[:,k2],mass[k2],derpar[k2])
 
         n = len(percentiles)
         for i, per in enumerate(percentiles):
