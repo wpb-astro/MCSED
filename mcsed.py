@@ -919,14 +919,16 @@ WPBWPB units??
     def add_sfr_plot(self, ax1):
         ax1.set_xscale('log')
         ax1.set_yscale('log')
-        ax1.set_ylabel(r'SFR $M_{\odot} yr^{-1}$')
-        ax1.set_xlabel('Lookback Time (Gyr)')
+        ax1.set_ylabel(r'SFR [$M_{\odot} yr^{-1}$]')
+        ax1.set_xlabel('Lookback Time') 
         ax1.set_xticks([1e-3, 1e-2, 1e-1, 1])
         ax1.set_xticklabels(['1 Myr', '10 Myr', '100 Myr', '1 Gyr'])
-        ax1.set_yticks([1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3])
-        ax1.set_yticklabels(['0.001', '0.01', '0.1', '1', '10', '100', '1000'])
+        ax1.set_yticks([1e-2, 1e-1, 1, 1e1, 1e2, 1e3])
+        ax1.set_yticklabels(['0.01', '0.1', '1', '10', '100', '1000'])
+#        ax1.set_yticks([1e-2, 1, 1e1, 1e3])
+#        ax1.set_yticklabels(['0.01', '1', '10', '1000'])
         ax1.set_xlim([10**-3, 10**self.sfh_class.age_lims[1]])
-        ax1.set_ylim([1e-3, 1e3])
+        ax1.set_ylim([10**-2.3, 1e3])
 
     def add_dust_plot(self, ax2):
         ax2.set_xscale('log')
@@ -934,10 +936,11 @@ WPBWPB units??
         xtick_lbl = ['1000', '3000', '10000']
         ax2.set_xticks(xtick_pos)
         ax2.set_xticklabels(xtick_lbl)
-        ax2.set_xlim([1000, 20000])
+        ax2.set_xlim([1000, 15000])
         ax2.set_ylim([0, 4])
-        ax2.set_ylabel(r'Dust Attenuation (mag)')
-        ax2.set_xlabel(r'Wavelength $\AA$')
+#        ax2.set_ylabel(r'Dust Attenuation (mag)')
+        ax2.set_ylabel(r'$A_\lambda$ [mag]')
+        ax2.set_xlabel(r'Wavelength [$\AA$]')
 
     def add_spec_plot(self, ax3):
 # WPBWPB: adjust wavelength range, depending on whether dust emission is fit
@@ -954,8 +957,8 @@ WPBWPB units??
         ax3.set_xticks(xtick_pos)
         ax3.set_xticklabels(xtick_lbl)
         ax3.set_xlim(xlims)
-        ax3.set_xlabel(r'Wavelength $\mu m$')
-        ax3.set_ylabel(r'$F_{\nu}$ ($\mu$Jy)')
+        ax3.set_xlabel(r'Wavelength [$\mu$m]')
+        ax3.set_ylabel(r'$F_{\nu}$ [$\mu$Jy]')
 
     def add_subplots(self, ax1, ax2, ax3, nsamples, rndsamples=200):
         ''' Add Subplots to Triangle plot below '''
@@ -1075,11 +1078,11 @@ WPBWPB units??
         fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         ax1 = fig.add_subplot(3, 1, 1)
 #        ax1.set_position([0.7, 0.60, 0.25, 0.15])
-        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 
-                          0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
+        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.62+0.001*(len(indarr)-5), 
+                          0.28+0.02*(len(indarr)-5), 0.13+0.001*(len(indarr)-5)])
         ax2 = fig.add_subplot(3, 1, 2)
 #        ax2.set_position([0.7, 0.40, 0.25, 0.15])
-        ax2.set_position([0.7+0.008*(15-len(indarr)), 0.39, 0.28-0.008*(15-len(indarr)), 0.15])
+        ax2.set_position([0.71+0.008*(15-len(indarr)), 0.41, 0.27-0.008*(15-len(indarr)), 0.14])
         ax3 = fig.add_subplot(3, 1, 3)
 #        ax3.set_position([0.38, 0.80, 0.57, 0.15])
         ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 
@@ -1107,7 +1110,7 @@ WPBWPB units??
 
         for ax_loc in fig.axes:
             ax_loc.minorticks_on() 
-
+            ax_loc.set_axisbelow('False')
 
         fig.savefig("%s.%s" % (outname, imgtype), dpi=150)
         plt.close(fig)
