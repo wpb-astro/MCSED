@@ -929,6 +929,7 @@ WPBWPB units??
 #        ax1.set_yticklabels(['0.01', '1', '10', '1000'])
         ax1.set_xlim([10**-3, 10**self.sfh_class.age_lims[1]])
         ax1.set_ylim([10**-2.3, 1e3])
+        ax1.minorticks_on()
 
     def add_dust_plot(self, ax2):
         ax2.set_xscale('log')
@@ -1068,7 +1069,7 @@ WPBWPB units??
 #                            title_kwargs={"fontsize": 14},
                             label_kwargs={"fontsize": fsgrad},
                             title_kwargs={"fontsize": fsgrad-2},
-                            hist_kwargs={"color":"k"},
+                            hist_kwargs={"color":"grey","lw":1.5},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
 # WPBWPB delete:
 #        end = time.time()
