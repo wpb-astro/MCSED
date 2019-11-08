@@ -1055,21 +1055,24 @@ WPBWPB units??
             indarr = np.concatenate((np.arange(o,len(nsamples[0])-numderpar),np.array([-2]))) #Want to include dust mass and stellar mass as well as all free parameters in triangle plot
         else:
             indarr = np.arange(o,len(nsamples[0])-numderpar) #Want to include stellar mass and all free parameters (this time including dust mass) in triangle plot
+        fsgrad = 11+int(round(0.75*len(indarr)))
         fig = corner.corner(nsamples[:, indarr], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
-                            label_kwargs={"fontsize": 18}, show_titles=True,
-                            title_kwargs={"fontsize": 16},
+                            label_kwargs={"fontsize": fsgrad}, show_titles=True,
+                            title_kwargs={"fontsize": fsgrad-2},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
+        w = fig.get_figwidth()
+        fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         end = time.time()
         print('made the corner. it took me %s s' % (end - start))
         # Adding subplots
         ax1 = fig.add_subplot(3, 1, 1)
-        ax1.set_position([0.7, 0.60, 0.25, 0.15])
+        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
         ax2 = fig.add_subplot(3, 1, 2)
-        ax2.set_position([0.7, 0.40, 0.25, 0.15])
+        ax2.set_position([0.7+0.008*(15-len(indarr)), 0.39, 0.28-0.008*(15-len(indarr)), 0.15])
         ax3 = fig.add_subplot(3, 1, 3)
-        ax3.set_position([0.38, 0.80, 0.57, 0.15])
+        ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
         self.add_sfr_plot(ax1)
 # WPBWPB delete:
         print("I've added the sfr plot")

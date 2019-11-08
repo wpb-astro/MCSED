@@ -97,12 +97,12 @@ assume_energy_balance = False #If true, use energy balance between dust attenuat
 #    Supported formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
 output_dict = {'parameters'    : True,
                'settings'      : True, 
-               'fitposterior'  : True,
-               'bestfitspec'   : True,
-               'fluxdensity'   : True,
-               'lineflux'      : True,
+               'fitposterior'  : False,
+               'bestfitspec'   : False,
+               'fluxdensity'   : False,
+               'lineflux'      : False,
                'triangle plot' : True,
-               'sample plot'   : True,
+               'sample plot'   : False,
                'image format'  : 'png'}
 # WPBWPB: combine photfluxes into single file, also add emline flux comparison
 
