@@ -153,8 +153,8 @@ filt_dict = {0: 'SubB.res', 1: 'SubIB427.res', 2: 'SubIB445.res',
              70: 'newfirm_H1.res', 71: 'newfirm_H2.res', 72: 'newfirm_Ks.res',
              73: 'wircam_H.res', 74: 'wircam_J.res', 75: 'wircam_Ks.res',
              76: 'MIPS24um.res', 77: 'MIPS70um.res', 78: 'Herschel_PACS_Blue.res',
-             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res', 81: 'herschel-spire-250um.res',
-             82: 'herschel-spire-350um.res'}
+             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res', 81: 'herschel_spire_250um.res',
+             82: 'herschel_spire_350um.res'}
 
 # Catalog column name of filter and dictionary value to the filter file
 catalog_filter_dict, catalog_maglim_dict = {}, {}
