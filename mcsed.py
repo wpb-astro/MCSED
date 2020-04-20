@@ -133,6 +133,7 @@ WPBWPB units + are dimensions correct??
         nsteps : int
             The number of steps each walker will make when fitting a model
         true_fnu : WPBWPB FILL IN
+
 WPBWPB: describe self.t_birth, set using args and units of Gyr
         '''
         # Initialize all argument inputs
@@ -505,31 +506,19 @@ WPBWPB units??
 #        print(Alam_birth[ np.searchsorted(self.wave, self.emlinewave) ])
 #        print(Alam_emline)
 
-
-# WPB: exclude dust emission component altogether? Does it make a difference?
-        # Change in bolometric Luminosity
-        # L_bol = (np.dot(self.dnu, spec_dustfree) -
-        #          np.dot(self.dnu, spec_dustobscured))
-        #print "Max(spec_dustfree) = %.3e"%(max(spec_dustfree))
-        #print "Max(spec_dustobscured) = %.3e"%(max(spec_dustobscured))
-        #print "L_bol = %.3e"%(L_bol)
-        # if not self.dust_em_class.fixed: 
-        #     umin,gamma,qpah = self.dust_em_class.get_params()
-        # else:
-        #     umin,gamma,qpah = 2.0, 0.05, 2.5 #Default values
-        # umax=1.0e6
-        # P0 = 135.0 #Power absorbed per unit dust mass in radiation field U=1; units L_sun/M_sun
-        # Lbolfac = 2.488e-24 #Convert from uJy*Hz at 10 pc to L_sun
-        # uavg = (1.-gamma)*umin + gamma*umin*np.log(umax/umin) / (1.-umin/umax)
-        # mdust = L_bol*Lbolfac/uavg/P0
-        # if L_bol<0 or uavg<0 or ~np.isfinite(L_bol) or ~np.isfinite(uavg):
-        #     print "Lbol = %.3e; <U> = %.3f; M_dust = %.3e"%(L_bol*Lbolfac,uavg,mdust)
-
         # Add dust emission
-        if min(spec_dustobscured[self.wave>5.0e4])<0.0: 
+        if min(spec_dustobscured[self.wave>5.0e4])<0.0: #Check to see that we don't have nonsensical results
             print("Before adding dust: min(spec_dustobscured[wave>5.0 um]) =",
                   min(spec_dustobscured[self.wave>5.0e4]))
-        spec_dustobscured += self.dust_em_class.evaluate(self.wave)
+        if self.dust_em_class.assume_energy_balance:
+            L_bol = (np.dot(self.dnu, spec_dustfree) - np.dot(self.dnu, spec_dustobscured)) #Bolometric luminosity of dust attenuation (for energy balance)
+            dust_em = self.dust_em_class.evaluate(self.wave)
+            L_dust = np.dot(self.dnu,dust_em) #Bolometric luminosity of dust emission (but not yet multiplied by dust mass)
+            # print("Lbol: %.3e;   Ldust: %.3e"%(L_bol,L_dust)) 
+            mdust_eb = L_bol/L_dust #We want total luminosities to be same for absorption (attenuation) and emission; linear units for mdust_eb for now
+            spec_dustobscured += mdust_eb * dust_em
+        else:
+            spec_dustobscured += self.dust_em_class.evaluate(self.wave)
         #print("After adding dust: min(spec_dustobscured[wave>5.0 um]) =",min(spec_dustobscured[self.wave>5.0e4]))
 
         # Redshift to observed frame
@@ -552,11 +541,10 @@ WPBWPB units??
 #        print( linefluxCSPdict )
 
         # Correct spectra from 10pc to redshift of the source
-        return csp / self.Dl**2, mass
-        # if not DMreturn: 
-        #     return csp / self.Dl**2, mass
-        # else:
-        #     return csp/self.Dl**2, mass, mdust, dustmass*dusttohratio
+        if self.dust_em_class.assume_energy_balance:
+            return csp / self.Dl**2, mass, mdust_eb
+        else:
+            return csp / self.Dl**2, mass
 
     def lnprior(self):
         ''' Simple, uniform prior for input variables
@@ -590,7 +578,11 @@ WPBWPB units??
         #     self.spectrum, mass = self.build_csp(DMreturn=False)
         #     mdust = None
         #     mdust2 = None
-        self.spectrum, mass = self.build_csp()
+        if self.dust_em_class.assume_energy_balance:
+            self.spectrum, mass, mdust_eb = self.build_csp()
+        else:
+            self.spectrum, mass = self.build_csp()
+            mdust_eb = None
 
         # compare input and model emission line fluxes
         emline_term = 0.0
@@ -621,7 +613,7 @@ WPBWPB units??
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
         sfr10,sfr100,fpdr = self.get_derived_params()
         #return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust,mdust2)
-        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr)
+        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust_eb)
 
     def lnprob(self, theta):
         ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
@@ -629,7 +621,7 @@ WPBWPB units??
 
         Returns
         -------
-        log prior + log likelihood, [mass,sfr10,sfr100,fpdr]: float,float,float,float,float
+        log prior + log likelihood, [mass,sfr10,sfr100,fpdr,mdust_eb]: float,float,float,float,float,float
             The log probability is just the sum of the logs of the prior and
             likelihood.  The mass comes from the building of the composite
             stellar population. The other derived parameters are calculated in get_derived_params()
@@ -638,16 +630,20 @@ WPBWPB units??
         lp = self.lnprior()
         if np.isfinite(lp):
             #lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
-            lnl,mass,sfr10,sfr100,fpdr = self.lnlike()
+            lnl,mass,sfr10,sfr100,fpdr,mdust_eb = self.lnlike()
             if not self.dust_em_class.fixed:
-                #return lp + lnl, np.array([mass, sfr10, sfr100, fpdr, mdust, mdust2])
-                return lp + lnl, np.array([mass, sfr10, sfr100, fpdr])
+                if self.dust_em_class.assume_energy_balance:
+                    return lp + lnl, np.array([mass,sfr10,sfr100,fpdr,mdust_eb])
+                else:
+                    return lp + lnl, np.array([mass, sfr10, sfr100, fpdr])
             else:
                 return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
             if not self.dust_em_class.fixed:
-                #return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
-                return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf])
+                if self.dust_em_class.assume_energy_balance:
+                    return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+                else:
+                    return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf])
             else:
                 return -np.inf, np.array([-np.inf, -np.inf, -np.inf])
 
@@ -763,7 +759,10 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 4
+            if self.dust_em_class.assume_energy_balance:
+                numderpar = 5
+            else:
+                numderpar = 4
         new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
         new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
@@ -771,10 +770,9 @@ WPBWPB units??
             for j in xrange(len(sampler.blobs[0])):
                 for k in xrange(len(sampler.blobs[0][0])):
                     x = sampler.blobs[i][j][k]
-                    #if k==0 or k==4 or k==5: #Stellar mass or Dust mass--can't take log of negative numbers
-                    if k==0: #Stellar mass--can't take log of negative numbers; also, want reasonable values
+                    if k==0 or k==4: #Stellar mass or Dust mass--can't take log of negative numbers; also, want reasonable values
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
-                                               np.log10(x), -99.) #Stellar mass
+                                               np.log10(x), -99.) #Stellar mass and dust mass (energy balance version)
                     else: 
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
         new_chain[:, :, -1] = sampler.lnprobability
@@ -863,7 +861,10 @@ WPBWPB units??
         if self.dust_em_class.fixed:
             fpdr = None
         else:
-            umin,gamma,qpah,mdust = self.dust_em_class.get_params()
+            if self.dust_em_class.assume_energy_balance:
+                umin,gamma,qpah = self.dust_em_class.get_params()
+            else:
+                umin,gamma,qpah,mdust = self.dust_em_class.get_params()
             umax = 1.0e6
             fpdr = gamma*np.log(umax/100.) / ((1.-gamma)*(1.-umin/umax) + gamma*np.log(umax/umin))
 
@@ -902,7 +903,10 @@ WPBWPB units??
         for i in np.arange(rndsamples):
             ind = np.random.randint(0, nsamples.shape[0])
             self.set_class_parameters(nsamples[ind, :])
-            self.spectrum, mass = self.build_csp()
+            if self.dust_em_class.assume_energy_balance:
+                self.spectrum, mass, mdust_eb = self.build_csp()
+            else:
+                self.spectrum, mass = self.build_csp()
             fnu = self.get_filter_fluxdensities()
             sp.append(self.spectrum * 1.)
             fn.append(fnu * 1.)
@@ -913,7 +917,10 @@ WPBWPB units??
 
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
         ''' Make spectum plot for current model '''
-        self.spectrum, mass = self.build_csp()
+        if self.dust_em_class.assume_energy_balance:
+            self.spectrum, mass, mdust_eb = self.build_csp()
+        else:
+            self.spectrum, mass = self.build_csp()
         ax.plot(self.wave, self.spectrum, color=color, alpha=alpha)
 
     def add_sfr_plot(self, ax1):
@@ -1043,6 +1050,8 @@ WPBWPB units??
         o = 0  # self.sfh_class.nparams
         names = self.get_param_names()[o:]
         names.append('Log Mass')
+        if self.dust_em_class.assume_energy_balance:
+            names.append("Log Dust Mass")
         if self.input_params is not None:
             truths = self.input_params[o:]
         else:
@@ -1053,41 +1062,36 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 4
-# WPBWPB delete:
-#        print("I'm starting to construct the triangle plot")
-#        start = time.time()
-# WPBWPB: indarr --> o:-numderpar is a workaround - need to integrate Gautam's mods
-        indarr = np.arange(o,len(nsamples[0])-numderpar)
+            if self.dust_em_class.assume_energy_balance:
+                numderpar = 5
+            else:
+                numderpar = 4
+        start = time.time()
+        if self.dust_em_class.assume_energy_balance:
+            indarr = np.concatenate((np.arange(o,len(nsamples[0])-numderpar),np.array([-2]))) #Want to include dust mass and stellar mass as well as all free parameters in triangle plot
+        else:
+            indarr = np.arange(o,len(nsamples[0])-numderpar) #Want to include stellar mass and all free parameters (this time including dust mass) in triangle plot
         fsgrad = 11+int(round(0.75*len(indarr)))
-#        fig = corner.corner(nsamples[:, o:-numderpar], labels=names,
         fig = corner.corner(nsamples[:, indarr], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
-                            show_titles=True,
-#                            label_kwargs={"fontsize": 18},
-#                            title_kwargs={"fontsize": 14},
-                            label_kwargs={"fontsize": fsgrad},
+                            label_kwargs={"fontsize": fsgrad}, show_titles=True,
                             title_kwargs={"fontsize": fsgrad-2},
-                            hist_kwargs={"color":"grey","lw":1.5},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
-# WPBWPB delete:
-#        end = time.time()
-#        print('made the corner. it took me %s s' % (end - start))
+        w = fig.get_figwidth()
+        fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
+        end = time.time()
+        print('made the corner. it took me %s s' % (end - start))
+
         # Adding subplots
         w = fig.get_figwidth()
         fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         ax1 = fig.add_subplot(3, 1, 1)
-#        ax1.set_position([0.7, 0.60, 0.25, 0.15])
-        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.62+0.001*(len(indarr)-5), 
-                          0.28+0.02*(len(indarr)-5), 0.13+0.001*(len(indarr)-5)])
+        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
         ax2 = fig.add_subplot(3, 1, 2)
-#        ax2.set_position([0.7, 0.40, 0.25, 0.15])
-        ax2.set_position([0.71+0.008*(15-len(indarr)), 0.41, 0.27-0.008*(15-len(indarr)), 0.14])
+        ax2.set_position([0.7+0.008*(15-len(indarr)), 0.39, 0.28-0.008*(15-len(indarr)), 0.15])
         ax3 = fig.add_subplot(3, 1, 3)
-#        ax3.set_position([0.38, 0.80, 0.57, 0.15])
-        ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 
-                          0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
+        ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
         self.add_sfr_plot(ax1)
 # WPBWPB delete:
 #        print("I've added the sfr plot")
@@ -1115,6 +1119,8 @@ WPBWPB units??
 
         fig.savefig("%s.%s" % (outname, imgtype), dpi=150)
         plt.close(fig)
+        end = time.time()
+        print("Time taken to make triangle plot: %.3f s"%(end-start))
 
     def sample_plot(self, outname, imgtype='png'):
         ''' Make a sample plot
@@ -1156,7 +1162,10 @@ WPBWPB units??
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
-            numderpar = 4
+            if self.dust_em_class.assume_energy_balance:
+                numderpar = 5
+            else:
+                numderpar = 4
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]

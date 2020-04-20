@@ -219,8 +219,8 @@ def read_fsps(args, metallicity):
     ages, masses = (np.array(ages), np.array(masses))
     # Total mass including remnants, so set to 1.
     sel = (ages <= args.max_ssp_age) * (ages >= 6.)
-## WPBWPB delete
-#    print('The max age in the SSP grid is %s' % (max(10**(ages[sel]-9))))
+### WPB delete
+#    print("Maximum SSP age considered in model is %.3f in log years"%(args.max_ssp_age))
     return 10**(ages[sel]-9), np.ones(ages[sel].shape), wave, spec[:, sel]
 
 def get_nebular_emission(ages, wave, spec, logU, metallicity,

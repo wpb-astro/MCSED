@@ -165,6 +165,14 @@ def parse_args(argv=None):
                         help='''Number of test objects''',
                         type=int, default=None)
 
+    parser.add_argument("-sma", "--max_ssp_age",
+                        help='''Max age taken from files for any given simple stellar population''',
+                        type=float, default=9.5)
+
+    parser.add_argument("-aeb", "--assume_energy_balance",
+                        help='''If true, normalization of dust IR emission based on attenuation amount''',
+                        action="count", default=0)
+
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
     args.log = setup_logging()
@@ -189,7 +197,7 @@ def parse_args(argv=None):
                   'emline_list_dict', 'emline_factor', 'use_input_data',
                   'metallicity_mass_relationship', 'metallicity_dict',
                   'filt_dict', 'catalog_filter_dict', 'catalog_maglim_dict', 
-                  'output_dict', 'param_percentiles', 'reserved_cores']
+                  'output_dict', 'param_percentiles', 'reserved_cores', 'assume_energy_balance']
     for arg_i in arg_inputs:
         try:
             if getattr(args, arg_i) in [None, 0]:
@@ -887,7 +895,21 @@ def main(argv=None, ssp_info=None):
     if not args.fit_dust_em:
         mcsed_model.dust_em_class.fixed = True
     else:
-        mcsed_model.dust_em_class.fixed = False
+        if args.test:
+            mcsed_model.dust_em_class.fixed = True
+            print("Since you are in test mode, we are setting the Boolean variable fit_dust_em to False")
+        else:
+            mcsed_model.dust_em_class.fixed = False
+
+    # Specify whether energy balance is assumed
+    if args.assume_energy_balance:
+        if args.fit_dust_em:
+            mcsed_model.dust_em_class.assume_energy_balance = True
+        else:
+            mcsed_model.dust_em_class.assume_energy_balance = False
+            print("Since you are not fitting dust emission, the dust emission spectrum will not be fit, so we are setting the Boolean variable assume_energy_balance to False")
+    else:
+        mcsed_model.dust_em_class.assume_energy_balance = False
 
     # Build names for parameters and labels for table
     names = mcsed_model.get_param_names()
@@ -896,8 +918,10 @@ def main(argv=None, ssp_info=None):
 ## WPBWPB: need to clean this up eventually (don't hard code numderpar)
     names.append('SFR10')
     names.append('SFR100')
-    if args.fit_dust_em and not args.test:
+    if not mcsed_model.dust_em_class.fixed:
         names.append('fPDR')
+    if mcsed_model.dust_em_class.assume_energy_balance:
+        names.append("Mdust_EB")
     names.append('t10')
     names.append('t50')
     names.append('t90')
@@ -964,13 +988,13 @@ def main(argv=None, ssp_info=None):
             mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:
-                mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
+                # mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
 # WPBWPB delete
-#                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
+                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
             if args.output_dict['triangle plot']:
-                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
+                # mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
 # WPBWPB delete
-#                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
+                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
 
             mcsed_model.table.add_row(['Test', cnt, zi] + [0.]*(len(labels)-3))
             print("Reached point before adding fit info to table")
@@ -1022,22 +1046,11 @@ def main(argv=None, ssp_info=None):
 #            Ebwave, dwave = 2175, 225
 #            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
 
-## WPB delete
-#            fwave = mcsed_model.get_filter_wavelengths()
-#            print('these are filter wavelengths:')
-#            print(np.sort(fwave))
-#            return
-
             mcsed_model.fit_model()
-
-# WPB delete
-#            print("I've fit the model")
 
             # Set attributes: median SED and filter fluxes from random sample
             # of fits satisfying a chi2 cut
             mcsed_model.set_median_fit()
-##WPBWPB delete
-#            print("I've set the median fit.")
 
 ## WPBWPB delete
 #            ### useful for saving SSP grid
@@ -1051,36 +1064,38 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
                                         imgtype = args.output_dict['image format'])
 # WPBWPB delete
-#                mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),imgtype = args.output_dict['image format'])
+                #mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),imgtype = args.output_dict['image format'])
 
             if args.output_dict['triangle plot']:
                 mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s' %
                                           (fd, oi, args.sfh, args.dust_law),
                                           imgtype = args.output_dict['image format'])
 # WPBWPB delete
-#                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), imgtype = args.output_dict['image format'])
+                #mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), imgtype = args.output_dict['image format'])
 
             mcsed_model.table.add_row([fd, oi, zi] + [0.]*(len(labels)-3))
             names = mcsed_model.get_param_names()
             names.append('Log Mass')
             names.append('SFR10')
             names.append('SFR100')
-            if args.fit_dust_em and not args.test:
+            if not mcsed_model.dust_em_class.fixed:
                 names.append('fPDR')
+            if mcsed_model.dust_em_class.assume_energy_balance:
+                names.append('Mdust_EB')
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: 
                 T = Table(mcsed_model.samples, names=names)
                 T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
                 T = Table([mcsed_model.wave, mcsed_model.medianspec],
                           names=['wavelength', 'spectrum'])
                 T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
                 T = Table([mcsed_model.fluxwv, mcsed_model.fluxfn,
                            mcsed_model.data_fnu, mcsed_model.data_fnu_e],
@@ -1089,7 +1104,7 @@ def main(argv=None, ssp_info=None):
                 T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if (args.output_dict['lineflux']) & (mcsed_model.use_emline_flux):
                 emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
                 emweights = np.array(mcsed_model.emline_dict.values())[:,1]
@@ -1106,7 +1121,7 @@ def main(argv=None, ssp_info=None):
                 T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-#                T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             last = mcsed_model.add_fitinfo_to_table(percentiles)
             print(mcsed_model.table)
     if args.parallel:
@@ -1118,6 +1133,7 @@ def main(argv=None, ssp_info=None):
                                     formats=formats, overwrite=True)
         if args.output_dict['settings']:
             filename = open('output/%s.args' % args.output_filename, 'w')
+            del args.log
             filename.write( str( vars(args) ) )
             filename.close()
 if __name__ == '__main__':
