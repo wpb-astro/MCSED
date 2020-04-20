@@ -23,9 +23,9 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use("Agg")
+#import matplotlib.pyplot as plt
 import corner
 import time
 # WPBWPB delete astrpy table
@@ -37,8 +37,18 @@ import numpy as np
 
 
 
-#import matplotlib.pyplot as plt
-#plt.ioff()
+import matplotlib.pyplot as plt
+plt.ioff()
+
+import seaborn as sns
+sns.set_context("talk") # options include: talk, poster, paper
+sns.set_style("ticks")
+sns.set_style({"xtick.direction": "in","ytick.direction": "in",
+               "xtick.top":True, "ytick.right":True,
+               "xtick.major.size":12, "xtick.minor.size":4,
+               "ytick.major.size":12, "ytick.minor.size":4,
+               })
+
 
 
 
@@ -319,7 +329,8 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
 #                print('self.SSP is not None!')
                 return self.SSP, self.lineSSP
         Z = np.log10(self.ssp_met)
-        z = self.ssp_class.met + np.log10(0.019)
+        Zsolar = 0.019
+        z = self.ssp_class.met + np.log10(Zsolar)
         X = Z - z
         wei = np.exp(-(X)**2 / (2. * 0.15**2))
         wei /= wei.sum()
@@ -915,14 +926,17 @@ WPBWPB units??
     def add_sfr_plot(self, ax1):
         ax1.set_xscale('log')
         ax1.set_yscale('log')
-        ax1.set_ylabel(r'SFR $M_{\odot} yr^{-1}$')
-        ax1.set_xlabel('Lookback Time (Gyr)')
+        ax1.set_ylabel(r'SFR [$M_{\odot} yr^{-1}$]')
+        ax1.set_xlabel('Lookback Time') 
         ax1.set_xticks([1e-3, 1e-2, 1e-1, 1])
         ax1.set_xticklabels(['1 Myr', '10 Myr', '100 Myr', '1 Gyr'])
-        ax1.set_yticks([1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3])
-        ax1.set_yticklabels(['0.001', '0.01', '0.1', '1', '10', '100', '1000'])
+        ax1.set_yticks([1e-2, 1e-1, 1, 1e1, 1e2, 1e3])
+        ax1.set_yticklabels(['0.01', '0.1', '1', '10', '100', '1000'])
+#        ax1.set_yticks([1e-2, 1, 1e1, 1e3])
+#        ax1.set_yticklabels(['0.01', '1', '10', '1000'])
         ax1.set_xlim([10**-3, 10**self.sfh_class.age_lims[1]])
-        ax1.set_ylim([1e-3, 1e3])
+        ax1.set_ylim([10**-2.3, 1e3])
+        ax1.minorticks_on()
 
     def add_dust_plot(self, ax2):
         ax2.set_xscale('log')
@@ -930,10 +944,11 @@ WPBWPB units??
         xtick_lbl = ['1000', '3000', '10000']
         ax2.set_xticks(xtick_pos)
         ax2.set_xticklabels(xtick_lbl)
-        ax2.set_xlim([1000, 20000])
-        ax2.set_ylim([0, 8])
-        ax2.set_ylabel(r'Dust Attenuation (mag)')
-        ax2.set_xlabel(r'Wavelength $\AA$')
+        ax2.set_xlim([1000, 15000])
+        ax2.set_ylim([0, 4])
+#        ax2.set_ylabel(r'Dust Attenuation (mag)')
+        ax2.set_ylabel(r'$A_\lambda$ [mag]')
+        ax2.set_xlabel(r'Wavelength [$\AA$]')
 
     def add_spec_plot(self, ax3):
 # WPBWPB: adjust wavelength range, depending on whether dust emission is fit
@@ -950,8 +965,8 @@ WPBWPB units??
         ax3.set_xticks(xtick_pos)
         ax3.set_xticklabels(xtick_lbl)
         ax3.set_xlim(xlims)
-        ax3.set_xlabel(r'Wavelength $\mu m$')
-        ax3.set_ylabel(r'$F_{\nu}$ ($\mu$Jy)')
+        ax3.set_xlabel(r'Wavelength [$\mu$m]')
+        ax3.set_ylabel(r'$F_{\nu}$ [$\mu$Jy]')
 
     def add_subplots(self, ax1, ax2, ax3, nsamples, rndsamples=200):
         ''' Add Subplots to Triangle plot below '''
@@ -997,17 +1012,18 @@ WPBWPB units??
                      fillstyle='none', markersize=15,
                      color=[0.510, 0.373, 0.529], zorder=10)
         
-        sel = np.where((self.fluxwv > 3000.) * (self.fluxwv < 50000.))[0]
-        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 5)
-        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 95)
+        sel = np.where((self.fluxwv > ax3.get_xlim()[0]) * (self.fluxwv < ax3.get_xlim()[1]))[0]
+        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 0)
+        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 100)
         ax3ran = ax3max - ax3min
         if not self.dust_em_class.fixed: 
             ax3max = max(max(self.data_fnu),max(self.medianspec))
             ax3.set_ylim([ax3min*0.5, ax3max + 0.4 * ax3ran])
             ax3.set_xlim(right=max(max(self.fluxwv),max(self.wave)))
         else:
-            ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])
-        ax3.text(4200, ax3max + 0.2 * ax3ran, r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
+            ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.6 * ax3ran])
+        ax3.text(4200, ax3max, # + 0.2 * ax3ran, 
+                 r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
 
     def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
         ''' Make a triangle corner plot for samples from fit
@@ -1066,7 +1082,10 @@ WPBWPB units??
         fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         end = time.time()
         print('made the corner. it took me %s s' % (end - start))
+
         # Adding subplots
+        w = fig.get_figwidth()
+        fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         ax1 = fig.add_subplot(3, 1, 1)
         ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
         ax2 = fig.add_subplot(3, 1, 2)
@@ -1075,16 +1094,16 @@ WPBWPB units??
         ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
         self.add_sfr_plot(ax1)
 # WPBWPB delete:
-        print("I've added the sfr plot")
+#        print("I've added the sfr plot")
         self.add_dust_plot(ax2)
 # WPBWPB delete:
-        print("I've added the dust plot")
+#        print("I've added the dust plot")
         self.add_spec_plot(ax3)
 # WPBWPB delete:
-        print("I've added the spec plot")
+#        print("I've added the spec plot")
         self.add_subplots(ax1, ax2, ax3, nsamples)
 # WPBWPB delete:
-        print("I've added the subplots")
+#        print("I've added the subplots")
 # WPB edit: printing HBeta line flux on the figure
 # used to have self.hbflux = self.measure_hb() --> changed
 #        if self.sfh_class.hblim is not None:
@@ -1093,6 +1112,11 @@ WPBWPB units??
 #        fig.text(.5, .70, r'H$\beta$ model: %0.2f' % (self.hbmedian * 1e17),
 #                 fontsize=18)
         # fig.set_size_inches(15.0, 15.0)
+
+        for ax_loc in fig.axes:
+            ax_loc.minorticks_on() 
+            ax_loc.set_axisbelow('False')
+
         fig.savefig("%s.%s" % (outname, imgtype), dpi=150)
         plt.close(fig)
         end = time.time()
@@ -1125,6 +1149,10 @@ WPBWPB units??
                 a.plot([0, self.chain.shape[1]], [truths[i], truths[i]], 'r--')
             if i == len(ax)-1:
                 a.set_xlabel("Step")
+
+        for ax_loc in fig.axes:
+            ax_loc.minorticks_on()
+
         fig.savefig("%s.%s" % (outname, imgtype))
         plt.close(fig)
 
@@ -1159,8 +1187,9 @@ WPBWPB units??
 
         for k2 in range(numsamples):
             derpar[k2] = self.get_t_params(params[:,k2],mass[k2])
-            if k2%(numsamples/10)==0:
-                print(k2,params[:,k2],mass[k2],derpar[k2])
+# WPBWPB delete:
+#            if k2%(numsamples/10)==0:
+#                print(k2,params[:,k2],mass[k2],derpar[k2])
 
         n = len(percentiles)
         for i, per in enumerate(percentiles):

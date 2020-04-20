@@ -237,7 +237,6 @@ def parse_args(argv=None):
                 args.metallicity = True
     except ValueError:
         args.metallicity = str2bool(str(args.metallicity),args.log)
-        print((args.metallicity, type(args.metallicity)))
         if args.metallicity:
             print("Fixing metallicity at z = 0.0077")
             args.metallicity = 0.0077
@@ -817,12 +816,13 @@ def main(argv=None, ssp_info=None):
 
 ### WPBWPB delete
 #    ### useful for saving SSP grid
-#    np.savez('mcsed_model_spectra', wave=wave, age=ages, ssp=SSP, met=met)
+#    np.savez('mcsed_model_spectra', wave=wave, age=ages, ssp=SSP, met=met, linewave=linewave, linessp=lineSSP)
 #    return
 
 
 
     # Adjust filter dictionary and emission line dictionary, if applicable
+# WPBWPB bug maybe? second & () wrong ?
     if (not args.test) & (not args.use_input_data):
         input_file_data = read_input_file(args) 
     else:
@@ -879,10 +879,15 @@ def main(argv=None, ssp_info=None):
 
 #WPBWPB delete: this is where I adjust additional class params from config.py options
 
+# WPBWPB: clarify metallicity argument...
+# pass value from config: Zsolar? needs passed to mcsed_model as well...
+
+    Zsolar = 0.019
+
     # Specify whether metallicity is fixed
     if args.metallicity:
         mcsed_model.ssp_class.fix_met = True
-        mcsed_model.ssp_class.met = args.metallicity
+        mcsed_model.ssp_class.met = np.log10(args.metallicity/Zsolar)
     else:
         mcsed_model.ssp_class.fix_met = False
 
