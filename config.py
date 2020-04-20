@@ -29,6 +29,8 @@ EBV_stars_gas = -1
 # and fix dust emission parameters to umin=2.0, gamma=0.05, qpah=2.5 
 fit_dust_em = False 
 wave_dust_em = 2.5 # rest-frame wavelength in microns 
+# assume energy balance or normalize the dust IR spectrum as a free parameter
+assume_energy_balance = False 
 
 # EMCEE parameters
 nwalkers = 100 # 100
@@ -85,9 +87,6 @@ metallicity_mass_relationship = False
 # else, must be float: fixed metallicity of SSP models
 # if True, metallicity is fixed at 0.0077 (38.5% solar)
 metallicity = 0.0077  # float for fixed metallicity, False for free metallicity
-
-assume_energy_balance = False #If true, use energy balance between dust attenuation and emission to normalize dust IR spectrum
-# If false, dust IR spectrum normalization is a free parameter
 
 # Output files
 # refer to XXXXX for description of each file
@@ -150,11 +149,11 @@ filt_dict = {0: 'SubB.res', 1: 'SubIB427.res', 2: 'SubIB445.res',
              61: 'CFHTr.res', 62: 'CFHTz.res', 63: 'ukidss_y.res',
              64: 'ukidss_h.res', 65: 'ukidss_j.res', 66: 'ukidss_k.res',
              67: 'newfirm_J1.res', 68: 'newfirm_J2.res', 69: 'newfirm_J3.res',
-             70: 'newfirm_H1.res', 71: 'newfirm_H2.res', 72: 'newfirm_Ks.res',
+             70: 'newfirm_H1.res', 71: 'newfirm_H2.res', 72: 'newfirm_ks.res',
              73: 'wircam_H.res', 74: 'wircam_J.res', 75: 'wircam_Ks.res',
              76: 'MIPS24um.res', 77: 'MIPS70um.res', 78: 'Herschel_PACS_Blue.res',
-             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res', 81: 'herschel_spire_250um.res',
-             82: 'herschel_spire_350um.res'}
+             79: 'Herschel_PACS_Green.res', 80: 'Herschel_PACS_Red.res', 
+             81: 'herschel_spire_250um.res', 82: 'herschel_spire_350um.res'}
 
 # Catalog column name of filter and dictionary value to the filter file
 catalog_filter_dict, catalog_maglim_dict = {}, {}

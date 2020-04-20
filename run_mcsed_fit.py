@@ -1041,22 +1041,11 @@ def main(argv=None, ssp_info=None):
 #            Ebwave, dwave = 2175, 225
 #            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
 
-## WPB delete
-#            fwave = mcsed_model.get_filter_wavelengths()
-#            print('these are filter wavelengths:')
-#            print(np.sort(fwave))
-#            return
-
             mcsed_model.fit_model()
-
-# WPB delete
-            print("I've fit the model")
 
             # Set attributes: median SED and filter fluxes from random sample
             # of fits satisfying a chi2 cut
             mcsed_model.set_median_fit()
-##WPBWPB delete
-            print("I've set the median fit.")
 
 ## WPBWPB delete
 #            ### useful for saving SSP grid
@@ -1067,17 +1056,17 @@ def main(argv=None, ssp_info=None):
 
     # WPB field/id
             if args.output_dict['sample plot']:
-                # mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
-                #                         imgtype = args.output_dict['image format'])
+                mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
+                                        imgtype = args.output_dict['image format'])
 # WPBWPB delete
-                mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),imgtype = args.output_dict['image format'])
+                #mcsed_model.sample_plot('output/sample_%s_%05d_%s' % (fd, oi, args.output_filename.split(".")[0]),imgtype = args.output_dict['image format'])
 
             if args.output_dict['triangle plot']:
-                # mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s' %
-                #                           (fd, oi, args.sfh, args.dust_law),
-                #                           imgtype = args.output_dict['image format'])
+                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s' %
+                                          (fd, oi, args.sfh, args.dust_law),
+                                          imgtype = args.output_dict['image format'])
 # WPBWPB delete
-                mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), imgtype = args.output_dict['image format'])
+                #mcsed_model.triangle_plot('output/triangle_%s_%05d_%s_%s_%s' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), imgtype = args.output_dict['image format'])
 
             mcsed_model.table.add_row([fd, oi, zi] + [0.]*(len(labels)-3))
             names = mcsed_model.get_param_names()
@@ -1091,26 +1080,26 @@ def main(argv=None, ssp_info=None):
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: 
                 T = Table(mcsed_model.samples, names=names)
-                # T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                #         overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                        overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-                T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/fitposterior_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
                 T = Table([mcsed_model.wave, mcsed_model.medianspec],
                           names=['wavelength', 'spectrum'])
-                # T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                #         overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                        overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-                T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/bestfitspec_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
                 T = Table([mcsed_model.fluxwv, mcsed_model.fluxfn,
                            mcsed_model.data_fnu, mcsed_model.data_fnu_e],
                            names=['wavelength','model_fluxdensity',
                                   'fluxdensity', 'fluxdensityerror'])
-                # T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                #         overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/filterflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                        overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-                T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if (args.output_dict['lineflux']) & (mcsed_model.use_emline_flux):
                 emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
                 emweights = np.array(mcsed_model.emline_dict.values())[:,1]
@@ -1124,10 +1113,10 @@ def main(argv=None, ssp_info=None):
                           names=['rest_wavelength', 'weight', 'model_lineflux',
                                  'lineflux', 'linefluxerror'])
                 T.sort('rest_wavelength')
-                # T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                #         overwrite=True, format='ascii.fixed_width_two_line')
+                T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                        overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
-                T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+                #T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             last = mcsed_model.add_fitinfo_to_table(percentiles)
             print(mcsed_model.table)
     if args.parallel:
