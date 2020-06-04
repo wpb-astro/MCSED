@@ -58,7 +58,7 @@ model_floor_error = 0.10
 # Use input data (photometry, emission lines, absorption line indices)
 # If True, use additional data provided in the input file
 # else, ignore input data (in which case input IDs must match Skelton+14 IDs)
-use_input_data = True #False
+use_input_data = True 
 
 # Input emission line strengths
 # keys are emission line name (str) corresponding to name in input file
