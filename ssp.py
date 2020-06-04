@@ -155,7 +155,6 @@ def read_fsps_ssp(filename):
     -------
     ages : list (1 dim)
         ages in log years
-    masses : list (1 dim)
     spec : list (2 dim)
         spectra in solar bolometric luminosity per Hz
     wave : numpy array (1 dim)
@@ -163,7 +162,7 @@ def read_fsps_ssp(filename):
         in units of Angstroms
     '''
     cnt = 0
-    ages, masses, spec = [], [], []
+    ages, spec = [], []
     with open(filename) as f:
         for lines in f:
             if cnt == 9:
@@ -172,11 +171,10 @@ def read_fsps_ssp(filename):
                 l = lines.split()
                 if len(l) == 4:
                     ages.append(float(l[0]))
-                    masses.append(float(l[1]))
                 else:
                     spec.append(np.array(l, dtype=float))
             cnt += 1
-    return ages, masses, spec, wave
+    return ages, spec, wave
 
 
 def read_fsps(args, metallicity):
@@ -192,8 +190,6 @@ def read_fsps(args, metallicity):
     -------
     ages : numpy array (1 dim)
         ages of each SPS (Gyr)
-    masses : numpy array (1 dim)
-        Remnant mass at a given age (solar masses)
     wave : numpy array (1 dim)
         wavelength grid for each spectrum in units of Angstroms
     spec : numpy array (2 dim)
@@ -213,15 +209,15 @@ def read_fsps(args, metallicity):
             print('%0.4f ' % met)
         print(']')
         sys.exit(1)
-    ages, masses, spec, wave = read_fsps_ssp(filename)
+    ages, spec, wave = read_fsps_ssp(filename)
     # convert from solar bolometric luminosity per Hz to micro-Jy at 10 pc
     spec = np.array(spec).swapaxes(0, 1) * solar_microjansky
-    ages, masses = (np.array(ages), np.array(masses))
+    ages = np.array(ages)
     # Total mass including remnants, so set to 1.
     sel = (ages <= args.max_ssp_age) * (ages >= 6.)
 ### WPB delete
 #    print("Maximum SSP age considered in model is %.3f in log years"%(args.max_ssp_age))
-    return 10**(ages[sel]-9), np.ones(ages[sel].shape), wave, spec[:, sel]
+    return 10**(ages[sel]-9), wave, spec[:, sel]
 
 def get_nebular_emission(ages, wave, spec, logU, metallicity,
                          filename='nebular/ZAU_ND_pdva',
@@ -446,7 +442,7 @@ def number_ionizing_photons(wave, spectrum, clight=2.99792e18,
 
 
 def read_ssp(args):
-    ''' Read in SPS model and return ages, masses, wavelength, and spectra
+    ''' Read in SPS model and return ages, wavelength, and spectra
 
     Parameters
     ----------
@@ -461,7 +457,7 @@ WPBWPB: operate under assumption that spec, linespec are in same units
     s, ls = [], []
     for met in args.metallicity_dict[args.ssp][args.isochrone]:
         if args.ssp.lower() == 'fsps':
-            ages, masses, wave, spec = read_fsps(args, met)
+            ages, wave, spec = read_fsps(args, met)
         # add new SSP subroutines here:
 # WPBWPB: only carry linespec if going to measure emission lines?
         linespec = get_nebular_emission(ages, wave, spec, args.logU,
@@ -476,7 +472,6 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 #            ages0 = np.log10(ages0)+9.
             ages, spec = bin_ages_fsps(args, ages0, spec)
             ages9, linespec = bin_ages_fsps(args, ages0, linespec)
-        masses = np.ones(ages.shape)
         # do not smooth the emission line grid
         wave0 = wave.copy()
         if args.fit_dust_em:
@@ -521,7 +516,7 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 ## WPB delete
 #    print('these are ages: %s' % ages)
 
-    return ages, masses, wave, spec, np.array(metallicities), linewave,linespec
+    return ages, wave, spec, np.array(metallicities), linewave,linespec
 
 
 class fsps_freeparams:

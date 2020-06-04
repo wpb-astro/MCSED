@@ -56,7 +56,7 @@ sns.set_style({"xtick.direction": "in","ytick.direction": "in",
 #WPBWPB re organize the arguments (aesthetic purposes)
 class Mcsed:
     def __init__(self, filter_matrix, ssp_spectra,
-                 emlinewave, ssp_emline, ssp_ages, ssp_masses,
+                 emlinewave, ssp_emline, ssp_ages,
                  ssp_met, wave, sfh_class, dust_abs_class, dust_em_class,
                  data_fnu=None, data_fnu_e=None, 
                  data_emline=None, data_emline_e=None, emline_dict=None,
@@ -83,8 +83,6 @@ class Mcsed:
             Spectral units are ergs / s / cm2 at 10 pc
         ssp_ages : numpy array (1 dim)
             ages of the SSP models
-        ssp_masses : numpy array (1 dim)
-            remnant masses of the SSP models
         ssp_met : numpy array (1 dim)
             metallicities of the SSP models
         wave : numpy array (1 dim)
@@ -143,7 +141,6 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         self.emlinewave = emlinewave
         self.ssp_emline = ssp_emline
         self.ssp_ages = ssp_ages
-        self.ssp_masses = ssp_masses
         self.ssp_met = ssp_met
         self.wave = wave
         self.dnu = np.abs(np.hstack([0., np.diff(2.99792e18 / self.wave)]))
@@ -520,21 +517,7 @@ WPBWPB units??
         spec_dustfree = np.dot(self.SSP, weight)
         spec_birth_dustfree = np.dot(self.SSP, weight_birth)
         linespec_dustfree = np.dot(self.lineSSP, weight_birth)
-        mass = np.sum(weight_age * self.ssp_masses)
-
-## WPBWPB delete
-#        print('These are the weights, and various properties:')
-#        t = Table()
-#        t['ageval'] = [ageval]*len(weight)
-#        t['age_birth'] = [age_birth]*len(weight)
-#        t['ssp_ages'] = self.ssp_ages
-#        t['sfr'] = sfr
-#        t['weight_orig'] = weight_orig
-#        t['weight_young'] = weight_birth
-#        t['weight_old'] = weight
-#        t['weight_age'] = weight_age
-#        t.write('CSP_weights.dat',format='ascii')
-#        return
+        mass = np.sum(weight_age)
 
         # Need to correct spectrum for dust attenuation
         Alam = self.dust_abs_class.evaluate(self.wave)

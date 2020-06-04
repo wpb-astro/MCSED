@@ -795,26 +795,10 @@ def main(argv=None, ssp_info=None):
 
     # Load Single Stellar Population model(s)
     if ssp_info is None:
-## WPB delete: if carrying nebular separately from rest of spectrum...
-#        ages, masses, wave, SSP, met, nebspec = read_ssp(args)
-#        # WPBWPB delete
-#        np.savez('spectra_separate',wave=wave,age=ages,spec=SSP,nspec=nebspec)
-#        return
-#
-## WPBWPB delete: save emission line SSP grid
-#        ages, masses, wave, SSP, met, nebSSP, linewave, lineSSP = read_ssp(args)
-#        np.savez('emlineSSP', wave=linewave, age=ages, met=met, spec=lineSSP)
-#        return
-## WPB delete: if carrying them together, as originally done
-## in that case, use the original (unmodified) ssp.py file
-#        ages, masses, wave, SSP, met = read_ssp(args)
-#        np.savez('spectra_together',wave=wave,age=ages,spec=SSP)
-#        return
-
         args.log.info('Reading in SSP model')
-        ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)
+        ages, wave, SSP, met, linewave, lineSSP = read_ssp(args)
     else:
-        ages, masses, wave, SSP, met, linewave, lineSSP = ssp_info
+        ages, wave, SSP, met, linewave, lineSSP = ssp_info
 
 ## WPBWPB delete
 #    print((wave.shape, SSP.shape))
@@ -844,7 +828,7 @@ def main(argv=None, ssp_info=None):
     # Make one instance of Mcsed for speed on initialization
     # Then replace the key variables each iteration for a given galaxy
     mcsed_model = Mcsed(filter_matrix, SSP, linewave, lineSSP, ages, 
-                        masses, met, wave, args.sfh,
+                        met, wave, args.sfh,
                         args.dust_law, args.dust_em, nwalkers=args.nwalkers,
                         nsteps=args.nsteps,sigma_m=args.model_floor_error)
 
