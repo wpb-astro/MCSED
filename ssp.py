@@ -202,14 +202,14 @@ def read_fsps(args, metallicity):
     pc10 = 10. * 3.08567758e18
     solar_microjansky = 3.826e33 * 1e29 / (4. * np.pi * pc10**2)
     filename = op.join('SSP', 'fsps_%s_%0.4f.spec' % (args.isochrone,
-                                                      metallicity))
+                                                           metallicity))
     if not op.exists(filename):
         print('Tried to open %s' % filename)
         print('Metallicity entered, %0.4f, does not match any of the %s '
               'isochrones of the %s models' % (args.metallicity,
                                                args.isochrone, args.ssp))
         print('Metallicity options [')
-        for met in args.metallicity_dict[args.isochrone]:
+        for met in args.metallicity_dict[args.ssp][args.isochrone]:
             print('%0.4f ' % met)
         print(']')
         sys.exit(1)
@@ -342,7 +342,7 @@ def collapse_emline_SSP(args, linewave, linespec, clight=2.99792e18):
         in units of ergs / s / cm^2 at 10 pc
     ''' 
 
-    if not args.use_emline_flux:
+    if (not args.use_emline_flux) | (args.emline_list_dict=={}):
         return np.zeros(2), linespec[0:2,:,:]
 
 # loop through all emission line spectra for all ages, metallicities
@@ -459,21 +459,15 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 ## WPBWPB: m list unused
 #    s, ls, m = ([], [], [])
     s, ls = [], []
-    for met in args.metallicity_dict[args.isochrone]:
+    for met in args.metallicity_dict[args.ssp][args.isochrone]:
         if args.ssp.lower() == 'fsps':
             ages, masses, wave, spec = read_fsps(args, met)
-## WPBWPB delete
-#            print('these are ages from read_fsps:')
-#            print(ages)
-        # carry emission lines only, for measuring line fluxes
+        # add new SSP subroutines here:
 # WPBWPB: only carry linespec if going to measure emission lines?
-        if args.add_nebular:
-            linespec = get_nebular_emission(ages, wave, spec, args.logU,
+        linespec = get_nebular_emission(ages, wave, spec, args.logU,
                                         met, kind='line')
-            spec = add_nebular_emission(ages, wave, spec, args.logU,
+        spec = add_nebular_emission(ages, wave, spec, args.logU,
                                         met)
-        else:
-            linespec = np.zeros(np.shape(spec))
 
 # WPBWPB add comment
         if args.sfh == 'empirical' or args.sfh == 'empirical_direct':
@@ -513,7 +507,7 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 
     spec = np.moveaxis(np.array(s), 0, 2)
     linespec = np.moveaxis(np.array(ls), 0, 2)
-    metallicities = args.metallicity_dict[args.isochrone]
+    metallicities = args.metallicity_dict[args.ssp][args.isochrone]
 
 ## WPBWPB delete
 #    linespec0 = linespec.copy()

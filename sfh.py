@@ -823,17 +823,25 @@ class empirical_direct:
         sfr_bin = 10. ** logsfr 
         # Ensure that self.ages, t are both in units of log years
         t_logyr = np.log10( t * 1e9 ) 
+#        bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
+#        # adjust any times falling beyond the last SFH age bin
+#        bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
+#        sfr = sfr_bin[ bin_indx ]
         bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
         # adjust any times falling beyond the last SFH age bin
-        bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
+        sel_too_old = bin_indx > len(sfr_bin)-1
+        bin_indx[ sel_too_old ] = len(sfr_bin)-1
         sfr = sfr_bin[ bin_indx ]
+        sfr[ sel_too_old ] = 0.
+
         return sfr
 
 class empirical_direct_z0:
     ''' The empirical SFH includes 6 bins of SFR at discrete time intervals '''
     def __init__(self, init_log_sfr=1.2, init_log_sfr_lims=[-5., 3.],
                  init_log_sfr_delta=0.7,
-                 ages=[8., 8.5, 9., 9.5, 9.8, 10.13]):
+                 ages=[8., 8.5, 9., 9.3, 9.8, 10.13]):
+#                 ages=[8., 8.5, 9., 9.5, 9.8, 10.13]):
         ''' Initialize this class
         Parameters
         ----------
@@ -961,16 +969,21 @@ class empirical_direct_z0:
         t_logyr = np.log10( t * 1e9 )
         bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
         # adjust any times falling beyond the last SFH age bin
-        bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
+        sel_too_old = bin_indx > len(sfr_bin)-1
+        bin_indx[ sel_too_old ] = len(sfr_bin)-1
         sfr = sfr_bin[ bin_indx ]
+        sfr[ sel_too_old ] = 0.
         return sfr
 
 
 class empirical:
     ''' The empirical SFH includes 6 bins of SFR at discrete time intervals '''
     def __init__(self, mass=9.5, mass_lims=[6., 12.],
-                 mass_delta=0.5, ages=[7., 8., 8.5, 9., 9.3]):
+                 mass_delta=0.5, ages=[8., 8.5, 9., 9.5, 9.8, 10.13]):
         ''' Initialize this class
+
+WPBWPB delete
+        ages=[7., 8., 8.5, 9., 9.3]
 
         Parameters
         ----------
@@ -1109,5 +1122,15 @@ class empirical:
         v.insert(1, self.firstbin)        
         mass = 10**v[0]
         denominator = np.dot(self.tdiff, v[1:])
-        return [mass * p / denominator for p in v[1:]]
+        sfr_bin = np.array([mass * p / denominator for p in v[1:]])
+        # Ensure that self.ages, t are both in units of log years
+        t_logyr = np.log10( t * 1e9 )
+        bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
+        # adjust any times falling beyond the last SFH age bin
+        sel_too_old = bin_indx > len(sfr_bin)-1
+        bin_indx[ sel_too_old ] = len(sfr_bin)-1
+        sfr = sfr_bin[ bin_indx ]
+        sfr[ sel_too_old ] = 0.
+
+        return sfr
 

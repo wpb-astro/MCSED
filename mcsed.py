@@ -32,6 +32,7 @@ import time
 from astropy.table import Table
 from scipy.integrate import simps
 from scipy.interpolate import interp1d
+from astropy.constants import c as clight
 
 import numpy as np
 
@@ -276,6 +277,67 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
 #        print((self.spectrum.shape, self.filter_matrix.shape, self.filter_flag.shape))
         f_nu = np.dot(self.spectrum, self.filter_matrix[:, self.filter_flag])
         return f_nu
+
+
+    def measure_absorption_index(self):
+        '''
+        measure absorption indices using current spectrum
+
+
+        '''
+        self.absindxCSPdict = {}
+        if self.use_absorption_indx:
+            # convert the spectrum from units of specific frequency to specific wavelength
+            wave = self.wave.copy()
+            factor = clight.to('Angstrom/s').value / wave**2.
+            spec = self.spectrum * factor
+
+            for indx in self.absindx_dict.keys():
+                wht, wave_indx, wave_blue, wave_red, unit = self.absindx_dict[indx]
+
+                # select appropriate data ranges for blue/red continuum and index
+                sel_index = np.array([False]*len(wave))
+                sel_index[np.argmin(abs(wave-wave_indx[0])):np.argmin(abs(wave-wave_indx[1]))] = True
+                if abs(np.argmin(abs(wave-wave_indx[0]))-np.argmin(abs(wave-wave_indx[1])))<2:
+                    sel_index[np.argmin(abs(wave-wave_indx[0])):np.argmin(abs(wave-wave_indx[0]))+2] = True
+                sel_blue = np.array([False]*len(wave))
+                sel_blue[np.argmin(abs(wave-wave_blue[0])):np.argmin(abs(wave-wave_blue[1]))] = True
+                if abs(np.argmin(abs(wave-wave_blue[0]))-np.argmin(abs(wave-wave_blue[1])))<2:
+                    sel_blue[np.argmin(abs(wave-wave_blue[0])):np.argmin(abs(wave-wave_blue[0]))+2] = True
+                sel_red = np.array([False]*len(wave))
+                sel_red[np.argmin(abs(wave-wave_red[0])):np.argmin(abs(wave-wave_red[1]))] = True
+                if abs(np.argmin(abs(wave-wave_red[0]))-np.argmin(abs(wave-wave_red[1])))<2:
+                    sel_red[np.argmin(abs(wave-wave_red[0])):np.argmin(abs(wave-wave_red[0]))+2] = True
+
+#                sel_index = (wave >= wave_indx[0]) & (wave <= wave_indx[1])
+#                sel_blue  = (wave >= wave_blue[0]) & (wave <= wave_blue[1])
+#                sel_red   = (wave >= wave_red[0])  & (wave <= wave_red[1])
+
+                # estimate continuum in the index:
+                fw_blue  = np.dot(spec[sel_blue][0:-1], np.diff(wave[sel_blue])) 
+                fw_blue /= np.diff(wave[sel_blue][[0,-1]])
+                fw_red   = np.dot(spec[sel_red][0:-1],  np.diff(wave[sel_red]))  
+                fw_red  /= np.diff(wave[sel_red][[0,-1]])
+                cont_waves = [np.median(wave_blue), np.median(wave_red)]
+                cont_fw    = [fw_blue, fw_red]
+                coeff = np.polyfit( cont_waves, cont_fw, 1)
+                cont_index = coeff[0] * wave[sel_index] + coeff[1]
+
+                # flux ratio of index and continuum
+                spec_index = spec[sel_index] / cont_index
+
+                if unit==0: # return measurement in equivalent width
+                    value = np.dot( 1. - spec_index[0:-1], np.diff(wave[sel_index]) )
+
+                if unit==1: # return measurement in magnitudes
+                    integral = np.dot( spec_index[0:-1], np.diff(wave[sel_index]) )
+                    value = -2.5 * np.log10( integral / np.diff(wave[sel_index][[0,-1]]) ) 
+
+                if unit==2: # return measurement as a flux density ratio (red / blue)
+                    value = fw_red / fw_blue
+
+                self.absindxCSPdict[indx] = float(value)
+
 
     def set_class_parameters(self, theta):
         ''' For a given set of model parameters, set the needed class variables
@@ -572,20 +634,45 @@ WPBWPB units??
             The mass comes from building of the composite stellar population
             The parameters t10, t50, t90, sfr10, and sfr100 are derived in get_derived_params(self)
         '''
-        # if not self.dust_em_class.fixed: 
-        #     self.spectrum, mass, mdust, mdust2 = self.build_csp(DMreturn=True)
-        # else:
-        #     self.spectrum, mass = self.build_csp(DMreturn=False)
-        #     mdust = None
-        #     mdust2 = None
         if self.dust_em_class.assume_energy_balance:
             self.spectrum, mass, mdust_eb = self.build_csp()
         else:
             self.spectrum, mass = self.build_csp()
             mdust_eb = None
 
-        # compare input and model emission line fluxes
-        emline_term = 0.0
+        sfr10,sfr100,fpdr = self.get_derived_params()
+
+        # likelihood contribution from the photometry
+        model_y = self.get_filter_fluxdensities()
+        inv_sigma2 = 1.0 / (self.data_fnu_e**2 + (model_y * self.sigma_m)**2)
+        chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
+        parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
+
+
+        # likelihood contribution from the absorption line indices
+        self.measure_absorption_index()
+        if self.use_absorption_indx:
+            for indx in self.absindx_dict.keys():
+                unit = self.absindx_dict[indx][-1]
+                # if null value, ignore it (null = -99)
+                if (self.data_absindx['%s_INDX' % indx]+99 > 1e-10):
+                    indx_weight = self.absindx_dict[indx][0]
+                    model_indx = self.absindxCSPdict[indx]
+                    if unit == 1: # magnitudes
+                        model_err = 2.5*np.log10(1.+self.sigma_m)
+                    else:
+                        model_err = model_indx * self.sigma_m
+                    obs_indx = self.data_absindx['%s_INDX' % indx]
+                    obs_indx_e = self.data_absindx_e['%s_Err' % indx]
+                    sigma2 = obs_indx_e**2. + model_err**2.
+                    chi2_term += (-0.5 * (model_indx - obs_indx)**2 /
+                                  sigma2) * indx_weight
+                    parm_term += -0.5 * np.log(indx_weight * sigma2)
+#                    print('this is absorption thing:')
+#                    print((indx, obs_indx, obs_indx_e, model_indx, absindx_term))
+#                    print((type(indx), type(obs_indx), type(obs_indx_e), type(model_indx), type(absindx_term)))
+
+        # likelihood contribution from the emission lines
         if self.use_emline_flux:
             # if all lines have null line strengths, ignore 
             if not min(self.data_emline) == max(self.data_emline) == -99:
@@ -597,23 +684,23 @@ WPBWPB units??
                 for emline in self.emline_dict.keys():
                     if self.data_emline['%s_FLUX' % emline] > -99: # null value
                         emline_wave, emline_weight = self.emline_dict[emline]
-                        model_lineflux = self.linefluxCSPdict[emline] 
+                        model_lineflux = self.linefluxCSPdict[emline]
+                        model_err = model_lineflux * self.sigma_m
                         lineflux  = self.data_emline['%s_FLUX' % emline]
                         elineflux = self.data_emline_e['%s_ERR' % emline]
-                        emline_term += (-0.5 * (model_lineflux - lineflux)**2 /
-                                        elineflux**2.) * emline_weight
+                        sigma2 = elineflux**2. + model_err**2.
+                        chi2_term += (-0.5 * (model_lineflux - lineflux)**2 /
+                                      sigma2) * emline_weight
+                        parm_term += -0.5 * np.log(emline_weight * sigma2)
 ## WPBWPB: delete
 #                print('this is emline and term:')
 #                print(emline)
 #                print(emline_term)
 
-        model_y = self.get_filter_fluxdensities()
-        inv_sigma2 = 1.0 / (self.data_fnu_e**2 + (model_y * self.sigma_m)**2)
-        chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
-        parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
-        sfr10,sfr100,fpdr = self.get_derived_params()
-        #return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust,mdust2)
-        return (chi2_term + parm_term + emline_term, mass,sfr10,sfr100,fpdr,mdust_eb)
+#        print('this is absorption and emline terms:')
+#        print((absindx_term, emline_term))
+
+        return (chi2_term + parm_term, mass,sfr10,sfr100,fpdr,mdust_eb)
 
     def lnprob(self, theta):
         ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
@@ -954,13 +1041,21 @@ WPBWPB units??
 # WPBWPB: adjust wavelength range, depending on whether dust emission is fit
         ax3.set_xscale('log')
         if self.dust_em_class.fixed:
-            xtick_pos = [3000, 5000, 10000, 20000, 40000]
-            xtick_lbl = ['0.3', '0.5', '1', '2', '4']
-            xlims = [3000, 50000]
+            xtick_pos = [1000, 3000, 5000, 10000, 20000, 40000]
+            xtick_lbl = ['0.1', '0.3', '0.5', '1', '2', '4']
+# WPBWPB delete
+#            xlims = [3000, 50000]
+            xlims = (1. + self.redshift) * np.array([1150, 20000])
+            xlims[0] = min( xlims[0], min(self.fluxwv) - 200)
+            xlims[1] = max( xlims[1], max(self.fluxwv) + 5000) 
         else:
-            xtick_pos = [3000, 5000, 10000, 40000, 100000, 1000000]
-            xtick_lbl = ['0.3', '0.5', '1', '4', '10', '100']
-            xlims = [3000, 2000000]
+            xtick_pos = [3000, 5000, 10000, 40000, 100000, 400000, 1000000]
+            xtick_lbl = ['0.3', '0.5', '1', '4', '10', '40', '100']
+# WPBWPB delete
+#            xlims = [3000, 2000000]
+            xlims = (1. + self.redshift) * np.array([1150, 700000])
+            xlims[0] = min( xlims[0], min(self.fluxwv) - 200)
+            xlims[1] = max( xlims[1], max(self.fluxwv) + 50000) 
             ax3.set_yscale('log')
         ax3.set_xticks(xtick_pos)
         ax3.set_xticklabels(xtick_lbl)
@@ -1009,12 +1104,13 @@ WPBWPB units??
                             color=[0.216, 0.471, 0.749], zorder=9)
             p.set_facecolor('none')
         ax3.errorbar(self.fluxwv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
-                     fillstyle='none', markersize=15,
+                     fillstyle='none', markersize=150,
                      color=[0.510, 0.373, 0.529], zorder=10)
-        
+        ax3.scatter(self.fluxwv, self.data_fnu, marker='s', s=150,facecolors='none',
+                    edgecolors=[0.510, 0.373, 0.529], linewidths=2, zorder=10)        
         sel = np.where((self.fluxwv > ax3.get_xlim()[0]) * (self.fluxwv < ax3.get_xlim()[1]))[0]
-        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 0)
-        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 100)
+        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 1)
+        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 99)
         ax3ran = ax3max - ax3min
         if not self.dust_em_class.fixed: 
             ax3max = max(max(self.data_fnu),max(self.medianspec))

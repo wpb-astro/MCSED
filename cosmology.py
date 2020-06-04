@@ -8,7 +8,7 @@ import numpy as np
 
 
 class Cosmology:
-    def __init__(self, omega_m=0.31, omega_l=0.69, omega_k=0.00, H_0=69):
+    def __init__(self, omega_m=0.31, omega_l=0.69, H_0=69):
         ''' Initialize the class
 
         Parameters
@@ -24,7 +24,7 @@ class Cosmology:
         '''
         self.omega_m = omega_m
         self.omega_l = omega_l
-        self.omega_k = omega_k
+        self.omega_k = 1. - (omega_m + omega_l)
         self.H_0 = H_0  # km / s / Mpc
         self.t_h = 9.78 * (100. / self. H_0)  # Gyr
         self.c = 2.99792e5  # km / s

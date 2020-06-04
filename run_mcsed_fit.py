@@ -17,8 +17,11 @@ from astropy.table import Table, vstack
 from mcsed import Mcsed
 from distutils.dir_util import mkpath
 from cosmology import Cosmology
-# WPBWPB -- can remove this import
-import time
+
+sys.path.insert(0,'3dhst_catalogs')
+import filter_info
+sys.path.insert(0, 'SSP')
+import ssp_metallicity_info
 
 def setup_logging():
     '''Setup Logging for MCSED, which allows us to track status of calls and
@@ -133,10 +136,6 @@ def parse_args(argv=None):
                         help='''Number of steps for EMCEE''',
                         type=int, default=None)
 
-    parser.add_argument("-an", "--add_nebular",
-                        help='''Add Nebular Emission''',
-                        action="count", default=0)
-
     parser.add_argument("-lu", "--logU",
                         help='''Ionization Parameter for nebular gas''',
                         type=float, default=None)
@@ -145,13 +144,9 @@ def parse_args(argv=None):
                         help='''Fit Dust Emission''',
                         action="count", default=0)
 
-    parser.add_argument("-pf", "--phot_floor_error",
-                        help='''Error floor for photometry''',
-                        type=float, default=None)
-
-    parser.add_argument("-ef", "--emline_floor_error",
-                        help='''Error floor for emission lines''',
-                        type=float, default=None)
+    parser.add_argument("-aeb", "--assume_energy_balance",
+                        help='''If true, normalization of dust IR emission based on attenuation amount''',
+                        action="count", default=0)
 
     parser.add_argument("-t", "--test",
                         help='''Test script with fake data''',
@@ -165,22 +160,9 @@ def parse_args(argv=None):
                         help='''Number of test objects''',
                         type=int, default=None)
 
-    parser.add_argument("-sma", "--max_ssp_age",
-                        help='''Max age taken from files for any given simple stellar population''',
-                        type=float, default=9.5)
-
-    parser.add_argument("-aeb", "--assume_energy_balance",
-                        help='''If true, normalization of dust IR emission based on attenuation amount''',
-                        action="count", default=0)
-
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
     args.log = setup_logging()
-
-# WPBWPB delete
-# add nebular becomes true no matter what argument is passed...
-#    print(args.add_nebular)
-#    print('args.test, getattr:  %s,  %s' % (args.test, getattr(args, 'test')))
 
     # Use config values if none are set in the input
     # Use command line arguments, if given. Else, refer to config file
@@ -190,13 +172,13 @@ def parse_args(argv=None):
 # unused from parser args... filename, output_filename, test, test_field, parallel, count
     arg_inputs = ['ssp', 'metallicity', 'isochrone', 'sfh', 'dust_law',
                   't_birth',
-                  'nwalkers', 'nsteps', 'add_nebular', 'logU', 'fit_dust_em',
-                  'phot_floor_error', 'emline_floor_error', 
-                  'nobjects', 'test_zrange',
+                  'nwalkers', 'nsteps', 'logU', 'fit_dust_em',
+                  'phot_floor_error', 'emline_floor_error', 'absindx_floor_error',  
+                  'model_floor_error', 'nobjects', 'test_zrange',
                   'dust_em', 'Rv', 'EBV_stars_gas', 'wave_dust_em',
                   'emline_list_dict', 'emline_factor', 'use_input_data',
-                  'metallicity_mass_relationship', 'metallicity_dict',
-                  'filt_dict', 'catalog_filter_dict', 'catalog_maglim_dict', 
+                  'absorption_index_dict',
+                  'metallicity_mass_relationship', 
                   'output_dict', 'param_percentiles', 'reserved_cores', 'assume_energy_balance']
     for arg_i in arg_inputs:
         try:
@@ -205,25 +187,20 @@ def parse_args(argv=None):
         except AttributeError:
             setattr(args, arg_i, getattr(config, arg_i))
 
+    # Read the filter information
+    filterarg_inputs = ['filt_dict', 'catalog_filter_dict', 'catalog_maglim_dict']
+    for arg_i in filterarg_inputs:
+        setattr(args, arg_i, getattr(filter_info, arg_i))
+
+    # Read the SSP metallicity information
+    setattr(args, 'metallicity_dict', getattr(ssp_metallicity_info, 'metallicity_dict'))
+
     # If a test field is specified on the command line, initialize test mode
     if '-tf' in argv:
         args.test = True
 
-    # Set the maximum SSP age
+    # Set the maximum SSP age (speeds calculation)
     args.max_ssp_age = get_max_ssp_age(args)
-## WPBWPB delete
-#    print('This is max ssp age: %s' % args.max_ssp_age)
-
-
-#WPBWPB delete
-#    print('test, fitdustem, nebular, parallel: %s, %s, %s, %s' % (args.test, args.fit_dust_em, args.add_nebular, args.parallel) )
-
-
-#    args.fit_dust_em = str2bool(str(args.fit_dust_em), args.log)
-#WPBWPB delete
-#    print(args.fit_dust_em)
-#    print(type(args.fit_dust_em))
-#    print(args.add_nebular)
 
     # Set metallicity as free or fixed parameter
 # WPBWPB: should 0,1 be boolean arguments on command line? boolean command line args only require flag, not flag+value -- metallicity is only ambiguous case...
@@ -250,17 +227,19 @@ def parse_args(argv=None):
     # pass "count" keyword -- only used in test mode in parallel
     args.count = count
 
-    # Determine whether emission lines should be carried
-    # Collapses the emission line SSP grid to include only the desired lines
-    # and speeds up the CSP construction
-    if not args.add_nebular:
+    # Determine whether emission lines / absorption line indices are used
+    # to constrain the models
+    if (not args.test) & (not args.use_input_data):
         args.use_emline_flux = False
-    elif (args.emline_list_dict in [None, {}]):
-        args.use_emline_flux = False
-    elif (not args.test) & (not args.use_input_data):
-        args.use_emline_flux = False
+        args.use_absorption_indx = False
     else:
         args.use_emline_flux = True
+        args.use_absorption_indx = True
+
+    if type(args.emline_list_dict)!=dict:
+        args.emline_list_dict={}
+    if type(args.absorption_index_dict)!=dict:
+        args.absorption_index_dict={}
 
     return args
 
@@ -285,8 +264,6 @@ def build_filter_matrix(args, wave):
         As mentioned above, the Fil_matrix has rows of wavelength and
         columns for each filter in args.filt_dict/config.filt_dict
     '''
-##WPBWPB delete
-#    start_time = time.time()
     nfilters = len(args.filt_dict)
     Fil_matrix = np.zeros((len(wave), nfilters))
     for i in np.arange(nfilters):
@@ -297,9 +274,6 @@ def build_filter_matrix(args, wave):
         if S == 0.:
             S = 1.
         Fil_matrix[:, i] = new_through / S
-## WPBWPB -- could remove 
-#    ellapsed_time = time.time() - start_time
-#    print('Time to build filter matrix: %s sec' % ellapsed_time)
 
     return Fil_matrix
 
@@ -438,6 +412,10 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         field_dict[field] = fits.open(op.join('3dhst_catalogs',
                                               field+name_base))[1]
 
+#    # WPBWPB delete:
+#    nfilters = len(args.filt_dict)
+#    print("Before reading file, Nfilters =", nfilters)
+
     # check whether any additional photometry is provided by the user
     # WPBWPB: need to adjust if change naming convention of emission lines
     #input_filters = [col.split('_')[1] for col in Fcols if (len(col)>1) & (col[0:2]=='f_')]
@@ -448,25 +426,23 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         for fname in input_filters:
             if op.exists('FILTERS/%s.res' % fname):
                 if '%s.res' % fname not in args.filt_dict.values():
-                    findex = max(args.filt_dict.keys())+1                    
+#                    findex = max(max(args.filt_dict.keys()),max(infilt_dict.keys()))+1#+len(infilt_dict)
+                    findex = max(args.filt_dict.keys())+1
                 else:
                     findex = args.filt_dict.keys()[args.filt_dict.values().index('%s.res' % fname)]
-                print("Findex for filter not in dictionary:", findex)
+###WPB DELETE
+#                print("Findex for filter not in dictionary:", findex)
                 infilt_dict[ findex ] = '%s.res' % fname
                 Fcols = [c for c in Fcols if c not in ['f_'+fname, 'e_'+fname]]
-                print('Reading %s photometry from input file' % fname)
+#                print('Reading %s photometry from input file' % fname)
+                args.filt_dict.update(infilt_dict)
+
 # WPBWPB: some check on the filter curve to make sure it is formatted correctly?
 # WPBWPB: raise an error instead of printing a statement?
             else:
                 print('*CAUTION* %s.res filter curve does not exist:' % fname)
 
-#    # update master filter curve dictionary with filters in user input file
-#    print("Before, Nfilters =", len(args.filt_dict))
-    args.filt_dict.update(infilt_dict)
-
-# APPEND TO FILT_DICT
     nfilters = len(args.filt_dict)
-#    print("After. Nfilters =", nfilters)
     y = np.zeros((nobj, nfilters))
     yerr = np.zeros((nobj, nfilters))
     flag = np.zeros((nobj, nfilters), dtype=bool)
@@ -555,37 +531,73 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
 
 
     # read in emission line fluxes, if provided
-    emline_fill_value = -99 # null value, should not be changed
+    line_fill_value = -99 # null value, should not be changed
     if args.use_emline_flux:
         em, emerr = Table(), Table()
         for emline in args.emline_list_dict.keys():
             colname, ecolname = '%s_FLUX' % emline, '%s_ERR' % emline
             if colname in Fcols:
                 em_arr = np.array(F[colname]  * args.emline_factor)
-                emerr_arr = np.max([F[ecolname],
-                                    args.emline_floor_error*F[colname]],0)
-                emerr_arr *= args.emline_factor
+                emerr_arr = np.max([abs(F[ecolname]/F[colname]),
+                                    np.array([args.emline_floor_error]*len(F))],0)
+                emerr_arr *= abs(em_arr)
 
                 # account for objects with null measurements
-                null_idx = np.where(np.array(F[colname])==emline_fill_value)[0]
-                em_arr[null_idx] = emline_fill_value
-                emerr_arr[null_idx] = emline_fill_value
+                null_idx = np.where(abs(np.array(F[colname])-line_fill_value)<1e-10)[0]
+                em_arr[null_idx] = line_fill_value
+                emerr_arr[null_idx] = line_fill_value
 
                 em[colname]     = em_arr
                 emerr[ecolname] = emerr_arr
 
                 Fcols = [c for c in Fcols if c not in [colname, ecolname]]
                 print('Reading %s line fluxes from input file' % emline)
-## WPBWPB delete
-#                print('this is Fcols:   '+str(Fcols))
             else:
-## WPBWPB make a decision: all fill values, or remove from dictionary?
-#                em[colname]     = np.full(len(F), emline_fill_value)
-#                emerr[ecolname] = np.full(len(F), emline_fill_value)
                 del args.emline_list_dict[emline]
+        if not args.emline_list_dict:
+            em    = np.full((len(F),2), line_fill_value)
+            emerr = np.full((len(F),2), line_fill_value)
     else:
-        em    = np.full((len(F),2), emline_fill_value)
-        emerr = np.full((len(F),2), emline_fill_value)
+        em    = np.full((len(F),2), line_fill_value)
+        emerr = np.full((len(F),2), line_fill_value)
+
+    # read in absorption line indices, if provided
+    if args.use_absorption_indx:
+        absindx, absindx_e = Table(), Table()
+        for indx in args.absorption_index_dict.keys():
+            colname, ecolname = '%s_INDX' % indx, '%s_Err' % indx
+            # note the index units (for applying the floor error)
+            unit = args.absorption_index_dict[indx][-1]
+            if colname in Fcols:
+                indx_arr = np.array(F[colname])
+                if unit == 1: # magnitudes
+                    efloor = 2.5*np.log10(1.+args.absindx_floor_error)
+                    efloor_arr = np.array([efloor]*len(F))
+                    indxerr_arr = np.max([abs(F[ecolname]), efloor_arr],0)
+                else:
+                    efloor_arr = np.array([args.absindx_floor_error]*len(F))
+                    indxerr_arr = np.max([abs(F[ecolname]/F[colname]),
+                                          efloor_arr],0)
+                    indxerr_arr *= abs(indx_arr)
+
+                # account for objects with null measurements
+                null_idx = np.where(abs(np.array(F[colname])-line_fill_value)<1e-10)[0]
+                indx_arr[null_idx] = line_fill_value
+                indxerr_arr[null_idx] = line_fill_value
+
+                absindx[colname]    = indx_arr
+                absindx_e[ecolname] = indxerr_arr
+
+                Fcols = [c for c in Fcols if c not in [colname, ecolname]]
+                print('Reading %s absorption line index from input file' % indx)
+            else:
+                del args.absorption_index_dict[indx]
+        if not args.absorption_index_dict:
+            absindx   = np.full((len(F),2), line_fill_value)
+            absindx_e = np.full((len(F),2), line_fill_value)
+    else:
+        absindx   = np.full((len(F),2), line_fill_value)
+        absindx_e = np.full((len(F),2), line_fill_value)
 
 
     # warn of any unused columns from the input file
@@ -594,7 +606,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         print(Fcols) 
 
     # WPBWPB: adjust, clarify the column names
-    return y, yerr, z, flag, F['obj_id'], F['field'], em, emerr
+    return y, yerr, z, flag, F['obj_id'], F['field'], em, emerr, absindx, absindx_e
 
 
 def draw_uniform_dist(nsamples, start, end):
@@ -672,13 +684,13 @@ WPBWPB: modify, document all outputs
     params, y, yerr, true_y = [], [], [], []
 
     # add emission line fluxes
-    emline_fill_value = -99 # null value, should not be changed
+    line_fill_value = -99 # null value, should not be changed
     if args.use_emline_flux: 
         em, emerr = Table(), Table()
         emlines = args.emline_list_dict.keys()
     else:
-        em      = np.full( (nsamples,2), emline_fill_value)
-        emerr   = np.full( (nsamples,2), emline_fill_value)
+        em      = np.full( (nsamples,2), line_fill_value)
+        emerr   = np.full( (nsamples,2), line_fill_value)
     for theta, z in zip(thetas, zobs):
         mcsed_model.set_class_parameters(theta)
         mcsed_model.set_new_redshift(z)
@@ -781,10 +793,6 @@ def main(argv=None, ssp_info=None):
 #    print(args)
 #    print(type(argv))
 
-## WPBWPB delete
-#    print('testing if boolean command line args default to True/False. this is add_nebular and fit_dust_emission:')
-#    print((args.add_nebular, args.fit_dust_em))
-
     # Load Single Stellar Population model(s)
     if ssp_info is None:
 ## WPB delete: if carrying nebular separately from rest of spectrum...
@@ -805,7 +813,6 @@ def main(argv=None, ssp_info=None):
 
         args.log.info('Reading in SSP model')
         ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)
-
     else:
         ages, masses, wave, SSP, met, linewave, lineSSP = ssp_info
 
@@ -821,9 +828,8 @@ def main(argv=None, ssp_info=None):
 
 
 
-    # Adjust filter dictionary and emission line dictionary, if applicable
-# WPBWPB bug maybe? second & () wrong ?
-    if (not args.test) & (not args.use_input_data):
+    # Adjust filter, emission line, absorption index dictionaries, if applicable
+    if (not args.test) & (args.use_input_data):
         input_file_data = read_input_file(args) 
     else:
         input_file_data = None
@@ -840,11 +846,14 @@ def main(argv=None, ssp_info=None):
     mcsed_model = Mcsed(filter_matrix, SSP, linewave, lineSSP, ages, 
                         masses, met, wave, args.sfh,
                         args.dust_law, args.dust_em, nwalkers=args.nwalkers,
-                        nsteps=args.nsteps)
+                        nsteps=args.nsteps,sigma_m=args.model_floor_error)
 
     # Communicate emission line measurement preferences
     mcsed_model.use_emline_flux = args.use_emline_flux
     mcsed_model.emline_dict = args.emline_list_dict
+    mcsed_model.use_absorption_indx = args.use_absorption_indx
+    mcsed_model.absindx_dict = args.absorption_index_dict
+
 
 ## WPBWPB delete
 #    print('This is emline dict:')
@@ -879,28 +888,21 @@ def main(argv=None, ssp_info=None):
 
 #WPBWPB delete: this is where I adjust additional class params from config.py options
 
-# WPBWPB: clarify metallicity argument...
-# pass value from config: Zsolar? needs passed to mcsed_model as well...
-
-    Zsolar = 0.019
-
     # Specify whether metallicity is fixed
     if args.metallicity:
         mcsed_model.ssp_class.fix_met = True
+        Zsolar = 0.019
         mcsed_model.ssp_class.met = np.log10(args.metallicity/Zsolar)
     else:
         mcsed_model.ssp_class.fix_met = False
 
     # Specify whether dust emission is fixed
-    if not args.fit_dust_em:
+    if (not args.fit_dust_em) | (args.test):
         mcsed_model.dust_em_class.fixed = True
     else:
-        if args.test:
-            mcsed_model.dust_em_class.fixed = True
-            print("Since you are in test mode, we are setting the Boolean variable fit_dust_em to False")
-        else:
-            mcsed_model.dust_em_class.fixed = False
+        mcsed_model.dust_em_class.fixed = False
 
+# WPBWPB clean up
     # Specify whether energy balance is assumed
     if args.assume_energy_balance:
         if args.fit_dust_em:
@@ -947,6 +949,7 @@ def main(argv=None, ssp_info=None):
 #    print(formats)
 
     # WPB field/id
+# WPBWPB adjust length of fieldname - choose longest inputed value
     mcsed_model.table = Table(names=labels, dtype=['S7', 'i4'] +
                               ['f8']*(len(labels)-2))
 ## WPBWPB delete
@@ -1007,10 +1010,13 @@ def main(argv=None, ssp_info=None):
     # WPB field/id
         # read input file, if not already done
         if not input_file_data:
-            y, yerr, z, flag, objid, field, em, emerr = read_input_file(args)
+            y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = read_input_file(args)
         else:
-            y, yerr, z, flag, objid, field, em, emerr = input_file_data
+            y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = input_file_data
 
+#        print(yerr[y>0])
+#        print((z,flag,objid,field,em,emerr, absindx, absindx_e))
+#        print((absindx, absindx_e))
 ##WPBWPB delete
 #        print(read_input_file(args))
 #        print(em)
@@ -1023,8 +1029,10 @@ def main(argv=None, ssp_info=None):
 # WPBWPB delete
 #        print(iv)
         #return
-        for yi, ye, zi, fl, oi, fd, emi, emie in zip(y, yerr, z, flag, objid,
-                                                   field, em, emerr):
+        for yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe in zip(y, yerr, z, flag, objid,
+                                                                  field, em, emerr, absindx, absindx_e):
+#            print('starting the first one')
+#            print((yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe))
             mcsed_model.filter_flag = fl
             mcsed_model.set_class_parameters(iv)
 # WPBWPB delete
@@ -1034,6 +1042,8 @@ def main(argv=None, ssp_info=None):
             mcsed_model.set_new_redshift(zi)
             mcsed_model.data_emline = emi
             mcsed_model.data_emline_e = emie
+            mcsed_model.data_absindx = indx
+            mcsed_model.data_absindx_e = indxe
 
             # Remove filters containing Lyman-alpha (and those blueward)
             mcsed_model.remove_waverange_filters(0., 1216., restframe=True)
@@ -1047,6 +1057,7 @@ def main(argv=None, ssp_info=None):
 #            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
 
             mcsed_model.fit_model()
+            print('i have fit the model')
 
             # Set attributes: median SED and filter fluxes from random sample
             # of fits satisfying a chi2 cut
@@ -1106,28 +1117,48 @@ def main(argv=None, ssp_info=None):
 # WPBWPB delete
                 #T.write('output/filterflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
             if (args.output_dict['lineflux']) & (mcsed_model.use_emline_flux):
-                emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
-                emweights = np.array(mcsed_model.emline_dict.values())[:,1]
-                emlines = mcsed_model.emline_dict.keys()
-                model_fl, fl, fle = [], [], []
+#                emwaves = np.array(mcsed_model.emline_dict.values())[:,0]
+#                emweights = np.array(mcsed_model.emline_dict.values())[:,1]
+                emlines = list(mcsed_model.emline_dict.keys())
+                emwaves, wht, model_fl, fl, fle = [], [], [], [], []
                 for emline in emlines:
+                    emwaves.append(mcsed_model.emline_dict[emline][0])
+                    wht.append(mcsed_model.emline_dict[emline][1])
                     model_fl.append( mcsed_model.linefluxCSPdict[emline] )
                     fl.append( mcsed_model.data_emline['%s_FLUX' % emline] )
                     fle.append( mcsed_model.data_emline_e['%s_ERR' % emline] )
-                T = Table([emwaves, emweights, model_fl, fl, fle],
+                T = Table([emwaves, wht, model_fl, fl, fle],
                           names=['rest_wavelength', 'weight', 'model_lineflux',
                                  'lineflux', 'linefluxerror'])
                 T.sort('rest_wavelength')
-                T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
-                        overwrite=True, format='ascii.fixed_width_two_line')
+                if len(T):
+                    T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                            overwrite=True, format='ascii.fixed_width_two_line')
 # WPBWPB delete
                 #T.write('output/lineflux_%s_%05d_%s_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law, args.output_filename.split(".")[0]), overwrite=True, format='ascii.fixed_width_two_line')
+            if (args.output_dict['absorption']) & (mcsed_model.use_absorption_indx):
+                abs_names = list(mcsed_model.absindx_dict.keys())
+                # each name: name, weight, modeled, measured, error
+                wht, model, measure, error = [], [], [], []
+                for indx in abs_names:
+                    wht.append( mcsed_model.absindx_dict[indx][0] )
+                    model.append( mcsed_model.absindxCSPdict[indx] )
+                    measure.append( mcsed_model.data_absindx['%s_INDX' % indx] )
+                    error.append( mcsed_model.data_absindx_e['%s_Err' % indx] )
+                T = Table([abs_names, wht, model, measure, error],
+                          names=['INDX', 'weight', 'model',
+                                 'measure', 'measure_error'])
+                if len(T):
+                    T.write('output/absindx_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
+                            overwrite=True, format='ascii.fixed_width_two_line')
+
             last = mcsed_model.add_fitinfo_to_table(percentiles)
             print(mcsed_model.table)
     if args.parallel:
         return [mcsed_model.table, formats]
     else:
         if args.output_dict['parameters']:
+            print(mcsed_model.table)
             mcsed_model.table.write('output/%s' % args.output_filename,
                                     format='ascii.fixed_width_two_line',
                                     formats=formats, overwrite=True)
