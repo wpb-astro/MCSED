@@ -79,10 +79,6 @@ emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
 
 emline_factor = 1e-17 # numerical conversion from input values to units ergs/cm2/s
 
-# Use metallicity-mass relationship from Ma et al. 2016
-# NOTE: currently unavailable
-metallicity_mass_relationship = False
-
 # If False, leave metallicity as a free parameter
 # else, must be float: fixed metallicity of SSP models
 # if True, metallicity is fixed at 0.0077 (where Zsolar = 0.019)
@@ -95,7 +91,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
                'fitposterior'  : False,  # parameter posterior distributions
                'bestfitspec'   : True,   # best-fit SED model
                'fluxdensity'   : True,   # modeled and observed photometry
-               'lineflux'      : True,  # modeled and observed emission lines
+               'lineflux'      : True,   # modeled and observed emission lines
                'absorption'    : True,   # modeled, observed absorption indices
                'triangle plot' : True,   # summary diagnostic plot
                'sample plot'   : False,  # 

@@ -178,7 +178,6 @@ def parse_args(argv=None):
                   'dust_em', 'Rv', 'EBV_stars_gas', 'wave_dust_em',
                   'emline_list_dict', 'emline_factor', 'use_input_data',
                   'absorption_index_dict',
-                  'metallicity_mass_relationship', 
                   'output_dict', 'param_percentiles', 'reserved_cores', 'assume_energy_balance']
     for arg_i in arg_inputs:
         try:

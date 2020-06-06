@@ -28,14 +28,10 @@ import emcee
 #import matplotlib.pyplot as plt
 import corner
 import time
-# WPBWPB delete astrpy table
-from astropy.table import Table
 from scipy.integrate import simps
 from scipy.interpolate import interp1d
 from astropy.constants import c as clight
-
 import numpy as np
-
 
 
 import matplotlib.pyplot as plt
@@ -62,7 +58,7 @@ class Mcsed:
                  data_emline=None, data_emline_e=None, emline_dict=None,
                  redshift=None,
                  filter_flag=None, input_spectrum=None, input_params=None,
-                 sigma_m=0.1, nwalkers=40, nsteps=1000, true_fnu=None):
+                 sigma_m=0.1, nwalkers=40, nsteps=1000, true_fnu=None, chi2=None):
         ''' Initialize the Mcsed class.
 
         Init
@@ -132,6 +128,7 @@ WPBWPB units + are dimensions correct??
         nsteps : int
             The number of steps each walker will make when fitting a model
         true_fnu : WPBWPB FILL IN
+        chi2 : WPBWPB FILL IN
 
 WPBWPB: describe self.t_birth, set using args and units of Gyr
         '''
@@ -171,6 +168,7 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         self.true_fnu = true_fnu
         if self.redshift is not None:
             self.set_new_redshift(self.redshift)
+        self.chi2 = chi2
 
         # Set up logging
         self.setup_logging()
@@ -675,13 +673,14 @@ WPBWPB units??
                         chi2_term += (-0.5 * (model_lineflux - lineflux)**2 /
                                       sigma2) * emline_weight
                         parm_term += -0.5 * np.log(emline_weight * sigma2)
-## WPBWPB: delete
-#                print('this is emline and term:')
-#                print(emline)
-#                print(emline_term)
 
-#        print('this is absorption and emline terms:')
-#        print((absindx_term, emline_term))
+        # record current chi2 and degrees of freedom
+        if not self.chi2:
+            self.chi2 = {}
+            dof = len(self.data_fnu)
+             
+            self.chi2['dof'] = len(self.data_fnu)
+        self.chi2['chi2'] = -2. * chi2_term
 
         return (chi2_term + parm_term, mass,sfr10,sfr100,fpdr,mdust_eb)
 
