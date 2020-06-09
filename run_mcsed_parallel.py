@@ -11,7 +11,6 @@ from astropy.table import Table, vstack
 from multiprocessing import cpu_count, Manager, Process
 #from run_mcsed_fit import main as run_mcsed_ind
 #from run_mcsed_fit import parse_args
-from ssp import read_ssp
 from distutils.dir_util import mkpath
 import run_mcsed_fit
 run_mcsed_ind = run_mcsed_fit.main
@@ -144,7 +143,7 @@ def main_parallel(argv=None):
 #    print(args)
 #    print(type(argv))
 
-    ssp_info = None  # read_ssp(args)
+    ssp_info = None
     NCPU = cpu_count()
     ncpu = np.max([1, NCPU - args.reserved_cores])
 ## WPBWPB delete

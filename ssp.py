@@ -149,35 +149,7 @@ def read_fsps_neb(filename):
     return Z, Age, logU, spec, wave
 
 
-def read_fsps_ssp(filename):
-    '''
-    Returns
-    -------
-    ages : list (1 dim)
-        ages in log years
-    spec : list (2 dim)
-        spectra in solar bolometric luminosity per Hz
-    wave : numpy array (1 dim)
-        wavelength for each spectrum spanning 90 Angstroms - 10000 microns
-        in units of Angstroms
-    '''
-    cnt = 0
-    ages, spec = [], []
-    with open(filename) as f:
-        for lines in f:
-            if cnt == 9:
-                wave = np.array(lines.split(), dtype=float)
-            if cnt > 9:
-                l = lines.split()
-                if len(l) == 4:
-                    ages.append(float(l[0]))
-                else:
-                    spec.append(np.array(l, dtype=float))
-            cnt += 1
-    return ages, spec, wave
-
-
-def read_fsps(args, metallicity):
+def read_fsps_file(args, metallicity):
     '''Read in the stellar population models from fsps for a given isochrone
     and metallicity.
 
@@ -209,7 +181,22 @@ def read_fsps(args, metallicity):
             print('%0.4f ' % met)
         print(']')
         sys.exit(1)
-    ages, spec, wave = read_fsps_ssp(filename)
+
+    # Interpret the file
+    cnt = 0
+    ages, spec = [], []
+    with open(filename) as f:
+        for lines in f:
+            if cnt == 9:
+                wave = np.array(lines.split(), dtype=float)
+            if cnt > 9:
+                l = lines.split()
+                if len(l) == 4:
+                    ages.append(float(l[0]))
+                else:
+                    spec.append(np.array(l, dtype=float))
+            cnt += 1
+
     # convert from solar bolometric luminosity per Hz to micro-Jy at 10 pc
     spec = np.array(spec).swapaxes(0, 1) * solar_microjansky
     ages = np.array(ages)
@@ -441,7 +428,7 @@ def number_ionizing_photons(wave, spectrum, clight=2.99792e18,
     return np.sum(x1 * x3) / hplanck
 
 
-def read_ssp(args):
+def read_ssp_fsps(args):
     ''' Read in SPS model and return ages, wavelength, and spectra
 
     Parameters
@@ -457,7 +444,7 @@ WPBWPB: operate under assumption that spec, linespec are in same units
     s, ls = [], []
     for met in args.metallicity_dict[args.ssp][args.isochrone]:
         if args.ssp.lower() == 'fsps':
-            ages, wave, spec = read_fsps(args, met)
+            ages, wave, spec = read_fsps_file(args, met)
         # add new SSP subroutines here:
 # WPBWPB: only carry linespec if going to measure emission lines?
         linespec = get_nebular_emission(ages, wave, spec, args.logU,
@@ -486,19 +473,22 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 ## WPBWPB following line appears unused... 
 #        m.append(np.dot(spec, wei)/spec.shape[1])
 
-    # for plotting purposes only
-    fig = plt.figure(figsize=(8, 8))
-    import seaborn as sns
-    colors = sns.color_palette("coolwarm", s[-5].shape[1])
-    wei = np.diff(np.hstack([0., ages]))
-    for i in np.arange(s[-5].shape[1]):
-        plt.plot(wave, s[-5][:, i] * wei[i] / 1e8, color=colors[i])
-    plt.xlim([900., 40000.])
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.ylim([1e-5, 10])
-    plt.savefig('template_spectra_plot.png')
-    plt.close(fig)
+    # save plot of SSP spectra
+    if args.output_dict['template spec']:
+        fig = plt.figure(figsize=(8, 8))
+        import seaborn as sns
+        colors = sns.color_palette("coolwarm", s[-5].shape[1])
+        wei = np.diff(np.hstack([0., ages]))
+        for i in np.arange(s[-5].shape[1]):
+            plt.plot(wave, s[-5][:, i] * wei[i] / 1e8, color=colors[i])
+        plt.xlim([900., 40000.])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.ylim([1e-5, 10])
+        plt.xlabel('Wavelength [$\\rm{\AA}$]')
+        plt.ylabel('Relative $f_\\nu$')
+        plt.savefig('template_spectra_plot.%s' % args.output_dict['image format'])
+        plt.close(fig)
 
     spec = np.moveaxis(np.array(s), 0, 2)
     linespec = np.moveaxis(np.array(ls), 0, 2)

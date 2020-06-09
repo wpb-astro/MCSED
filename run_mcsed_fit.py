@@ -11,7 +11,7 @@ import numpy as np
 import os.path as op
 import logging
 import config
-from ssp import read_ssp
+from ssp import read_ssp_fsps
 from astropy.io import fits
 from astropy.table import Table, vstack
 from mcsed import Mcsed
@@ -140,14 +140,6 @@ def parse_args(argv=None):
                         help='''Ionization Parameter for nebular gas''',
                         type=float, default=None)
 
-    parser.add_argument("-fd", "--fit_dust_em",
-                        help='''Fit Dust Emission''',
-                        action="count", default=0)
-
-    parser.add_argument("-aeb", "--assume_energy_balance",
-                        help='''If true, normalization of dust IR emission based on attenuation amount''',
-                        action="count", default=0)
-
     parser.add_argument("-t", "--test",
                         help='''Test script with fake data''',
                         action="count", default=0)
@@ -172,10 +164,10 @@ def parse_args(argv=None):
 # unused from parser args... filename, output_filename, test, test_field, parallel, count
     arg_inputs = ['ssp', 'metallicity', 'isochrone', 'sfh', 'dust_law',
                   't_birth',
-                  'nwalkers', 'nsteps', 'logU', 'fit_dust_em',
+                  'nwalkers', 'nsteps', 'logU', 
                   'phot_floor_error', 'emline_floor_error', 'absindx_floor_error',  
-                  'model_floor_error', 'nobjects', 'test_zrange',
-                  'dust_em', 'Rv', 'EBV_stars_gas', 'wave_dust_em',
+                  'model_floor_error', 'nobjects', 'test_zrange', 'blue_wave_cutoff', 
+                  'dust_em', 'Rv', 'EBV_old_young', 'wave_dust_em',
                   'emline_list_dict', 'emline_factor', 'use_input_data',
                   'absorption_index_dict',
                   'output_dict', 'param_percentiles', 'reserved_cores', 'assume_energy_balance']
@@ -227,7 +219,7 @@ def parse_args(argv=None):
     args.count = count
 
     # Determine whether emission lines / absorption line indices are used
-    # to constrain the models
+    # to constrain the models (not included in test mode)
     if (not args.test) & (not args.use_input_data):
         args.use_emline_flux = False
         args.use_absorption_indx = False
@@ -235,10 +227,15 @@ def parse_args(argv=None):
         args.use_emline_flux = True
         args.use_absorption_indx = True
 
-    if type(args.emline_list_dict)!=dict:
+    if (type(args.emline_list_dict)!=dict) | (args.test):
         args.emline_list_dict={}
-    if type(args.absorption_index_dict)!=dict:
+    if (type(args.absorption_index_dict)!=dict) | (args.test):
         args.absorption_index_dict={}
+
+    # Set up dust emission arguments
+    if not args.dust_em:
+        args.dust_em = 'DL07'
+        args.fit_dust_em = False 
 
     return args
 
@@ -674,53 +671,16 @@ WPBWPB: modify, document all outputs
     truth : numpy array (2 dim)
         Mock input parameters for each fake galaxy, e.g. dust, sfh, mass
     '''
-    # Build fake theta, set z, mass, age to get sfh_a
-# WPB: modify, redshift range
     np.random.seed()
     thetas = mcsed_model.get_init_walker_values(num=nsamples, kind='ball')
     zmin, zmax = args.test_zrange
     zobs = draw_uniform_dist(nsamples, zmin, zmax)
     params, y, yerr, true_y = [], [], [], []
 
-    # add emission line fluxes
-    line_fill_value = -99 # null value, should not be changed
-    if args.use_emline_flux: 
-        em, emerr = Table(), Table()
-        emlines = args.emline_list_dict.keys()
-    else:
-        em      = np.full( (nsamples,2), line_fill_value)
-        emerr   = np.full( (nsamples,2), line_fill_value)
     for theta, z in zip(thetas, zobs):
         mcsed_model.set_class_parameters(theta)
         mcsed_model.set_new_redshift(z)
-## WPBWPB delete
-#        print('this is the redshift: z')
         mcsed_model.spectrum, mass = mcsed_model.build_csp()
-        # simulate emission line fluxes
-        # true modeled fluxes are stored in mcsed_model.linefluxCSPdict
-        if args.use_emline_flux: 
-            em_loc, emerr_loc = Table(), Table()
-            for emline in emlines:
-## WPBWPB delete
-#                print('emerr_loc: %s' % emerr_loc)
-                colname, ecolname = '%s_FLUX' % emline, '%s_ERR' % emline
-                model_lineflux = mcsed_model.linefluxCSPdict[emline]
-## WPBWPB delete
-#                print('err and type: %s, %s' % (model_lineflux * args.emline_floor_error, type(model_lineflux * args.emline_floor_error)))
-#                print('colname, ecolname, and types: %s, %s, %s, %s' % (colname, ecolname, type(colname), type(ecolname)))
-                emerr_loc[ecolname] = [model_lineflux * args.emline_floor_error]
-## WPBWPB delete
-#                perturb = float(emerr_loc[ecolname]*np.random.randn(1))
-#                print(perturb) 
-                em_loc[colname] = [model_lineflux 
-                                + float(emerr_loc[ecolname]*np.random.randn(1))]
-## WPBWPB delete
-#            print('these are the true and modeled line fluxes and errors:')
-#            print(mcsed_model.linefluxCSPdict.values())
-#            print(em_loc)
-#            print(emerr_loc)
-            em = vstack([em, em_loc])
-            emerr = vstack([emerr, emerr_loc])
 ## WPBWPB adjust log info.....
 #        args.log.info('%0.2f, %0.2f' % (hlims[-1]*1e17, np.log10(mass)))
         f_nu = mcsed_model.get_filter_fluxdensities()
@@ -734,7 +694,7 @@ WPBWPB: modify, document all outputs
         true_y.append(f_nu)
         params.append(list(theta) + [np.log10(mass)])
 
-    return y, yerr, zobs, params, true_y, em, emerr
+    return y, yerr, zobs, params, true_y
 
 
 def main(argv=None, ssp_info=None):
@@ -795,7 +755,7 @@ def main(argv=None, ssp_info=None):
     # Load Single Stellar Population model(s)
     if ssp_info is None:
         args.log.info('Reading in SSP model')
-        ages, wave, SSP, met, linewave, lineSSP = read_ssp(args)
+        ages, wave, SSP, met, linewave, lineSSP = read_ssp_fsps(args)
     else:
         ages, wave, SSP, met, linewave, lineSSP = ssp_info
 
@@ -860,11 +820,8 @@ def main(argv=None, ssp_info=None):
         args.Rv = mcsed_model.dust_abs_class.Rv
 
     # Adjust the relative attenuation between stars and gas in the dust model
-    # E(B-V)_stars = EBV_stars_gas * E(B-V)_gas
-    if args.EBV_stars_gas >= 0:
-        mcsed_model.dust_abs_class.EBV_stars_gas = args.EBV_stars_gas
-    else:
-        args.EBV_stars_gas = mcsed_model.dust_abs_class.EBV_stars_gas
+    # E(B-V)_diffuse = EBV_old_young * E(B-V)_birthcloud
+    mcsed_model.dust_abs_class.EBV_old_young = args.EBV_old_young
 
     # Specify the age of the birth cloud (suffer different attenuation)
     mcsed_model.t_birth = 10**(args.t_birth-9.) # Gyr
@@ -945,14 +902,13 @@ def main(argv=None, ssp_info=None):
         fl = get_test_filters(args)
         mcsed_model.filter_flag = fl * True
         default = mcsed_model.get_params()
-        y, yerr, z, truth, true_y, em, emerr = mock_data(args, mcsed_model,
-                                                    phot_error=args.phot_floor_error,
-                                                    nsamples=args.nobjects)
+        y, yerr, z, truth, true_y = mock_data(args, mcsed_model,
+                                              phot_error=args.phot_floor_error,
+                                              nsamples=args.nobjects)
 
         cnts = np.arange(args.count, args.count + len(z))
 
-        for yi, ye, zi, tr, ty, cnt, emi, emie in zip(y, yerr, z, truth, true_y, 
-                                               cnts, em, emerr):
+        for yi, ye, zi, tr, ty, cnt in zip(y, yerr, z, truth, true_y, cnts):
             mcsed_model.input_params = tr
             mcsed_model.filter_flag = fl * True
             mcsed_model.set_class_parameters(default)
@@ -960,11 +916,14 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_fnu_e = ye
             mcsed_model.true_fnu = ty
             mcsed_model.set_new_redshift(zi)
-            mcsed_model.data_emline = emi
-            mcsed_model.data_emline_e = emie
+            mcsed_model.data_emline = [-99]
+            mcsed_model.data_emline_e = [-99]
+            mcsed_model.data_absindx = [-99]
+            mcsed_model.data_absindx_e = [-99]
+
 
             # Remove filters containing Lyman-alpha (and those blueward)
-            mcsed_model.remove_waverange_filters(0., 1216., restframe=True)
+            mcsed_model.remove_waverange_filters(0., args.blue_wave_cutoff, restframe=True)
             # Remove filters dominated by dust emission, if applicable
             if not args.fit_dust_em:
                 mcsed_model.remove_waverange_filters(args.wave_dust_em*1e4,1e10,
@@ -974,14 +933,9 @@ def main(argv=None, ssp_info=None):
             mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:
-                # mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
-# WPBWPB delete
-                mcsed_model.sample_plot('output/sample_fake_%05d_%s' % (cnt, args.output_filename.split(".")[0]))
+                mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
             if args.output_dict['triangle plot']:
-                # mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
-# WPBWPB delete
-                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s_%s' % (cnt, args.sfh, args.dust_law, args.output_filename.split(".")[0]))
-
+                mcsed_model.triangle_plot('output/triangle_fake_%05d_%s_%s' % (cnt, args.sfh, args.dust_law))
             mcsed_model.table.add_row(['Test', cnt, zi] + [0.]*(len(labels)-3))
             print("Reached point before adding fit info to table")
             last = mcsed_model.add_fitinfo_to_table(percentiles)
@@ -1029,7 +983,7 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_absindx_e = indxe
 
             # Remove filters containing Lyman-alpha (and those blueward)
-            mcsed_model.remove_waverange_filters(0., 1216., restframe=True)
+            mcsed_model.remove_waverange_filters(0., args.blue_wave_cutoff, restframe=True)
             # Remove filters dominated by dust emission, if applicable
             if not args.fit_dust_em:
                 mcsed_model.remove_waverange_filters(args.wave_dust_em*1e4,1e10, 

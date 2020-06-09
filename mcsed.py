@@ -370,6 +370,11 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         self.dust_em_class.set_parameters_from_list(theta, start_value)
         start_value += self.dust_em_class.get_nparams()
 
+#        print('this is start_value (is it equal to number of free params?)')
+#        print(start_value)
+#        print(len(theta))
+        # set self.nparams -- number of parameters in the model
+
     def get_ssp_spectrum(self):
         '''
         Calculate SSP for an arbitrary metallicity (self.ssp_class.met) given a
@@ -525,7 +530,7 @@ WPBWPB units??
 # WPBWPB: check which law using for the birth cloud
 # if attenuating it directly tied to overall dust law,
 # modified by coefficient between EBV_stars ~ gas, get it here
-        Alam_birth = Alam / self.dust_abs_class.EBV_stars_gas
+        Alam_birth = Alam / self.dust_abs_class.EBV_old_young
         spec_birth_dustobscured = spec_birth_dustfree * 10**(-0.4 * Alam_birth)
 
         # Combine the young and old components
@@ -534,7 +539,7 @@ WPBWPB units??
 
         # compute attenuation for emission lines
         Alam_emline = (self.dust_abs_class.evaluate(self.emlinewave,new_wave=True)
-                       / self.dust_abs_class.EBV_stars_gas)
+                       / self.dust_abs_class.EBV_old_young)
 # WPBWPB: else, use a separate model
 
 ## WPBWPB delete
@@ -629,6 +634,11 @@ WPBWPB units??
         chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
 
+        # calculate the degrees of freedom and store the current chi2 value
+        # only need to calculate the degrees of freedom once
+        if not self.chi2:
+            dof_wht = list(np.ones(len(self.data_fnu)))
+
 
         # likelihood contribution from the absorption line indices
         self.measure_absorption_index()
@@ -649,6 +659,8 @@ WPBWPB units??
                     chi2_term += (-0.5 * (model_indx - obs_indx)**2 /
                                   sigma2) * indx_weight
                     parm_term += -0.5 * np.log(indx_weight * sigma2)
+                    if not self.chi2:
+                        dof_wht.append(indx_weight) 
 #                    print('this is absorption thing:')
 #                    print((indx, obs_indx, obs_indx_e, model_indx, absindx_term))
 #                    print((type(indx), type(obs_indx), type(obs_indx_e), type(model_indx), type(absindx_term)))
@@ -673,14 +685,17 @@ WPBWPB units??
                         chi2_term += (-0.5 * (model_lineflux - lineflux)**2 /
                                       sigma2) * emline_weight
                         parm_term += -0.5 * np.log(emline_weight * sigma2)
+                        if not self.chi2:
+                            dof_wht.append(emline_weight)
 
         # record current chi2 and degrees of freedom
         if not self.chi2:
             self.chi2 = {}
-            dof = len(self.data_fnu)
-             
-            self.chi2['dof'] = len(self.data_fnu)
-        self.chi2['chi2'] = -2. * chi2_term
+            dof_wht = np.array(dof_wht)
+            npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht)
+            self.chi2['dof'] = npt - self.nfreeparams 
+        self.chi2['chi2']  = -2. * chi2_term
+        self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
 
         return (chi2_term + parm_term, mass,sfr10,sfr100,fpdr,mdust_eb)
 
@@ -774,6 +789,7 @@ WPBWPB units??
 #            print(par_cl)
 #            print(vals)
         vals = list(np.hstack(vals))
+        self.nfreeparams = len(vals)
         return vals
 
     def get_param_lims(self):
@@ -1076,6 +1092,7 @@ WPBWPB units??
         chi2 = (1. / (len(self.data_fnu) - 1) *
                 (((self.data_fnu - self.fluxfn) / self.data_fnu_e)**2).sum())
         # WPBWPB: reduced chi^2 or not? properly accounting for number of data points, including emlines?
+        # WPBWPB delete this calculation of chi2 -- use the dictionary value instead
         if self.input_params is not None:
             self.set_class_parameters(self.input_params)
             self.sfh_class.plot(ax1, color='k', alpha=1.0)
@@ -1100,8 +1117,10 @@ WPBWPB units??
             ax3.set_xlim(right=max(max(self.fluxwv),max(self.wave)))
         else:
             ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.6 * ax3ran])
-        ax3.text(4200, ax3max, # + 0.2 * ax3ran, 
-                 r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
+        ax3.text((1.+self.redshift)*1400, ax3max,
+                 r'${\chi}_{\nu}^2 = $%0.2f' % self.chi2['rchi2'])
+        print('clean up chi2 value printed on the plot')
+
 
     def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
         ''' Make a triangle corner plot for samples from fit

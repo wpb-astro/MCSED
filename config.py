@@ -6,32 +6,37 @@
 
 """
 # SSP code for models
-ssp = 'fsps'  # options include: 'fsps'
+ssp = 'fsps'          # options include: 'fsps'
 isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'empirical_direct', 'empirical',
-sfh = 'constant' #'empirical_direct'
+sfh = 'constant' 
 dust_law = 'calzetti' # options include: 'noll', 'calzetti'
-dust_em = 'DL07'  # options include: 'DL07'
+
+# Dust emission parameters: 
+# if False, do not fit for dust emission component and remove all filters 
+#           redward of rest-frame wave_dust_em microns  (defined below)
+# else, set to string of desired dust emission class 
+dust_em = False # options include: 'DL07', False 
+# Assume energy balance or normalize the dust IR spectrum as a free parameter
+assume_energy_balance = False
 
 # Dust attenuation law parameters
-# if set to a negative value, use the default value for dust law of choice
-Rv = -1 # extinction factor
+# extinction factor (if negative, use default value for dust law of choice)
+Rv = -1 
 # The relative attenuation between the birth cloud and the diffuse component
-# in the dust model 
-# such that E(B-V)_diffuse = EBV_stars_gas * E(B-V)_birth
-EBV_stars_gas = -1
+# in the dust model, such that 
+# E(B-V)_diffuse = EBV_old_young * E(B-V)_birth
+EBV_old_young = 0.44
 
 t_birth = 7. # age of the birth cloud (log years)
 
-# Fit dust emission parameters
-# If True, fit the dust emission component. 
-# If False, remove all filters redward of rest-frame wave_dust_em microns 
-# and fix dust emission parameters to umin=2.0, gamma=0.05, qpah=2.5 
-fit_dust_em  = False 
-wave_dust_em = 2.5 # rest-frame wavelength in microns 
-# assume energy balance or normalize the dust IR spectrum as a free parameter
-assume_energy_balance = False 
+# Ignore photometry, as appropriate
+# blue_wave_cutoff: ignore filters containing Lyman-alpha
+# wave_dust_em:     if not fitting dust emission component, ignore photometry
+#                   dominated by dust emission
+blue_wave_cutoff = 1216. # rest-frame wavelength in Angstroms 
+wave_dust_em     = 2.5   # rest-frame wavelength in microns 
 
 # EMCEE parameters
 nwalkers = 100 
@@ -43,7 +48,7 @@ test_zrange = (1.9, 2.35) # redshift range of test objects (uniform prior)
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
-logU = -2.5
+logU = -2.
 
 # minimum fractional errors in observed photometry, 
 # emission line fluxes, and absorption line indices 
@@ -51,7 +56,7 @@ phot_floor_error    = 0.10
 emline_floor_error  = 0.10
 absindx_floor_error = 0.10
 
-# fractional error expected from the models, i.e., fractional error adopted
+# Fractional error expected from the models, i.e., fractional error adopted
 # for model photometry, emission line fluxes, and absorption line indices
 model_floor_error = 0.10
 
@@ -73,7 +78,7 @@ use_input_data = True
 #           must have both flux and error - cannot have flux with null error
 #           can also set to {} or None, if preferred
 emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
-                    'Hb' : (4861., 1.),   'Ha' : (6563., 1.),
+                    'Hb'  : (4861., 1.),  'Ha' : (6563., 1.),
                     'NII' : (6583., 0.5)
                    }
 
@@ -94,7 +99,8 @@ output_dict = {'parameters'    : True,   # fitted parameters
                'lineflux'      : True,   # modeled and observed emission lines
                'absorption'    : True,   # modeled, observed absorption indices
                'triangle plot' : True,   # summary diagnostic plot
-               'sample plot'   : False,  # 
+               'sample plot'   : True,   #
+               'template spec' : True,   # save a plot of SSP spectra 
                'image format'  : 'png'}  # image type for plots
 
 # percentiles of each parameter to report in the output file
