@@ -85,8 +85,8 @@ def parse_args(argv=None):
             argv.remove('--already_parallel')
             already_parallel = True
 
-    # Pass "count" keyword -- only used in test mode in parallel
-    count = 0
+    # Pass "count" keyword (indexing objects in test mode) 
+    count = 1
     if type(argv) is list:
         if '--count' in argv:
             indx = argv.index('--count')
@@ -907,6 +907,7 @@ def main(argv=None, ssp_info=None):
                                               nsamples=args.nobjects)
 
         cnts = np.arange(args.count, args.count + len(z))
+        print(cnts)
 
         for yi, ye, zi, tr, ty, cnt in zip(y, yerr, z, truth, true_y, cnts):
             mcsed_model.input_params = tr
@@ -931,7 +932,8 @@ def main(argv=None, ssp_info=None):
 
             mcsed_model.fit_model()
             mcsed_model.set_median_fit()
-
+            print('current cnt:')
+            print(cnt)
             if args.output_dict['sample plot']:
                 mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
             if args.output_dict['triangle plot']:

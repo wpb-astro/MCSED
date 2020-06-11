@@ -11,7 +11,8 @@ isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'empirical_direct', 'empirical',
 sfh = 'constant' 
-dust_law = 'conroy'   # options include: 'noll', 'calzetti', 'reddy', 'conroy'
+dust_law = 'conroy'   # options include: 'noll', 'calzetti', 'reddy', 
+                      #                  'conroy', 'cardelli'
 
 # Dust emission parameters: 
 # if False, do not fit for dust emission component and remove all filters 
@@ -99,7 +100,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
                'lineflux'      : True,   # modeled and observed emission lines
                'absorption'    : True,   # modeled, observed absorption indices
                'triangle plot' : True,   # summary diagnostic plot
-               'sample plot'   : True,   #
+               'sample plot'   : False,  #
                'template spec' : True,   # save a plot of SSP spectra 
                'image format'  : 'png'}  # image type for plots
 
@@ -107,7 +108,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
 param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
-reserved_cores = 2 # integer
+reserved_cores = 6 # integer
 
 # Input absorption line indices
 # keys are index name (str) corresponding to name in input file
