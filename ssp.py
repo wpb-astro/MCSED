@@ -7,17 +7,17 @@ Single Stellar Population module for loading models
 """
 import sfh
 import sys
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use("Agg")
+#import matplotlib.pyplot as plt
 import numpy as np
 import os.path as op
 import scipy.interpolate as scint
 from astropy.convolution import Gaussian1DKernel, convolve
 
 
-#import matplotlib.pyplot as plt
-#plt.ioff()
+import matplotlib.pyplot as plt
+plt.ioff()
 
 
 def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
@@ -326,7 +326,7 @@ def collapse_emline_SSP(args, linewave, linespec, clight=2.99792e18):
     ''' 
 
     if (not args.use_emline_flux) | (args.emline_list_dict=={}):
-        return np.zeros(2), linespec[0:2,:,:]
+        return np.array([1000.,2000.]), linespec[0:2,:,:]
 
 # loop through all emission line spectra for all ages, metallicities
 # WPBWPB: generalize such that does not assume only grid over ages and metallicities, but maybe ionization parameter (or arbitrary number of properties)

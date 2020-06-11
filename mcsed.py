@@ -23,9 +23,9 @@ import dust_emission
 import ssp
 import cosmology
 import emcee
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+#import matplotlib
+#matplotlib.use("Agg")
+#import matplotlib.pyplot as plt
 import corner
 import time
 from scipy.integrate import simps
@@ -34,8 +34,8 @@ from astropy.constants import c as clight
 import numpy as np
 
 
-#import matplotlib.pyplot as plt
-#plt.ioff()
+import matplotlib.pyplot as plt
+plt.ioff()
 
 import seaborn as sns
 sns.set_context("talk") # options include: talk, poster, paper

@@ -11,7 +11,7 @@ isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'empirical_direct', 'empirical',
 sfh = 'constant' 
-dust_law = 'calzetti' # options include: 'noll', 'calzetti', 'reddy'
+dust_law = 'conroy'   # options include: 'noll', 'calzetti', 'reddy', 'conroy'
 
 # Dust emission parameters: 
 # if False, do not fit for dust emission component and remove all filters 
