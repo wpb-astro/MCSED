@@ -697,7 +697,7 @@ class empirical_direct:
     ''' The empirical SFH includes 6 bins of SFR at discrete time intervals '''
     def __init__(self, init_log_sfr=1.2, init_log_sfr_lims=[-5., 3.],
                  init_log_sfr_delta=0.7,
-                 ages=[8., 8.5, 9., 9.3]):
+                 ages=[8., 8.5, 9., 9.5, 9.8, 10.12]):
         ''' Initialize this class
         Parameters
         ----------
@@ -728,9 +728,17 @@ class empirical_direct:
         C = Cosmology()
         self.age = np.log10(C.lookback_time(20.) -
                             C.lookback_time(redshift))
+        # adjust priors on all age bins that are too old
+        indx_too_old = np.where( self.age < np.array(self.ages)-9. )[0]
+        if len(indx_too_old) > 1:
+            for num in indx_too_old[1:]+1:
+                setattr(self, 'sfr_' + str(num), -99.)
+                setattr(self, 'sfr_' + str(num) + '_lims', [-99-1e-9,-99+1e-9])
+                setattr(self, 'sfr_' + str(num) + '_delta', 1e-9)
 
     def get_nparams(self):
         ''' Return number of parameters '''
+# WPBWPB modify nparams to exclude bins that are too old
         return len(self.ages)
 
     def get_params(self):
@@ -832,8 +840,10 @@ class empirical_direct:
         sel_too_old = bin_indx > len(sfr_bin)-1
         bin_indx[ sel_too_old ] = len(sfr_bin)-1
         sfr = sfr_bin[ bin_indx ]
-        sfr[ sel_too_old ] = 0.
-
+        sfr[ sel_too_old ] = 1e-99
+# WPBWPB delete
+#        print('this is log sfr:')
+#        print(np.log10(sfr))
         return sfr
 
 class empirical_direct_z0:

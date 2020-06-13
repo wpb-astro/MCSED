@@ -10,9 +10,9 @@ ssp = 'fsps'          # options include: 'fsps'
 isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'empirical_direct', 'empirical',
-sfh = 'constant' 
-dust_law = 'conroy'   # options include: 'noll', 'calzetti', 'reddy', 
-                      #                  'conroy', 'cardelli'
+sfh = 'empirical_direct' 
+dust_law = 'calzetti'   # options include: 'noll', 'calzetti', 'reddy', 
+                        #                  'conroy', 'cardelli'
 
 # Dust emission parameters: 
 # if False, do not fit for dust emission component and remove all filters 
@@ -45,7 +45,7 @@ nsteps   = 1000
 
 # Number of test objects
 nobjects = 5
-test_zrange = (1.9, 2.35) # redshift range of test objects (uniform prior)
+test_zrange = (.4, 1.9) # redshift range of test objects (uniform prior)
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
@@ -64,7 +64,7 @@ model_floor_error = 0.10
 # Use input data (photometry, emission lines, absorption line indices)
 # If True, use additional data provided in the input file
 # else, ignore input data (in which case input IDs must match Skelton+14 IDs)
-use_input_data = True 
+use_input_data = False # True 
 
 # Input emission line strengths
 # keys are emission line name (str) corresponding to name in input file

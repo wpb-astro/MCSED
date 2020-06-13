@@ -325,9 +325,8 @@ def get_maglim_filters(args):
 
 
 def get_max_ssp_age(args):
-    '''This function reads a very specific input file and uses the 
-    lowest redshift to determine a limit on the SSP ages considered. 
-    The input file should have the following columns: FIELD, ID, Z
+    '''
+WPBWPB FILL IN
     
     Parameters
     ----------
@@ -337,21 +336,22 @@ def get_max_ssp_age(args):
 
     Returns
     -------
-    maxage : float
-        maximum age (in log years) of objects in input file
+    maxage : tuple of (float, float)
+        the youngest and oldest maximum age (in log years) of sample galaxies
     '''
 
     if not args.test:
         F = Table.read(args.filename, format='ascii')
         z = F['z']
-        zmin = min(z)
+        zrange = (min(z), max(z))
     else:
-        zmin = args.test_zrange[0]
+        zrange = args.test_zrange
 
     C = Cosmology()
-    maxage = C.lookback_time(20)-C.lookback_time(zmin) #Linear age in Gyr
-    maxage = np.log10(maxage) + 9.0 # Age in log years
-    return maxage
+    # ages in log years:
+    maxage_lo = np.log10(C.lookback_time(20)-C.lookback_time(zrange[1])) + 9.
+    maxage_hi = np.log10(C.lookback_time(20)-C.lookback_time(zrange[0])) + 9.
+    return (maxage_lo, maxage_hi)
 
 
 def read_input_file(args):
@@ -907,7 +907,6 @@ def main(argv=None, ssp_info=None):
                                               nsamples=args.nobjects)
 
         cnts = np.arange(args.count, args.count + len(z))
-        print(cnts)
 
         for yi, ye, zi, tr, ty, cnt in zip(y, yerr, z, truth, true_y, cnts):
             mcsed_model.input_params = tr
@@ -932,8 +931,6 @@ def main(argv=None, ssp_info=None):
 
             mcsed_model.fit_model()
             mcsed_model.set_median_fit()
-            print('current cnt:')
-            print(cnt)
             if args.output_dict['sample plot']:
                 mcsed_model.sample_plot('output/sample_fake_%05d' % (cnt))
             if args.output_dict['triangle plot']:

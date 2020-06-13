@@ -692,10 +692,14 @@ WPBWPB units??
         if not self.chi2:
             self.chi2 = {}
             dof_wht = np.array(dof_wht)
-            npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht)
+            npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht) + 1
             self.chi2['dof'] = npt - self.nfreeparams 
         self.chi2['chi2']  = -2. * chi2_term
         self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
+
+        if np.isnan(chi2_term + parm_term):
+            print('lnlike is nanny, heres chi2 and parm:')
+            print((chi2_term, parm_term))
 
         return (chi2_term + parm_term, mass,sfr10,sfr100,fpdr,mdust_eb)
 
@@ -712,6 +716,11 @@ WPBWPB units??
         '''
         self.set_class_parameters(theta)
         lp = self.lnprior()
+# WPBWPB delete
+#        print('here is theta:')
+#        print(theta)
+#        print('here is lnprior:')
+#        print(lp)
         if np.isfinite(lp):
             #lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
             lnl,mass,sfr10,sfr100,fpdr,mdust_eb = self.lnlike()
@@ -721,8 +730,13 @@ WPBWPB units??
                 else:
                     return lp + lnl, np.array([mass, sfr10, sfr100, fpdr])
             else:
+## WPBWPB delete
+#                print('lp is finite. heres the output from lnprob:')
+#                print( (lp + lnl, np.array([mass, sfr10, sfr100]) ) )
                 return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
+## WPBWPB delete
+#            print('I reached the else in lnprob')        
             if not self.dust_em_class.fixed:
                 if self.dust_em_class.assume_energy_balance:
                     return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
@@ -903,14 +917,16 @@ WPBWPB units??
         sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
         sfrarray = self.sfh_class.evaluate(t_sfr10,force_params=params)
         sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
-        t_mfrac = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
-        sfrfull = self.sfh_class.evaluate(t_mfrac,force_params=params)
-        t_mfrac*=1.0e9 #Need it in years for calculation
-        #sfr_f = interp1d(t_mfrac,sfrfull,kind='cubic',fill_value="extrapolate")
+#        t_mfrac = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
+#        sfrfull = self.sfh_class.evaluate(t_mfrac,force_params=params)
+#        t_mfrac*=1.0e9 #Need it in years for calculation
+#        #sfr_f = interp1d(t_mfrac,sfrfull,kind='cubic',fill_value="extrapolate")
+#
+#        t10 = self.calc_t_mfrac(t_mfrac,sfrfull,0.1,mass)
+#        t50 = self.calc_t_mfrac(t_mfrac,sfrfull,0.5,mass)
+#        t90 = self.calc_t_mfrac(t_mfrac,sfrfull,0.9,mass)
 
-        t10 = self.calc_t_mfrac(t_mfrac,sfrfull,0.1,mass)
-        t50 = self.calc_t_mfrac(t_mfrac,sfrfull,0.5,mass)
-        t90 = self.calc_t_mfrac(t_mfrac,sfrfull,0.9,mass)
+        t10, t50, t90 = (0,0,0)
 
         return [sfr10,sfr100,t10,t50,t90]
 
@@ -1019,7 +1035,7 @@ WPBWPB units??
         ax1.set_yticklabels(['0.01', '0.1', '1', '10', '100', '1000'])
 #        ax1.set_yticks([1e-2, 1, 1e1, 1e3])
 #        ax1.set_yticklabels(['0.01', '1', '10', '1000'])
-        ax1.set_xlim([10**-3, 10**self.sfh_class.age_lims[1]])
+        ax1.set_xlim([10**-3, 10**self.sfh_class.age])
         ax1.set_ylim([10**-2.3, 1e3])
         ax1.minorticks_on()
 
@@ -1119,7 +1135,6 @@ WPBWPB units??
             ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.6 * ax3ran])
         ax3.text((1.+self.redshift)*1400, ax3max,
                  r'${\chi}_{\nu}^2 = $%0.2f' % self.chi2['rchi2'])
-        print('clean up chi2 value printed on the plot')
 
 
     def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
