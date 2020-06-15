@@ -10,7 +10,7 @@ ssp = 'fsps'          # options include: 'fsps'
 isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'binned_lsfr', 'binned_fmass'
-sfh = 'binned_lsfr' 
+sfh = 'constant' #'binned_lsfr' 
 dust_law = 'calzetti'   # options include: 'noll', 'calzetti', 'reddy', 
                         #                  'conroy', 'cardelli'
 
@@ -94,13 +94,13 @@ metallicity = 0.0077 #False #0.0077
 #   Supported image formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
 output_dict = {'parameters'    : True,   # fitted parameters
                'settings'      : True,   # user-defined fitting assumptions
-               'fitposterior'  : False,  # parameter posterior distributions
+               'fitposterior'  : True,  # parameter posterior distributions
                'bestfitspec'   : True,   # best-fit SED model
                'fluxdensity'   : True,   # modeled and observed photometry
                'lineflux'      : True,   # modeled and observed emission lines
                'absorption'    : True,   # modeled, observed absorption indices
                'triangle plot' : True,   # summary diagnostic plot
-               'sample plot'   : False,  # parameter estimates for MCMC chains
+               'sample plot'   : True,  # parameter estimates for MCMC chains
                'template spec' : True,   # save a plot of SSP spectra 
                'image format'  : 'png'}  # image type for plots
 

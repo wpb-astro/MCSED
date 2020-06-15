@@ -33,7 +33,6 @@ from scipy.interpolate import interp1d
 from astropy.constants import c as clight
 import numpy as np
 
-
 #import matplotlib.pyplot as plt
 #plt.ioff()
 
@@ -619,10 +618,10 @@ WPBWPB units??
 
         Returns
         -------
-        log likelihood, mass, t10, t50, t90, sfr10, sfr100 : float, float, float, float, float, float, float
+        log likelihood, mass, sfr10, sfr100, fpdr, mdust_eb : float, float, float, float, float, float, float
             The log likelihood includes a chi2_term and a parameters term.
             The mass comes from building of the composite stellar population
-            The parameters t10, t50, t90, sfr10, and sfr100 are derived in get_derived_params(self)
+            The parameters sfr10, sfr100, fpdr, mdust_eb are derived in get_derived_params(self)
         '''
         if self.dust_em_class.assume_energy_balance:
             self.spectrum, mass, mdust_eb = self.build_csp()
@@ -839,8 +838,6 @@ WPBWPB units??
         pos = self.get_init_walker_values(kind='ball')
         ndim = pos.shape[1]
         start = time.time()
-        # Time to set up the sampler and run the mcmc
-        #dtype = [("log_mass", float),("t10", float),("t50", float),("t90", float),("sfr10", float),("sfr100", float)] #For blobs
         sampler = emcee.EnsembleSampler(self.nwalkers, ndim, self.lnprob,
                                         a=2.0)
         # Do real run
@@ -880,75 +877,6 @@ WPBWPB units??
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
         new_chain[:, :, -1] = sampler.lnprobability
         self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
-
-    def calc_t_mfrac(self,t,sfr,frac,mass):
-        '''Calculate lookback time at which the fraction "frac" of the 
-        stellar mass in the galaxy was created'''
-# WPBWPB clarify time units -- age or lookback time?
-
-        ind = 0
-        #print "Length of t =", len(t)
-        #print "Total SFR integral over mass =", simps(sfr,t)/mass
-        #stellartot = quad(sfr_f,t[0],t[-1])[0]
-        #while quad(sfr_f,t[0],t[ind])[0]/mass < frac: 
-        #print "SFR stats: Max = %.3e, Min = %.3e"%(max(sfr),min(sfr))
-        #indage = (np.abs(t-10**self.sfh_class.age)).argmin()
-        #print "indage =", indage
-        #totmass = simps(sfr[:indage+1],t[:indage+1])/mass
-        #print "Age: %.3f, Mass: %.3f, SFR Integral over time / Mass: %.3f"%(self.sfh_class.age,np.log10(mass),totmass)
-        while (simps(sfr[:ind+1],t[:ind+1])/mass<(1.0-frac) and ind<len(t)-1):
-            ind+=1
-        #forward = quad(sfr_f,t[0],t[ind])[0]/mass - frac
-        forward = abs(simps(sfr[:ind+1],t[:ind+1])/mass - 1.0 + frac) #This SHOULD be positive even without abs()
-        #backward = frac - quad(sfr_f,t[0],t[ind-1])[0]/mass
-        backward = abs(1.0-frac - simps(sfr[:ind],t[:ind])/mass) #This SHOULD be positive even without abs()
-        tot = forward+backward
-        #print "Time given for txx: %.3f"%(np.log10(1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind])))
-        return 1.0e-9*(forward/tot *t[ind-1] + backward/tot * t[ind]) #Linear interpolation to get more accurate result--put result back into Gyr; Note--this may not be as accurate IF either forward or backward were negative before the absolute value--but even in those cases, the solution should be quite close. The only case where this should theoretically happen is if the integral of SFR over time doesn't go over (1-frac)*mass before the age of the universe at the time of observation is reached--this should really hopefully not happen.
-
-    def get_derived_params1(self,params,mass):
-        ''' These are not free parameters in the model, but are instead
-        calculated from free parameters
-        '''
-        #if agenum is not None: age = params[agenum]
-        #else: age = self.sfh_class.age
-        #ageval = 10**age #Age in Gyr
-        C = cosmology.Cosmology()
-        ageval = C.lookback_time(20)-C.lookback_time(self.redshift) #Don't want to restrict txx parameters to estimated age
-        t_sfr100 = np.linspace(1.0e-9,0.1,num=1001) #From 100 Mya to present (observed time); avoid t=0 for log purposes
-        t_sfr10 = np.linspace(1.0e-9,0.01,num=1001) #From 10 Mya to present (observed time); avoid t=0 for log purposes
-        sfrarray = self.sfh_class.evaluate(t_sfr100,force_params=params)
-        sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
-        sfrarray = self.sfh_class.evaluate(t_sfr10,force_params=params)
-        sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
-#        t_mfrac = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
-#        sfrfull = self.sfh_class.evaluate(t_mfrac,force_params=params)
-#        t_mfrac*=1.0e9 #Need it in years for calculation
-#        #sfr_f = interp1d(t_mfrac,sfrfull,kind='cubic',fill_value="extrapolate")
-#
-#        t10 = self.calc_t_mfrac(t_mfrac,sfrfull,0.1,mass)
-#        t50 = self.calc_t_mfrac(t_mfrac,sfrfull,0.5,mass)
-#        t90 = self.calc_t_mfrac(t_mfrac,sfrfull,0.9,mass)
-
-        t10, t50, t90 = (0,0,0)
-
-        return [sfr10,sfr100,t10,t50,t90]
-
-    def get_t_params(self,params,mass):
-        #if agenum is not None: age = params[agenum]
-        #else: age = self.sfh_class.age
-        #ageval = 10**age #Age in Gyr
-        C = cosmology.Cosmology()
-        ageval = C.lookback_time(20)-C.lookback_time(self.redshift) #Don't want to restrict txx parameters to estimated age
-        t_mfrac = np.geomspace(1.0e-9,ageval,num=250) #From present day (basically) back to birth of galaxy in Gyr
-        sfrfull = self.sfh_class.evaluate(t_mfrac,force_params=params)
-        #sfrfull_avg = self.sfh_class.evaluate(t_mfrac)
-        #print "Fractional difference between average sfr over time and this particular set of sfh params:", np.linalg.norm(sfrfull-sfrfull_avg)/np.linalg.norm(sfrfull_avg)
-        t_mfrac*=1.0e9 #Need it in years for calculation
-        t10 = self.calc_t_mfrac(t_mfrac,sfrfull,0.1,mass)
-        t50 = self.calc_t_mfrac(t_mfrac,sfrfull,0.5,mass)
-        t90 = self.calc_t_mfrac(t_mfrac,sfrfull,0.9,mass)
-        return np.log10(t10),np.log10(t50),np.log10(t90)
 
 
     def get_derived_params(self):
@@ -1270,63 +1198,21 @@ WPBWPB units??
             ax_loc.minorticks_on()
 
         fig.savefig("%s.%s" % (outname, imgtype))
+        plt.tight_layout()
         plt.close(fig)
 
     def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5,
-                             numsamples=1000,numder=3):
+                             numsamples=1000):
         ''' Assumes that "Ln Prob" is the last column in self.samples'''
-        if self.dust_em_class.fixed: 
-            numderpar = 3
-        else: 
-            if self.dust_em_class.assume_energy_balance:
-                numderpar = 5
-            else:
-                numderpar = 4
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]
-        sfhnum = self.sfh_class.get_nparams()
-        sfhnames = self.sfh_class.get_names()
-        # if "Log Age" in sfhnames: 
-        #     agenum = sfhnames.index("Log Age")
-        # else: 
-        #     agenum=None
-        params = np.zeros((sfhnum,numsamples))
-        t10,t50,t90 = np.zeros(numsamples),np.zeros(numsamples),np.zeros(numsamples)
-        derpar = np.zeros((numsamples,numder))
-        ranarray = np.random.choice(len(nsamples),size=numsamples) #Make sure mass and params all chosen from same random set of nsamples
-        mass = nsamples[:,-numderpar][ranarray]
-        mass = 10**mass #It was in log units before--we want to feed the function get_t_params linear units
-        for k in range(sfhnum): #Get random values of SFH parameters based on their distributions
-            #params[k] = np.random.choice(nsamples[:,k],size=numsamples)
-            params[k] = nsamples[:,k][ranarray]
-
-        for k2 in range(numsamples):
-            derpar[k2] = self.get_t_params(params[:,k2],mass[k2])
-# WPBWPB delete:
-#            if k2%(numsamples/10)==0:
-#                print(k2,params[:,k2],mass[k2],derpar[k2])
-
         n = len(percentiles)
         for i, per in enumerate(percentiles):
             for j, v in enumerate(np.percentile(nsamples, per, axis=0)):
                 self.table[-1][(i + start_value + j*n)] = v
-        current = i+start_value+j*n
-        for i,per in enumerate(percentiles):
-            for j,v in enumerate(np.percentile(derpar,per,axis=0)):
-                self.table[-1][(current+i+j*n+1)] = v
-        return (i + current + j*n+1)
+        return (i + start_value + j*n)
 
     def add_truth_to_table(self, truth, start_value):
-## WPBWPB generalize: what if sfh parameters are not first? will that ever occur? ensure working for general case
-        sfhnum = self.sfh_class.get_nparams()
-        sfhtruth = truth[:sfhnum]
-        mass = 10**truth[-1] #Stellar mass
-        derpar = self.get_derived_params1(sfhtruth,mass)
-        for par in derpar: 
-            truth.append(np.log10(par))
         for i, tr in enumerate(truth):
             self.table[-1][start_value + i + 1] = tr
-        #last = start_value+i+1
-        #for j in range(len(derpar)):
-         #   self.table[-1][last+j+1]=derpar[j]
