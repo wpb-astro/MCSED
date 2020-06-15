@@ -11,6 +11,7 @@ import numpy as np
 import os.path as op
 import logging
 import config
+import ism_igm
 from ssp import read_ssp_fsps
 from astropy.io import fits
 from astropy.table import Table, vstack
@@ -152,6 +153,16 @@ def parse_args(argv=None):
                         help='''Number of test objects''',
                         type=int, default=None)
 
+    parser.add_argument("-ism", "--ISM_correct_coords",
+                        help='''If a coordinate system is given, MW dust correction will
+                        be performed; default None''',
+                        type=str, default=None)
+
+    parser.add_argument("-igm", "--IGM_correct",
+                        help='''If selected, Madau statistical IGM correction will be done
+                        (affecting wavelengths up to rest-frame Ly-alpha)''',
+                        action="count", default=0)
+
     # Initialize arguments and log
     args = parser.parse_args(args=argv)
     args.log = setup_logging()
@@ -170,7 +181,8 @@ def parse_args(argv=None):
                   'dust_em', 'Rv', 'EBV_old_young', 'wave_dust_em',
                   'emline_list_dict', 'emline_factor', 'use_input_data',
                   'absorption_index_dict',
-                  'output_dict', 'param_percentiles', 'reserved_cores', 'assume_energy_balance']
+                  'output_dict', 'param_percentiles', 'reserved_cores', 
+                  'assume_energy_balance', 'ISM_correct_coords', 'IGM_correct']
     for arg_i in arg_inputs:
         try:
             if getattr(args, arg_i) in [None, 0]:
@@ -189,6 +201,17 @@ def parse_args(argv=None):
     # If a test field is specified on the command line, initialize test mode
     if '-tf' in argv:
         args.test = True
+
+    # If coords is not None, ISM correction will be performed
+    if args.ISM_correct_coords is not None: 
+        args.ISM_correct = True
+    else:
+        args.ISM_correct = False
+
+    # ignore ISM/IGM corrections in test mode
+    if args.test:
+        args.ISM_correct = False
+        args.IGM_correct = False
 
     # Set the maximum SSP age (speeds calculation)
     args.max_ssp_age = get_max_ssp_age(args)
@@ -785,6 +808,12 @@ def main(argv=None, ssp_info=None):
     else:
         input_file_data = None
 
+    # Get ISM and/or ISM correction
+    if args.IGM_correct:
+        tauIGMf = ism_igm.get_tauIGMf()
+    if args.ISM_correct:
+        tauISMf = ism_igm.get_tauISMf()
+
     # Build Filter Matrix
     filter_matrix = build_filter_matrix(args, wave)
 
@@ -983,6 +1012,11 @@ def main(argv=None, ssp_info=None):
         else:
             y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = input_file_data
 
+        if args.ISM_correct:
+            ebv_MW = ism_igm.get_MW_EBV(args)
+        else:
+            ebv_MW = np.zeros(len(y))
+
 #        print(yerr[y>0])
 #        print((z,flag,objid,field,em,emerr, absindx, absindx_e))
 #        print((absindx, absindx_e))
@@ -998,8 +1032,9 @@ def main(argv=None, ssp_info=None):
 # WPBWPB delete
 #        print(iv)
         #return
-        for yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe in zip(y, yerr, z, flag, objid,
-                                                                  field, em, emerr, absindx, absindx_e):
+        for yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe, ebvi in zip(y, yerr, z, flag, 
+                                                                        objid, field, em, emerr,
+                                                                        absindx, absindx_e, ebv_MW):
 #            print('starting the first one')
 #            print((yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe))
             mcsed_model.filter_flag = fl
@@ -1024,6 +1059,18 @@ def main(argv=None, ssp_info=None):
 #            # Mask the dust bump
 #            Ebwave, dwave = 2175, 225
 #            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
+
+            if ebvi>1.0e-12: # Only for when there is a nonzero E(B-V) Milky Way value to be fit
+                TauISM_lam = ebvi*tauISMf(mcsed_model.wave)/1.086
+                mcsed_model.TauISM_lam = TauISM_lam
+            else:
+                mcsed_model.TauISM_lam = None
+            if args.IGM_correct:
+                TauIGM_lam = tauIGMf(mcsed_model.wave,mcsed_model.redshift)
+                TauIGM_lam.reshape(len(mcsed_model.wave))
+                mcsed_model.TauIGM_lam = TauIGM_lam
+            else:
+                mcsed_model.TauIGM_lam = None
 
             mcsed_model.fit_model()
             print('i have fit the model')

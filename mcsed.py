@@ -56,7 +56,8 @@ class Mcsed:
                  data_emline=None, data_emline_e=None, emline_dict=None,
                  redshift=None,
                  filter_flag=None, input_spectrum=None, input_params=None,
-                 sigma_m=0.1, nwalkers=40, nsteps=1000, true_fnu=None, chi2=None):
+                 sigma_m=0.1, nwalkers=40, nsteps=1000, true_fnu=None, 
+                 chi2=None, , TauISM_lam=None, TauIGM_lam=None):
         ''' Initialize the Mcsed class.
 
         Init
@@ -128,6 +129,11 @@ WPBWPB units + are dimensions correct??
             The number of steps each walker will make when fitting a model
         true_fnu : WPBWPB FILL IN
         chi2 : WPBWPB FILL IN
+        TauISM_lam : numpy array (1 dim)
+            Array of effective optical depths as function of wavelength for MW dust correction
+        TauIGM_lam : numpy array (1 dim)
+            Array of effective optical depths as function of wavelength for IGM gas correction
+
 
 WPBWPB: describe self.t_birth, set using args and units of Gyr
         '''
@@ -163,6 +169,8 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         self.nwalkers = nwalkers
         self.nsteps = nsteps
         self.true_fnu = true_fnu
+        self.TauISM_lam = TauISM_lam
+        self.TauIGM_lam = TauIGM_lam
         if self.redshift is not None:
             self.set_new_redshift(self.redshift)
         self.chi2 = chi2
@@ -574,6 +582,12 @@ WPBWPB units??
         # Redshift to observed frame
         csp = np.interp(self.wave, self.wave * (1. + self.redshift),
                         spec_dustobscured * (1. + self.redshift))
+
+        # Correct for ISM and/or IGM (or neither)
+        if self.TauIGM_lam is not None:
+            csp *= np.exp(-self.TauIGM_lam)
+        if self.TauISM_lam is not None:
+            csp *= np.exp(-self.TauISM_lam)
 
         # Update dictionary of modeled emission line fluxes
         linefluxCSPdict = {}

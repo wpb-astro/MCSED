@@ -39,6 +39,15 @@ t_birth = 7. # age of the birth cloud (log years)
 blue_wave_cutoff = 1216. # rest-frame wavelength in Angstroms 
 wave_dust_em     = 2.5   # rest-frame wavelength in microns 
 
+# If False, leave metallicity as a free parameter
+# else, must be float: fixed metallicity of SSP models
+# if True, metallicity is fixed at 0.0077 (where Zsolar = 0.019)
+metallicity = 0.0077 #False #0.0077 
+
+# Nebular Emission Properties
+# The ionization parameter, logU, is held fixed
+logU = -2.
+
 # EMCEE parameters
 nwalkers = 100 
 nsteps   = 1000 
@@ -46,10 +55,6 @@ nsteps   = 1000
 # Number of test objects
 nobjects = 5
 test_zrange = (0.6, 1.9) # redshift range of test objects (uniform prior)
-
-# Nebular Emission Properties
-# The ionization parameter, logU, is held fixed
-logU = -2.
 
 # minimum fractional errors in observed photometry, 
 # emission line fluxes, and absorption line indices 
@@ -66,29 +71,15 @@ model_floor_error = 0.10
 # else, ignore input data (in which case input IDs must match Skelton+14 IDs)
 use_input_data = True 
 
-# Input emission line strengths
-# keys are emission line name (str) corresponding to name in input file
-# values are two-element tuple: (rest-frame wavelength (Angstroms), weight)
-# WPBWPB describe the weight
-# see documentation XXXX for additional information
-# WPB edit (e.g., OIII is not the blended feature, 
-#           Balmer lines corrected for absorption, 
-#           keys must match input columns of form _FLUX, _ERR...)
-#           will only be used if present in input file,
-#           must have null value = -99
-#           must have both flux and error - cannot have flux with null error
-#           can also set to {} or None, if preferred
-emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
-                    'Hb'  : (4861., 1.),  'Ha' : (6563., 1.),
-                    'NII' : (6583., 0.5)
-                   }
+# ISM/IGM correction
+ISM_correct_coords = None # if None, do not apply an ISM correction
+# Options for coords: 'altaz', 'barycentrictrueecliptic', 'cirs', 'fk4', 
+#                     'fk4noeterms', 'fk5', 'galactic', 'galacticlsr', 
+#                     'galactocentric', 'gcrs', 'geocentrictrueecliptic', 
+#                     'hcrs', 'heliocentrictrueecliptic', 'icrs', 'itrs', 
+#                     'lsr', 'precessedgeocentric', 'supergalactic'
+IGM_correct = False
 
-emline_factor = 1e-17 # numerical conversion from input values to units ergs/cm2/s
-
-# If False, leave metallicity as a free parameter
-# else, must be float: fixed metallicity of SSP models
-# if True, metallicity is fixed at 0.0077 (where Zsolar = 0.019)
-metallicity = 0.0077 #False #0.0077 
 
 # Output files
 #   Supported image formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
@@ -109,6 +100,25 @@ param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
 reserved_cores = 2 # integer
+
+# Input emission line strengths
+# keys are emission line name (str) corresponding to name in input file
+# values are two-element tuple: (rest-frame wavelength (Angstroms), weight)
+# WPBWPB describe the weight
+# see documentation XXXX for additional information
+# WPB edit (e.g., OIII is not the blended feature, 
+#           Balmer lines corrected for absorption, 
+#           keys must match input columns of form _FLUX, _ERR...)
+#           will only be used if present in input file,
+#           must have null value = -99
+#           must have both flux and error - cannot have flux with null error
+#           can also set to {} or None, if preferred
+emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
+                    'Hb'  : (4861., 1.),  'Ha' : (6563., 1.),
+                    'NII' : (6583., 0.5)
+                   }
+
+emline_factor = 1e-17 # numerical conversion from input values to units ergs/cm2/s
 
 # Input absorption line indices
 # keys are index name (str) corresponding to name in input file
