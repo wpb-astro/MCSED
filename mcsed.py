@@ -20,7 +20,7 @@ import logging
 import sfh
 import dust_abs
 import dust_emission
-import ssp
+import metallicity
 import cosmology
 import emcee
 #import matplotlib
@@ -81,6 +81,7 @@ class Mcsed:
             ages of the SSP models
         ssp_met : numpy array (1 dim)
             metallicities of the SSP models
+            assume a grid of values Z, where Z_solar = 0.019
         wave : numpy array (1 dim)
             wavelength for SSP models and all model spectra
         sfh_class : str
@@ -143,15 +144,13 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         self.dnu = np.abs(np.hstack([0., np.diff(2.99792e18 / self.wave)]))
         self.sfh_class = getattr(sfh, sfh_class)()
         self.dust_abs_class = getattr(dust_abs, dust_abs_class)()
-# WPBWPB: is ssp_class used?
-        self.ssp_class = getattr(ssp, 'fsps_freeparams')()
+        self.met_class = getattr(metallicity, 'stellar_metallicity')()
         self.dust_em_class = getattr(dust_emission, dust_em_class)()
 # WPBWPB: describe SSP, lineSSP in comments... 
 # ssp_spectra span many metallicities, SSP only span ages
         self.SSP = None
         self.lineSSP = None
-# WPBWPB is ssp_class still a thing?
-        self.param_classes = ['sfh_class', 'dust_abs_class', 'ssp_class',
+        self.param_classes = ['sfh_class', 'dust_abs_class', 'met_class',
                               'dust_em_class']
         self.data_fnu = data_fnu
         self.data_fnu_e = data_fnu_e
@@ -360,9 +359,8 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         # SSP Parameters
 ## WPBWPB delete
 #        print(start_value)
-#        print(self.ssp_class.fix_met)
-        self.ssp_class.set_parameters_from_list(theta, start_value)
-        start_value += self.ssp_class.get_nparams()
+        self.met_class.set_parameters_from_list(theta, start_value)
+        start_value += self.met_class.get_nparams()
 ## WPBWPB delete
 #        print(start_value)
         ######################################################################
@@ -377,22 +375,28 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
 
     def get_ssp_spectrum(self):
         '''
-        Calculate SSP for an arbitrary metallicity (self.ssp_class.met) given a
+        Calculate SSP for an arbitrary metallicity (self.met_class.met) given a
         model grid for a range of metallicities (self.ssp_met)
+
+        if left as a free parameter, stellar metallicity (self.met_class.met)
+        spans a range of log(Z / Z_solar)
+
+        the SSP grid of metallicities (self.ssp_met) assumes values of Z
+        (as opposed to log solar values)
 
         Returns
         -------
         SSP : 2-d array
             Single stellar population models for each age in self.ages
         '''
-        if self.ssp_class.fix_met:
+        if self.met_class.fix_met:
             if self.SSP is not None:
 ## WPBWPB delete
 #                print('self.SSP is not None!')
                 return self.SSP, self.lineSSP
         Z = np.log10(self.ssp_met)
         Zsolar = 0.019
-        z = self.ssp_class.met + np.log10(Zsolar)
+        z = self.met_class.met + np.log10(Zsolar)
         X = Z - z
         wei = np.exp(-(X)**2 / (2. * 0.15**2))
         wei /= wei.sum()

@@ -113,7 +113,7 @@ def parse_args(argv=None):
                         type=str, default=None)
 
     parser.add_argument("-z", "--metallicity",
-                        help='''Fixed metallicity for SSP models (0.02 is solar), False if free parameter''',
+                        help='''Fixed metallicity for SSP models (0.019 is solar), False if free parameter''',
                         type=str, default=None)
 
     parser.add_argument("-i", "--isochrone",
@@ -194,7 +194,6 @@ def parse_args(argv=None):
     args.max_ssp_age = get_max_ssp_age(args)
 
     # Set metallicity as free or fixed parameter
-# WPBWPB: should 0,1 be boolean arguments on command line? boolean command line args only require flag, not flag+value -- metallicity is only ambiguous case...
     try:
         if args.metallicity not in ['0','1']:
             args.metallicity = float(args.metallicity)
@@ -206,7 +205,7 @@ def parse_args(argv=None):
     except ValueError:
         args.metallicity = str2bool(str(args.metallicity),args.log)
         if args.metallicity:
-            print("Fixing metallicity at z = 0.0077")
+            print("Fixing metallicity at Z = 0.0077 (Zsolar = 0.019)")
             args.metallicity = 0.0077
 
     # Avoid an infinite loop between parallel and series functions
@@ -830,11 +829,11 @@ def main(argv=None, ssp_info=None):
 
     # Specify whether metallicity is fixed (defined in log solar units)
     if args.metallicity:
-        mcsed_model.ssp_class.fix_met = True
+        mcsed_model.met_class.fix_met = True
         Zsolar = 0.019
-        mcsed_model.ssp_class.met = np.log10(args.metallicity/Zsolar)
+        mcsed_model.met_class.met = np.log10(args.metallicity/Zsolar)
     else:
-        mcsed_model.ssp_class.fix_met = False
+        mcsed_model.met_class.fix_met = False
 
     # Specify whether dust emission is fixed
     if (not args.fit_dust_em) | (args.test):

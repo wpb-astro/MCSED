@@ -100,7 +100,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
                'lineflux'      : True,   # modeled and observed emission lines
                'absorption'    : True,   # modeled, observed absorption indices
                'triangle plot' : True,   # summary diagnostic plot
-               'sample plot'   : False,  #
+               'sample plot'   : False,  # parameter estimates for MCMC chains
                'template spec' : True,   # save a plot of SSP spectra 
                'image format'  : 'png'}  # image type for plots
 

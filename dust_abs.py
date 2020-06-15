@@ -1,9 +1,10 @@
-""" MCSED - dust.py
+""" MCSED - dust_abs.py
 
 
 1) Dust Laws
     a) Calzetti:
     b) Noll:
+    FILL THESE IN
 
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
