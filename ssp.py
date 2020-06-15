@@ -7,16 +7,16 @@ Single Stellar Population module for loading models
 """
 import sfh
 import sys
-#import matplotlib
-#matplotlib.use("Agg")
-#import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import os.path as op
 import scipy.interpolate as scint
 from astropy.convolution import Gaussian1DKernel, convolve
 
-import matplotlib.pyplot as plt
-plt.ioff()
+#import matplotlib.pyplot as plt
+#plt.ioff()
 
 
 def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):

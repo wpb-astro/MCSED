@@ -30,7 +30,7 @@ Rv = -1
 # E(B-V)_diffuse = EBV_old_young * E(B-V)_birth
 EBV_old_young = 0.44
 
-t_birth = 8. # age of the birth cloud (log years)
+t_birth = 7. # age of the birth cloud (log years)
 
 # Ignore photometry, as appropriate
 # blue_wave_cutoff: ignore filters containing Lyman-alpha
@@ -64,7 +64,7 @@ model_floor_error = 0.10
 # Use input data (photometry, emission lines, absorption line indices)
 # If True, use additional data provided in the input file
 # else, ignore input data (in which case input IDs must match Skelton+14 IDs)
-use_input_data = False # True 
+use_input_data = True 
 
 # Input emission line strengths
 # keys are emission line name (str) corresponding to name in input file
@@ -108,7 +108,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
 param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
-reserved_cores = 6 # integer
+reserved_cores = 2 # integer
 
 # Input absorption line indices
 # keys are index name (str) corresponding to name in input file
