@@ -15,8 +15,7 @@ import os.path as op
 import scipy.interpolate as scint
 from astropy.convolution import Gaussian1DKernel, convolve
 
-#import matplotlib.pyplot as plt
-#plt.ioff()
+#plt.ioff() # UNCOMMENT THIS LINE IF RUNNING ON LINUX
 
 
 def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):

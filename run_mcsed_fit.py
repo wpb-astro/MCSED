@@ -679,9 +679,14 @@ WPBWPB: modify, document all outputs
     for theta, z in zip(thetas, zobs):
         mcsed_model.set_class_parameters(theta)
         mcsed_model.set_new_redshift(z)
-        mcsed_model.spectrum, mass = mcsed_model.build_csp()
-## WPBWPB adjust log info.....
-#        args.log.info('%0.2f, %0.2f' % (hlims[-1]*1e17, np.log10(mass)))
+        if mcsed_model.dust_em_class.assume_energy_balance:
+            mcsed_model.spectrum, mass, mdust_eb = mcsed_model.build_csp()
+        else:
+            mcsed_model.spectrum, mass = mcsed_model.build_csp()
+            mdust_eb = None
+        sfr10,sfr100,fpdr = mcsed_model.get_derived_params()
+
+        args.log.info('%0.2f' % (np.log10(mass)))
         f_nu = mcsed_model.get_filter_fluxdensities()
         if args.test_field in args.catalog_maglim_dict.keys():
             f_nu_e = get_maglim_filters(args)[mcsed_model.filter_flag]
@@ -691,7 +696,11 @@ WPBWPB: modify, document all outputs
         y.append(f_nu_e*np.random.randn(len(f_nu)) + f_nu)
         yerr.append(f_nu_e)
         true_y.append(f_nu)
-        params.append(list(theta) + [np.log10(mass)])
+        derived_param_list = [np.log10(mass)]
+        for par in [sfr10, sfr100, fpdr, mdust_eb]:
+            if par is not None:
+                derived_param_list.append( np.log10(par) )
+        params.append(list(theta) + derived_param_list)
 
     return y, yerr, zobs, params, true_y
 
@@ -962,7 +971,7 @@ def main(argv=None, ssp_info=None):
                 T = Table([mcsed_model.fluxwv, mcsed_model.fluxfn,
                            mcsed_model.data_fnu, mcsed_model.data_fnu_e, mcsed_model.true_fnu],
                            names=['wavelength','model_fluxdensity',
-                                  'fluxdensity', 'fluxdensityerror','truth_fluxdensity'])
+                                  'fluxdensity', 'fluxdensityerror','true_fluxdensity'])
                 T.write('output/filterflux_fake_%05d_%s_%s.dat' % (cnt, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
 

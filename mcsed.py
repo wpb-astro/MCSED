@@ -33,8 +33,7 @@ from scipy.interpolate import interp1d
 from astropy.constants import c as clight
 import numpy as np
 
-#import matplotlib.pyplot as plt
-#plt.ioff()
+#plt.ioff() # UNCOMMENT THIS LINE IF RUNNING ON LINUX
 
 import seaborn as sns
 sns.set_context("talk") # options include: talk, poster, paper
