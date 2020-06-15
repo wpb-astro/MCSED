@@ -81,67 +81,80 @@ def bin_ages_fsps(args, ages, spec):
 
     returns age (Gyr), blah
     '''
-    # start to build the list of age bin points
-    agebin_list = [0.]
+    weight = np.diff(np.hstack([0., 1e9 * ages]))
 
 ## WPBWPB delete
-    print('these are SSP ages before re-gridding')
-    print(ages)
+#    print('this is weight:')
+#    print(weight)
 
     # convert max SSP age arguments to units Gyr
     max_ssp_ages = 10.**(np.array(args.max_ssp_age)-9.)
-    # account for the SSP ages that should not be binned:
-    sel_intermediate = (ages >= max_ssp_ages[0]) & (ages <= max_ssp_ages[1])
-    agebin_list.append( ages[sel_intermediate] )
 
-    # add additional SSP age gridpoint, if max age falls between grid points:
-    sel_next = np.where( ages > max_ssp_ages[1])[0]
-    if len(sel_next):
-        agebin_list.append(ages[sel_next[0]])
+    # start to build the list of age bin points
+    agebin_list = [0., 10.**(args.t_birth-9.)]
 
-    # add age of birth cloud, if appropriate:
-    if args.t_birth:
-        agebin_list.append(10.**(args.t_birth-9.))
+## WPBWPB delete
+#    print('these are SSP ages before re-gridding')
+#    print(ages)
 
-    # add the SFH ages that can be binned:
+    # add the SFH age bins:
     sfh_class = getattr(sfh, args.sfh)()
     sfh_ages_Gyr = 10.**(np.array(sfh_class.ages)-9.)
-    sel_sfh = sfh_ages_Gyr < max_ssp_ages[0]
-    agebin_list.append( sfh_ages_Gyr[ sel_sfh ] )
+    agebin_list.append( sfh_ages_Gyr )
 
-## WPBWPB delete
-    print('this is agebin_list, before reorganizing:')
-    print(agebin_list)
-
+    # account for the SSP ages that should not be binned:
     agebin = np.sort( np.unique(np.hstack(agebin_list) ))
+    agebin = agebin[ agebin <= max_ssp_ages[0] ]
+    sel_unbinned = ages > max_ssp_ages[0]
+    age_unbinned, spec_unbinned = (ages[sel_unbinned], spec[:, sel_unbinned])
 
-# WPBWPB delete
-    print('this is agebin:')
-    print(agebin)
+    final_age = np.hstack([agebin[1:], age_unbinned])
+    nspec = np.zeros( (spec.shape[0], len(final_age)) ) 
 
-# WPBWPB delete
-# at end of day, agebin list should have points for
-# [tbirth, all sfh age points younger than youngest max age, 
-#          and all ssp ages between youngest/old max ssp age]
+## WPBWPB delete
+#    print('this is age_unbinned:')
+#    print(age_unbinned)
 
-    nspec = np.zeros((spec.shape[0], len(agebin)-1))
+    agebin = np.hstack([agebin, age_unbinned])
+
     for i in np.arange(nspec.shape[1]):
-        sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
+        # bin the original SSP grid, if possible
+        if True: #i < len(agebin)-1:
+            sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
 
-# need to account for weighting of intermediate ages !!!
-        if len(sel)>1:
-            wht = np.diff(np.hstack([0., ages[sel] * 10**9.]))
+            wht = np.diff(np.hstack([0., 1e9 * ages[sel]]))
+            wht[0] = np.diff( 1e9 * np.array([agebin[i], ages[sel][0]]) )
+
+            whtnew = wht.copy()
+#            print('this is new wht:')
+#            print(wht)
+
+            wht =  weight[sel]
+# IF I apply the following line, I can combine the binned and unbinned ages
+# into a single array
+# But the first element is different from the original binning. hmmmmm
+            wht[0] = np.diff( 1e9 * np.array([agebin[i], ages[sel][0]]) )
+
+            if max(abs(whtnew-wht)>0):
+                print(agebin[i:i+2])
+                print('this is new wht:')
+                print(whtnew)
+
+                print('this is old wht:')
+                print(wht)
+
+            nspec[:,i] = np.dot(spec[:, sel], wht) / wht.sum()
+
+        # add in the remaining spectra from original SSP grid
         else:
-            print('finish me off')  
-## WPBWPB delete
-        print('this is wht:')
-        print(wht)
-# WPBWPB delete: old weighting scheme
-#        nspec[:, i] = np.dot(spec[:, sel], weight[sel]) / weight[sel].sum()
-        nspec[:,i] = np.dot(spec[:, sel], wht) / wht.sum()
-## WPBWPB delete
-#        print('%s\n%s\n%s\n\n' % (i, sel,weight[sel]))
-    return agebin[1:], nspec
+            k = i - len(agebin) + 1
+            nspec[:,i] = spec_unbinned[:,k]
+# questions:
+# weight is time between SSP age and previous, or time in bin?
+# combining binned spectra and unbinned SSP spectra
+
+
+    return final_age, nspec
 
 
 def read_fsps_neb(filename):
@@ -230,8 +243,13 @@ def read_fsps_file(args, metallicity):
     # convert from solar bolometric luminosity per Hz to micro-Jy at 10 pc
     spec = np.array(spec).swapaxes(0, 1) * solar_microjansky
     ages = np.array(ages)
-    # exclude non-physical age
-    sel = ages >= 6.
+    # exclude non-physical ages
+    sel = (ages >= 6.) & (ages <= args.max_ssp_age[1]) 
+    # add one additional point (if max age falls between grid points)
+    if len( ages[ages > args.max_ssp_age[1]] ):
+        sel_next = np.where(sel)[0][-1]+1
+        sel[ sel_next ] = True
+
     return 10**(ages[sel]-9), wave, spec[:, sel]
 
 def get_nebular_emission(ages, wave, spec, logU, metallicity,
@@ -277,7 +295,6 @@ def get_nebular_emission(ages, wave, spec, logU, metallicity,
 #    nspec = nspec[0:len(lines_res[4]), :] 
 #    garray = 1.
     for i, age in enumerate(ages):
-# WPBWPB: if age of birth cloud is user-defined, adjust here:
         if age <= 1e-2:
             if kind != 'line':
                 cont = C(metallicity, age*1e3, logU)
@@ -466,11 +483,12 @@ def read_ssp_fsps(args):
 WPBWPB: need to determine units of all outputs
 WPBWPB: operate under assumption that spec, linespec are in same units
     '''
+    metallicities = np.array(args.metallicity_dict[args.ssp][args.isochrone])
 
 ## WPBWPB: m list unused
 #    s, ls, m = ([], [], [])
     s, ls = [], []
-    for met in args.metallicity_dict[args.ssp][args.isochrone]:
+    for met in metallicities:
         if args.ssp.lower() == 'fsps':
             ages, wave, spec = read_fsps_file(args, met)
         # add new SSP subroutines here:
@@ -482,7 +500,9 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 
 # WPBWPB add comment
 # WPBWPB testing if age binning is issue in binned SFH for the too-old bins
-        if args.sfh == 'empirical' or args.sfh == 'empirical_direct':
+#        if args.sfh in ['binned_lsfr', 'binned_fmass']: 
+        if False:
+            print('YOU NEED TO DEAL WITH THE SSP AGE BINNING!!!!')
             ages0 = ages.copy()
 ## WPBWPB delete: useful if comparing to old "bin ages" function
 #            ages0 = np.log10(ages0)+9.
@@ -504,16 +524,22 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 
     # save plot of SSP spectra
     if args.output_dict['template spec']:
+        if args.metallicity:
+            imet = np.argmin(abs(args.metallicity - metallicities))
+        else: # show SSP grid for 40% solar, if no metallicity is set
+            imet = np.argmin(abs(0.0077 - metallicities))
         fig = plt.figure(figsize=(8, 8))
         import seaborn as sns
-        colors = sns.color_palette("coolwarm", s[-5].shape[1])
+        colors = sns.color_palette("coolwarm", s[imet].shape[1])
         wei = np.diff(np.hstack([0., ages]))
-        for i in np.arange(s[-5].shape[1]):
-            plt.plot(wave, s[-5][:, i] * wei[i] / 1e8, color=colors[i])
+        wei = np.ones(s[imet].shape[1])
+        for i in np.arange(s[imet].shape[1]):
+            plt.plot(wave, s[imet][:, i] * wei[i] / 1e8, color=colors[i])
         plt.xlim([900., 40000.])
         plt.xscale('log')
         plt.yscale('log')
-        plt.ylim([1e-5, 10])
+        plt.ylim([1e-5, 20])
+        plt.ylim([1e-5, 10.**3.5])
         plt.xlabel('Wavelength [$\\rm{\AA}$]')
         plt.ylabel('Relative $f_\\nu$')
         plt.savefig('template_spectra_plot.%s' % args.output_dict['image format'])
@@ -521,7 +547,6 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 
     spec = np.moveaxis(np.array(s), 0, 2)
     linespec = np.moveaxis(np.array(ls), 0, 2)
-    metallicities = args.metallicity_dict[args.ssp][args.isochrone]
 
 ## WPBWPB delete
 #    linespec0 = linespec.copy()
@@ -534,9 +559,8 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 
 # WPB delete
     print('these are ages: %s' % ages)
-    print('only need ssp age + 1 more point - cut it here')
 
-    return ages, wave, spec, np.array(metallicities), linewave,linespec
+    return ages, wave, spec, metallicities, linewave,linespec
 
 
 class fsps_freeparams:
@@ -549,7 +573,7 @@ WPBWPB sort this out:
   nothing to do with spectra?
 --> possible: rename the class 
     '''
-    def __init__(self, met=-0.7, met_lims=[-1.98, 0.2], met_delta=0.3,
+    def __init__(self, met=-0.39, met_lims=[-1.98, 0.2], met_delta=0.3,
                  fix_met=False):
         ''' Initialize this class
 

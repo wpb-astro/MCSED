@@ -9,8 +9,8 @@
 ssp = 'fsps'          # options include: 'fsps'
 isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
-#                      'double_powerlaw', 'empirical_direct', 'empirical',
-sfh = 'empirical_direct' 
+#                      'double_powerlaw', 'binned_lsfr', 'binned_fmass'
+sfh = 'binned_lsfr' 
 dust_law = 'calzetti'   # options include: 'noll', 'calzetti', 'reddy', 
                         #                  'conroy', 'cardelli'
 
@@ -30,7 +30,7 @@ Rv = -1
 # E(B-V)_diffuse = EBV_old_young * E(B-V)_birth
 EBV_old_young = 0.44
 
-t_birth = 7. # age of the birth cloud (log years)
+t_birth = 8. # age of the birth cloud (log years)
 
 # Ignore photometry, as appropriate
 # blue_wave_cutoff: ignore filters containing Lyman-alpha
@@ -45,7 +45,7 @@ nsteps   = 1000
 
 # Number of test objects
 nobjects = 5
-test_zrange = (.4, 1.9) # redshift range of test objects (uniform prior)
+test_zrange = (0.6, 1.9) # redshift range of test objects (uniform prior)
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed

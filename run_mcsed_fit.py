@@ -828,7 +828,7 @@ def main(argv=None, ssp_info=None):
 
 #WPBWPB delete: this is where I adjust additional class params from config.py options
 
-    # Specify whether metallicity is fixed
+    # Specify whether metallicity is fixed (defined in log solar units)
     if args.metallicity:
         mcsed_model.ssp_class.fix_met = True
         Zsolar = 0.019
