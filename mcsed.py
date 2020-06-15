@@ -57,7 +57,7 @@ class Mcsed:
                  redshift=None,
                  filter_flag=None, input_spectrum=None, input_params=None,
                  sigma_m=0.1, nwalkers=40, nsteps=1000, true_fnu=None, 
-                 chi2=None, , TauISM_lam=None, TauIGM_lam=None):
+                 chi2=None, TauISM_lam=None, TauIGM_lam=None):
         ''' Initialize the Mcsed class.
 
         Init

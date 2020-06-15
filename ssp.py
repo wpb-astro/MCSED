@@ -69,7 +69,7 @@ def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
 #    return 10**(np.array(sfh_class.ages)-9.), nspec
 
 
-def bin_ages_fsps(args, ages, spec):
+def bin_ages_fsps_separate(args, ages, spec):
     ''' FILL IN
 
     Parameters
@@ -154,6 +154,70 @@ def bin_ages_fsps(args, ages, spec):
 
 
     return final_age, nspec
+
+
+def bin_ages_fsps(args, ages, spec):
+    ''' FILL IN
+
+    Parameters
+    ----------
+    args : FILL IN
+    ages :
+        SSP age grid in Gyr
+
+    returns age (Gyr), blah
+    '''
+    weight = np.diff(np.hstack([0., 1e9 * ages]))
+
+## WPBWPB delete
+#    print('this is weight:')
+#    print(weight)
+
+    # convert max SSP age arguments to units Gyr
+    max_ssp_ages = 10.**(np.array(args.max_ssp_age)-9.)
+
+    # start to build the list of age bin points
+    agebin_list = [0., 10.**(args.t_birth-9.)]
+
+## WPBWPB delete
+#    print('these are SSP ages before re-gridding')
+#    print(ages)
+
+    # add the SFH age bins:
+    sfh_class = getattr(sfh, args.sfh)()
+    sfh_ages_Gyr = 10.**(np.array(sfh_class.ages)-9.)
+    agebin_list.append( sfh_ages_Gyr )
+
+    # account for the SSP ages that should not be binned:
+    agebin = np.sort( np.unique(np.hstack(agebin_list) ))
+    agebin = agebin[ agebin <= max_ssp_ages[0] ]
+    sel_unbinned = ages > max_ssp_ages[0]
+    age_unbinned, spec_unbinned = (ages[sel_unbinned], spec[:, sel_unbinned])
+
+    final_age = np.hstack([agebin[1:], age_unbinned])
+    nspec = np.zeros( (spec.shape[0], len(final_age)) )
+
+## WPBWPB delete
+#    print('this is age_unbinned:')
+#    print(age_unbinned)
+
+    agebin = np.hstack([agebin, age_unbinned])
+
+    for i in np.arange(nspec.shape[1]):
+        sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
+
+        wht = np.diff(np.hstack([0., 1e9 * ages[sel]]))
+        wht[0] = np.diff( 1e9 * np.array([agebin[i], ages[sel][0]]) )
+
+        nspec[:,i] = np.dot(spec[:, sel], wht) / wht.sum()
+
+# questions:
+# weight is time between SSP age and previous, or time in bin?
+
+    return final_age, nspec
+
+
+
 
 
 def read_fsps_neb(filename):
@@ -531,14 +595,14 @@ WPBWPB: operate under assumption that spec, linespec are in same units
         import seaborn as sns
         colors = sns.color_palette("coolwarm", s[imet].shape[1])
         wei = np.diff(np.hstack([0., ages]))
-        wei = np.ones(s[imet].shape[1])
+#        wei = np.ones(s[imet].shape[1])
         for i in np.arange(s[imet].shape[1]):
             plt.plot(wave, s[imet][:, i] * wei[i] / 1e8, color=colors[i])
         plt.xlim([900., 40000.])
         plt.xscale('log')
         plt.yscale('log')
         plt.ylim([1e-5, 20])
-        plt.ylim([1e-5, 10.**3.5])
+#        plt.ylim([1e-5, 10.**3.5])
         plt.xlabel('Wavelength [$\\rm{\AA}$]')
         plt.ylabel('Relative $f_\\nu$')
         plt.savefig('template_spectra_plot.%s' % args.output_dict['image format'])
