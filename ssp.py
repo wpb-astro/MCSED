@@ -565,7 +565,7 @@ WPBWPB: operate under assumption that spec, linespec are in same units
 # WPBWPB testing if age binning is issue in binned SFH for the too-old bins
 #        if args.sfh in ['binned_lsfr', 'binned_fmass']: 
         if False:
-            print('YOU NEED TO DEAL WITH THE SSP AGE BINNING!!!!')
+#            print('YOU NEED TO DEAL WITH THE SSP AGE BINNING!!!!')
             ages0 = ages.copy()
 ## WPBWPB delete: useful if comparing to old "bin ages" function
 #            ages0 = np.log10(ages0)+9.

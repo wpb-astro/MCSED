@@ -10,7 +10,7 @@ ssp = 'fsps'          # options include: 'fsps'
 isochrone = 'padova'  # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'binned_lsfr', 'binned_fmass'
-sfh = 'binned_lsfr' 
+sfh = 'binned_fmass' #lsfr' 
 dust_law = 'calzetti'   # options include: 'noll', 'calzetti', 'reddy', 
                         #                  'conroy', 'cardelli'
 

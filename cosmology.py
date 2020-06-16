@@ -29,6 +29,25 @@ class Cosmology:
         self.t_h = 9.78 * (100. / self. H_0)  # Gyr
         self.c = 2.99792e5  # km / s
 
+    def set_stepsize(self, z):
+        ''' Strike a balance between precision and efficiency
+
+        Parameters
+        ----------
+        z : float
+            Redshift
+
+        Returns
+        -------
+        stepsize : float
+            Integration stepsize for luminosity_distance & lookback_time methods
+        '''
+        if z>0.55:
+            stepsize = 0.001
+        else:
+            lstep = 0.994 * np.log10(z) 
+
+
     def luminosity_distance(self, z, stepsize=0.001):
         ''' Calculate the luminosity distance
 
@@ -70,3 +89,5 @@ class Cosmology:
                     self.omega_l)
         t = self.t_h * np.sum(stepsize / ((1. + zi) * E))
         return t
+
+    

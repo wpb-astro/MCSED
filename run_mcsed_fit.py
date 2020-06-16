@@ -257,7 +257,9 @@ def parse_args(argv=None):
     # Set up dust emission arguments
     if not args.dust_em:
         args.dust_em = 'DL07'
-        args.fit_dust_em = False 
+        args.fit_dust_em = False
+    else:
+        args.fit_dust_em = True 
 
     return args
 
