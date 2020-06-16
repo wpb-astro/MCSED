@@ -255,11 +255,14 @@ def parse_args(argv=None):
         args.absorption_index_dict={}
 
     # Set up dust emission arguments
-    if not args.dust_em:
+    if isinstance(args.dust_em, str):
+        args.fit_dust_em = True
+    elif args.dust_em==True:
+        args.dust_em = 'DL07'
+        args.fit_dust_em = True
+    else:
         args.dust_em = 'DL07'
         args.fit_dust_em = False
-    else:
-        args.fit_dust_em = True 
 
     return args
 
