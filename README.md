@@ -48,7 +48,7 @@ Another key feature in SED fitting is the metallicity of the SSPs.  We offer two
         # Fixed metallicity of SSP models if fit_metallicity is False
         metallicity = 0.0006  # for fixed metallicity
 
-To run MCSED for a set of objects, simply input a file that has the format: FIELD ID REDSHIFT
+To run MCSED for a set of objects, simply input a file that has the format: Field ID z
 
         COSMOS   18945  2.188
         COSMOS   13104  2.292
@@ -64,9 +64,17 @@ The output of such a call is located in "outputs" and includes a figure like thi
 
 ## Authors
 
-* Greg Zeimann, UT Austin, grzeimann@gmail.com or gregz@astro.as.utexas.edu
+* Greg Zeimann, Hobby Eberly Telescope, UT Austin, grzeimann@gmail.com or gregz@astro.as.utexas.edu
+* William P. Bowman, Penn State University, wpb.astro@gmail.com or bowman@psu.edu
+* Gautam Nagaraj, Penn State University, gxn75@psu.edu
 
 ## Dependencies
 
 * emcee, tested with version '2.1.0', currently there are errors using '2.2.1'
 * corner, tested with version '2.0.1'
+* seaborn, tested with version '0.8.1'
+* astropy, tested with version '2.0.6'
+* matplotlib, tested with version '2.1.2'
+* scipy, tested with version '1.0.0'
+* dustmaps (if a correct for foreground Milky Way dust extinction is desired)
+

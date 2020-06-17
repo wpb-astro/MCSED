@@ -827,7 +827,6 @@ def main(argv=None, ssp_info=None):
     # Read in input data, if not in test mode 
     if not args.test: 
         input_file_data = read_input_file(args) 
-        y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = input_file_data
     else:
         input_file_data = None
 
@@ -946,11 +945,6 @@ def main(argv=None, ssp_info=None):
 
     # WPB field/id
 # WPBWPB adjust length of fieldname - choose longest inputed value
-    print('deal with my formatting')
-    if args.test:
-        field_format = 'S7'
-    else:
-        field_format = 'S' 
     mcsed_model.table = Table(names=labels, dtype=['S10', 'i4'] +
                               ['f8']*(len(labels)-2))
 ## WPBWPB delete
@@ -987,9 +981,8 @@ def main(argv=None, ssp_info=None):
                 sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
                 max_ssp_age = get_max_ssp_age(args, z=zi)
                 maxage_Gyr = 10.**(max_ssp_age-9.)
-                tbirth_Gyr = 10.**(args.t_birth-9.)
                 binned_ssp = bin_ssp_ages(ages, SSP, lineSSP, sfh_ages_Gyr,
-                                          maxage_Gyr, tbirth_Gyr)
+                                          maxage_Gyr, mcsed_model.t_birth)
                 binned_ages, binned_spec, binned_linespec = binned_ssp
                 mcsed_model.ssp_ages = binned_ages
                 mcsed_model.ssp_spectra = binned_spec
@@ -1096,9 +1089,8 @@ def main(argv=None, ssp_info=None):
                 sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
                 max_ssp_age = get_max_ssp_age(args, z=zi)
                 maxage_Gyr = 10.**(max_ssp_age-9.)
-                tbirth_Gyr = 10.**(args.t_birth-9.)
                 binned_ssp = bin_ssp_ages(ages, SSP, lineSSP, sfh_ages_Gyr,
-                                          maxage_Gyr, tbirth_Gyr)
+                                          maxage_Gyr, mcsed_model.t_birth)
                 binned_ages, binned_spec, binned_linespec = binned_ssp
                 mcsed_model.ssp_ages = binned_ages
                 mcsed_model.ssp_spectra = binned_spec
