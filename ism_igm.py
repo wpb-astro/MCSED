@@ -33,7 +33,7 @@ def get_MW_EBV(args):
     '''
     F = Table.read(args.filename, format='ascii')
     Fcols = F.colnames
-    nobj = len(F['field'])
+    nobj = len(F['Field'])
     try:
         C1 = F['C1']
         C2 = F['C2']
@@ -41,8 +41,8 @@ def get_MW_EBV(args):
         # Skelton catalogs
         fields = ['aegis', 'cosmos', 'goodsn', 'goodss', 'uds']
         name_base = '_3dhst.v4.1.cat.FITS'
-        if F['field'][0].lower() in fields:
-            for fd in F['field']: 
+        if F['Field'][0].lower() in fields:
+            for fd in F['Field']: 
                 assert fd.lower() in fields, "%s not in Skelton"%(fd) #Make sure the input isn't a mix of Skelton and non-Skelton
             C1, C2 = np.zeros(nobj), np.zeros(nobj)
             field_dict = {}
@@ -50,7 +50,7 @@ def get_MW_EBV(args):
                 field_dict[field] = fits.open(op.join('3dhst_catalogs',
                                                     field+name_base))[1]
             for i, datum in enumerate(F):
-                # assumes first element is field name and second is obj_id
+                # assumes first element is field name and second is ID
                 loc = datum[0].lower()
                 C1[i] = field_dict[loc].data['ra'][int(datum[1])-1]
                 C2[i] = field_dict[loc].data['dec'][int(datum[1])-1]

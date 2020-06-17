@@ -12,7 +12,7 @@ import os.path as op
 import logging
 import config
 import ism_igm
-from ssp import read_ssp_fsps
+from ssp import read_ssp_fsps, bin_ssp_ages
 from astropy.io import fits
 from astropy.table import Table, vstack
 from mcsed import Mcsed
@@ -127,6 +127,10 @@ def parse_args(argv=None):
 
     parser.add_argument("-dl", "--dust_law",
                         help='''Dust law, e.g. calzetti''',
+                        type=str, default=None)
+
+    parser.add_argument("-de", "--dust_em",
+                        help='''Dust emission class, e.g., DL07''',
                         type=str, default=None)
 
     parser.add_argument("-nw", "--nwalkers",
@@ -351,7 +355,7 @@ def get_maglim_filters(args):
     return photerror
 
 
-def get_max_ssp_age(args):
+def get_max_ssp_age(args, z=None):
     '''
 WPBWPB FILL IN
     
@@ -361,11 +365,19 @@ WPBWPB FILL IN
         The args class is carried from function to function with information
         from command line input and config.py
 
+    z : float (optional)
+        if specific redshift is passed, evaluate max age at that redshift
+        otherwise, evaluate for the range of redshifts of the sample
+
     Returns
     -------
     maxage : tuple of (float, float)
         the youngest and oldest maximum age (in log years) of sample galaxies
     '''
+    C = Cosmology()
+    if z is not None:
+        maxage = np.log10(C.lookback_time(20)-C.lookback_time(z)) + 9.
+        return maxage
 
     if not args.test:
         F = Table.read(args.filename, format='ascii')
@@ -374,11 +386,13 @@ WPBWPB FILL IN
     else:
         zrange = args.test_zrange
 
-    C = Cosmology()
     # ages in log years:
     maxage_lo = np.log10(C.lookback_time(20)-C.lookback_time(zrange[1])) + 9.
     maxage_hi = np.log10(C.lookback_time(20)-C.lookback_time(zrange[0])) + 9.
     return (maxage_lo, maxage_hi)
+
+# edit: instead, input is redshift, and return in units Gyr
+
 
 
 def read_input_file(args):
@@ -421,7 +435,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
 ## WPBWPB delete
 #    print('this is Fcols:   '+str(Fcols))
 
-    nobj = len(F['field'])
+    nobj = len(F['Field'])
 
     # redshift array
     z = F['z']
@@ -629,7 +643,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         print(Fcols) 
 
     # WPBWPB: adjust, clarify the column names
-    return y, yerr, z, flag, F['obj_id'], F['field'], em, emerr, absindx, absindx_e
+    return y, yerr, z, flag, F['ID'], F['Field'], em, emerr, absindx, absindx_e
 
 
 def draw_uniform_dist(nsamples, start, end):
@@ -714,7 +728,6 @@ WPBWPB: modify, document all outputs
             mdust_eb = None
         sfr10,sfr100,fpdr = mcsed_model.get_derived_params()
 
-        args.log.info('%0.2f' % (np.log10(mass)))
         f_nu = mcsed_model.get_filter_fluxdensities()
         if args.test_field in args.catalog_maglim_dict.keys():
             f_nu_e = get_maglim_filters(args)[mcsed_model.filter_flag]
@@ -805,11 +818,10 @@ def main(argv=None, ssp_info=None):
 #    np.savez('mcsed_model_spectra', wave=wave, age=ages, ssp=SSP, met=met, linewave=linewave, linessp=lineSSP)
 #    return
 
-
-
-    # Adjust filter, emission line, absorption index dictionaries, if applicable
-    if (not args.test) & (args.use_input_data):
+    # Read in input data, if not in test mode 
+    if not args.test: 
         input_file_data = read_input_file(args) 
+        y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = input_file_data
     else:
         input_file_data = None
 
@@ -891,7 +903,6 @@ def main(argv=None, ssp_info=None):
             mcsed_model.dust_em_class.assume_energy_balance = True
         else:
             mcsed_model.dust_em_class.assume_energy_balance = False
-            print("Since you are not fitting dust emission, the dust emission spectrum will not be fit, so we are setting the Boolean variable assume_energy_balance to False")
     else:
         mcsed_model.dust_em_class.assume_energy_balance = False
 
@@ -929,7 +940,12 @@ def main(argv=None, ssp_info=None):
 
     # WPB field/id
 # WPBWPB adjust length of fieldname - choose longest inputed value
-    mcsed_model.table = Table(names=labels, dtype=['S7', 'i4'] +
+    print('deal with my formatting')
+    if args.test:
+        field_format = 'S7'
+    else:
+        field_format = 'S' 
+    mcsed_model.table = Table(names=labels, dtype=['S10', 'i4'] +
                               ['f8']*(len(labels)-2))
 ## WPBWPB delete
 #    print("Created the table (but no data rows yet)")
@@ -960,6 +976,22 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_absindx = [-99]
             mcsed_model.data_absindx_e = [-99]
 
+            # Bin the SSP ages, if possible
+            if (args.sfh == 'binned_lsfr') & (args.nobjects>1):
+                sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
+                max_ssp_age = get_max_ssp_age(args, z=zi)
+                maxage_Gyr = 10.**(max_ssp_age-9.)
+                tbirth_Gyr = 10.**(args.t_birth-9.)
+                binned_ssp = bin_ssp_ages(ages, SSP, lineSSP, sfh_ages_Gyr,
+                                          maxage_Gyr, tbirth_Gyr)
+                binned_ages, binned_spec, binned_linespec = binned_ssp
+                mcsed_model.ssp_ages = binned_ages
+                mcsed_model.ssp_spectra = binned_spec
+                mcsed_model.ssp_emline = binned_linespec
+
+                print('test redshift and shape of things')
+                print(zi)
+                print(binned_spec.shape)
 
             # Remove filters containing Lyman-alpha (and those blueward)
             mcsed_model.remove_waverange_filters(0., args.blue_wave_cutoff, restframe=True)
@@ -989,16 +1021,12 @@ def main(argv=None, ssp_info=None):
 
             names.append('Ln Prob')
             if args.output_dict['fitposterior']:
-                print('these are names:')
-                print(names)
-                print('heres a few samples:')
-                print(mcsed_model.samples[-5:])
                 T = Table(mcsed_model.samples, names=names)
                 T.write('output/fitposterior_fake_%05d_%s_%s.dat' % (cnt, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
-                T = Table([mcsed_model.wave, mcsed_model.medianspec],
-                          names=['wavelength', 'spectrum'])
+                T = Table([mcsed_model.wave, mcsed_model.medianspec, mcsed_model.true_spectrum],
+                          names=['wavelength', 'spectrum', 'true_spectrum'])
                 T.write('output/bestfitspec_fake_%05d_%s_%s.dat' % (cnt, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
@@ -1011,11 +1039,11 @@ def main(argv=None, ssp_info=None):
 
     else:
     # WPB field/id
-        # read input file, if not already done
-        if not input_file_data:
-            y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = read_input_file(args)
-        else:
-            y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = input_file_data
+#        # read input file, if not already done
+#        if not input_file_data:
+#            y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = read_input_file(args)
+#        else:
+        y, yerr, z, flag, objid, field, em, emerr, absindx, absindx_e = input_file_data
 
         if args.ISM_correct:
             ebv_MW = ism_igm.get_MW_EBV(args)
@@ -1053,6 +1081,19 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_emline_e = emie
             mcsed_model.data_absindx = indx
             mcsed_model.data_absindx_e = indxe
+
+            # Bin the SSP ages, if possible
+            if args.sfh == 'binned_lsfr':
+                sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
+                max_ssp_age = get_max_ssp_age(args, z=zi)
+                maxage_Gyr = 10.**(max_ssp_age-9.)
+                tbirth_Gyr = 10.**(args.t_birth-9.)
+                binned_ssp = bin_ssp_ages(ages, SSP, lineSSP, sfh_ages_Gyr,
+                                          maxage_Gyr, tbirth_Gyr)
+                binned_ages, binned_spec, binned_linespec = binned_ssp
+                mcsed_model.ssp_ages = binned_ages
+                mcsed_model.ssp_spectra = binned_spec
+                mcsed_model.ssp_emline = binned_linespec
 
             # Remove filters containing Lyman-alpha (and those blueward)
             mcsed_model.remove_waverange_filters(0., args.blue_wave_cutoff, restframe=True)
@@ -1093,7 +1134,8 @@ def main(argv=None, ssp_info=None):
 
     # WPB field/id
             if args.output_dict['sample plot']:
-                mcsed_model.sample_plot('output/sample_%s_%05d' % (fd, oi),
+                mcsed_model.sample_plot('output/sample_%s_%05d_%s_%s' % 
+                                        (fd, oi, args.sfh, args.dust_law),
                                         imgtype = args.output_dict['image format'])
 
             if args.output_dict['triangle plot']:
@@ -1112,11 +1154,6 @@ def main(argv=None, ssp_info=None):
                 names.append('Mdust_EB')
             names.append('Ln Prob')
             if args.output_dict['fitposterior']: 
-                print('these are names:')
-                print(names)
-                print('heres a few samples:')
-                print(mcsed_model.samples[-5:])
-
                 T = Table(mcsed_model.samples, names=names)
                 T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')

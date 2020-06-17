@@ -967,6 +967,7 @@ WPBWPB units??
             self.spectrum, mass, mdust_eb = self.build_csp()
         else:
             self.spectrum, mass = self.build_csp()
+        self.true_spectrum = self.spectrum.copy()
         ax.plot(self.wave, self.spectrum, color=color, alpha=alpha)
 
     def add_sfr_plot(self, ax1):
@@ -986,12 +987,12 @@ WPBWPB units??
 
     def add_dust_plot(self, ax2):
         ax2.set_xscale('log')
-        xtick_pos = [1000, 3000, 10000]
-        xtick_lbl = ['1000', '3000', '10000']
+        xtick_pos = [2000, 4000, 8000]
+        xtick_lbl = ['2000', '4000', '8000']
         ax2.set_xticks(xtick_pos)
         ax2.set_xticklabels(xtick_lbl)
-        ax2.set_xlim([1000, 15000])
-        ax2.set_ylim([0, 4])
+        ax2.set_xlim([1000, 10000])
+        ax2.set_ylim([0.01, 4])
 #        ax2.set_ylabel(r'Dust Attenuation (mag)')
         ax2.set_ylabel(r'$A_\lambda$ [mag]')
         ax2.set_xlabel(r'Wavelength [$\AA$]')
@@ -1050,10 +1051,6 @@ WPBWPB units??
 
         ax3.scatter(self.fluxwv, self.fluxfn, marker='x', s=200,
                     color='dimgray', zorder=8)
-        chi2 = (1. / (len(self.data_fnu) - 1) *
-                (((self.data_fnu - self.fluxfn) / self.data_fnu_e)**2).sum())
-        # WPBWPB: reduced chi^2 or not? properly accounting for number of data points, including emlines?
-        # WPBWPB delete this calculation of chi2 -- use the dictionary value instead
         if self.input_params is not None:
             self.set_class_parameters(self.input_params)
             self.sfh_class.plot(ax1, color='k', alpha=1.0)
