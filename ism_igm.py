@@ -74,7 +74,17 @@ def get_MW_EBV(args):
 
 def get_tauIGMf():
     """
+    Statistical IGM correction using 2-D interpolation on results 
+    from Madau (1995) equations
+    
+    Parameters
+    ----------
+    None
 
+    Returns
+    -------
+    tauIGMf: 2-D interpolation optical depth function
+    (of observed wavelength and redshift from 0 to 4)
     """
     fulltauIGM = np.loadtxt("ISM_IGM/IGM_tau_z_0_4.dat")
     assert len(fulltauIGM[0,1:])>len(fulltauIGM[1:,0]) 
@@ -84,6 +94,19 @@ def get_tauIGMf():
 
 def get_tauISMf():
     """
+    Milky Way Dust correction using 1-D interpolation on wavelength given 
+    2-D maps originally by Schlegel, Finkbeiner, and Davis (1998) and updated 
+    by Schlafly and Finkbeiner (2011); 
+    a Rv=3.1 Fitzpatrick (1999) extinction law is used
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    tauISMf: 1-D interpolation optical depth function 
+    (of [observed] wavelength) using Rv=3.1 Fitzpatrick (1999) extinction law
     """
     wavISM, Rlam = np.loadtxt("ISM_IGM/Rlam_31.dat", unpack=True)
     tauISMf = interp1d(wavISM, Rlam,
