@@ -1,9 +1,14 @@
 """
 
+ISM/IGM corrections
+
 """
 
 import numpy as np
 from scipy.interpolate import interp1d, interp2d
+from astropy.io import fits
+from astropy.table import Table
+import os.path as op
 import sys
 sys.path.insert(0, 'ISM_IGM')
 

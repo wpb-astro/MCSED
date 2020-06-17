@@ -173,7 +173,8 @@ class DL07:
         dustem = self.evaluate(wave)
         ax.plot(wave, dustem, color=color, alpha=alpha)
 
-    def plotpractice(self, wave, z): #Distance in Mpc
+    def plotpractice(self, wave, z):
+        #Distance in Mpc
         from cosmology import Cosmology
         C = Cosmology()
         D = C.luminosity_distance(z)

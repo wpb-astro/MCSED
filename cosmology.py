@@ -30,7 +30,7 @@ class Cosmology:
         self.c = 2.99792e5  # km / s
 
     def set_stepsize(self, z):
-        ''' Strike a balance between precision and efficiency
+        ''' Strike a balance between precision and efficiency (~ 0.1% accuracy)
 
         Parameters
         ----------
@@ -44,8 +44,11 @@ class Cosmology:
         '''
         if z>0.55:
             stepsize = 0.001
+        elif z>1e-6:
+            stepsize = 10.**(0.994 * np.log10(z)-2.731)
         else:
-            lstep = 0.994 * np.log10(z) 
+            stepsize = 1e-10
+        return stepsize 
 
 
     def luminosity_distance(self, z, stepsize=0.001):
@@ -63,6 +66,7 @@ class Cosmology:
         d : float
             Luminosity distance (units of 10 pc)
         '''
+        stepsize = self.set_stepsize(z)
         zi = np.arange(0., z, stepsize)
         E = np.sqrt(self.omega_m * (1. + zi)**3 + self.omega_k * (1. + zi)**2 +
                     self.omega_l)
@@ -84,6 +88,7 @@ class Cosmology:
         t : float
             Lookback time (units of Gyr)
         '''
+        stepsize = self.set_stepsize(z)
         zi = np.arange(0., z, stepsize)
         E = np.sqrt(self.omega_m * (1. + zi)**3 + self.omega_k * (1. + zi)**2 +
                     self.omega_l)

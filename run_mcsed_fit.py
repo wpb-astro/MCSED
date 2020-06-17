@@ -232,7 +232,7 @@ def parse_args(argv=None):
     except ValueError:
         args.metallicity = str2bool(str(args.metallicity),args.log)
         if args.metallicity:
-            print("Fixing metallicity at Z = 0.0077 (Zsolar = 0.019)")
+            args.log.info("Fixing metallicity at Z = 0.0077 (Zsolar = 0.019)")
             args.metallicity = 0.0077
 
     # Avoid an infinite loop between parallel and series functions
@@ -357,8 +357,10 @@ def get_maglim_filters(args):
 
 def get_max_ssp_age(args, z=None):
     '''
-WPBWPB FILL IN
-    
+    Identify the maximum SSP age for the sample (i.e., at upper/lower redshifts)
+
+    Max SSP age is the time between redshift z=20 and redshift of the galaxy
+ 
     Parameters
     ----------
     args : class
@@ -391,17 +393,11 @@ WPBWPB FILL IN
     maxage_hi = np.log10(C.lookback_time(20)-C.lookback_time(zrange[0])) + 9.
     return (maxage_lo, maxage_hi)
 
-# edit: instead, input is redshift, and return in units Gyr
-
-
 
 def read_input_file(args):
     '''This function reads a very specific input file and joins it with
     archived 3dhst catalogs.  The input file should have the following columns:
-    WPBWPB CHECK COLUMN NAMES (case, etc)
-    FIELD, ID, Z
-
-WPBWPB: describe how emission line and filter dictionaries may be modified
+    Field, ID, z
 
     Parameters
     ----------
@@ -411,11 +407,10 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
 
     Returns
     -------
-    WPB: unit check: f_nu in microJy ?
     y : numpy array (2 dim)
-        Photometric magnitudes from the 3DHST survey for each input source
+        Photometric flux densities (in units of micro-Janskies)
     yerr : numpy array (2 dim)
-        Photometric errors in magnitudes
+        Photometric errors
     z : numpy array (1 dim)
         Redshift from the file returned as a numpy array
     flag : numpy array (2 dim)
@@ -424,7 +419,11 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
         Emission line fluxes in ergs / cm2 / s
         Desired lines are read from dictionary in config.py
     emerr : Astropy Table (2 dim)
-        Emission line errors in ergs / cm2 / s 
+        Emission line errors in ergs / cm2 / s
+    absindx : Astropy Table (2 dim)
+        Absorption line indices read from the input file
+    absindx_e : Astropy Table (2 dim)
+        Errors on the absorption line indices
     '''
     # WPB: check if ID is of form skelton: if yes, grab from catalogs
     # else, check input units and convert appropriately
@@ -457,7 +456,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
     # WPBWPB: need to adjust if change naming convention of emission lines
     #input_filters = [col.split('_')[1] for col in Fcols if (len(col)>1) & (col[0:2]=='f_')]
     input_filters = [col.strip('f_') for col in Fcols if (len(col)>1) & (col[0:2]=='f_')]
-    print("Input filters:", input_filters)
+#    print("Input filters:", input_filters)
     infilt_dict = {}
     if args.use_input_data:
         for fname in input_filters:
@@ -477,7 +476,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
 # WPBWPB: some check on the filter curve to make sure it is formatted correctly?
 # WPBWPB: raise an error instead of printing a statement?
             else:
-                print('*CAUTION* %s.res filter curve does not exist:' % fname)
+                args.log.info('*CAUTION* %s.res filter curve does not exist:' % fname)
 
     nfilters = len(args.filt_dict)
     y = np.zeros((nobj, nfilters))
@@ -505,7 +504,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
                 elif ind in infilt_dict.keys():
                     colname  = "f_"+infilt_dict[ind].split('.res')[0]
                     ecolname = "e_"+infilt_dict[ind].split('.res')[0]
-                    print("We are including a column for the photometric filter %s" %(colname))
+#                    print("We are including a column for the photometric filter %s" %(colname))
                 # WPB delete - if neither, set to zero and move on
                 else:
                     y[i, j] = 0.0
@@ -516,7 +515,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
                 if ind in infilt_dict.keys():
                     colname  = "f_"+infilt_dict[ind].split('.res')[0]
                     ecolname = "e_"+infilt_dict[ind].split('.res')[0]
-                    print("We are including a column for the photometric filter %s" %(colname))
+#                    print("We are including a column for the photometric filter %s" %(colname))
                 # WPB delete - if neither, set to zero and move on
                 else:
                     y[i, j] = 0.0
@@ -588,7 +587,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
                 emerr[ecolname] = emerr_arr
 
                 Fcols = [c for c in Fcols if c not in [colname, ecolname]]
-                print('Reading %s line fluxes from input file' % emline)
+#                print('Reading %s line fluxes from input file' % emline)
             else:
                 del args.emline_list_dict[emline]
         if not args.emline_list_dict:
@@ -626,7 +625,7 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
                 absindx_e[ecolname] = indxerr_arr
 
                 Fcols = [c for c in Fcols if c not in [colname, ecolname]]
-                print('Reading %s absorption line index from input file' % indx)
+#                print('Reading %s absorption line index from input file' % indx)
             else:
                 del args.absorption_index_dict[indx]
         if not args.absorption_index_dict:
@@ -638,9 +637,15 @@ WPBWPB: describe how emission line and filter dictionaries may be modified
 
 
     # warn of any unused columns from the input file
+    Fcols = [c for c in Fcols if c not in ['Field', 'ID']]
     if (Fcols!=[]) & (args.use_input_data):
-        print('*CAUTION* unread columns in the input file:')
-        print(Fcols) 
+        Fcols_str = '['
+        for c in Fcols:
+            if c!=Fcols[-1]:
+                Fcols_str+= c+', '
+            else:
+                Fcols_str+= c+']'
+        args.log.info('*CAUTION* unread columns in the input file: '+Fcols_str)
 
     # WPBWPB: adjust, clarify the column names
     return y, yerr, z, flag, F['ID'], F['Field'], em, emerr, absindx, absindx_e
@@ -755,11 +760,12 @@ def main(argv=None, ssp_info=None):
     Live mode: "python run_mcsed_fit.py -f test_data.dat"
 
     For a "live" run, the key input ("-f") is a file with three columns:
-    FIELD ID REDSHIFT
+    Field ID z
 
-    The field options are: cosmos, goodsn, goodss, or aegis
-    The id is the skelton photometric id for the given field
-    The redshift is fixed in the fitting
+    If using the Skelton catalog:
+        The field options are: cosmos, goodsn, goodss, aegis, uds
+        The ID is the skelton photometric id for the given field
+        The redshift, z, is fixed in the fitting
     '''
 
     # Make output folder if it doesn't exist
@@ -977,7 +983,7 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_absindx_e = [-99]
 
             # Bin the SSP ages, if possible
-            if (args.sfh == 'binned_lsfr') & (args.nobjects>1):
+            if False: #args.sfh == 'binned_lsfr':
                 sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
                 max_ssp_age = get_max_ssp_age(args, z=zi)
                 maxage_Gyr = 10.**(max_ssp_age-9.)
@@ -988,10 +994,6 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.ssp_ages = binned_ages
                 mcsed_model.ssp_spectra = binned_spec
                 mcsed_model.ssp_emline = binned_linespec
-
-                print('test redshift and shape of things')
-                print(zi)
-                print(binned_spec.shape)
 
             # Remove filters containing Lyman-alpha (and those blueward)
             mcsed_model.remove_waverange_filters(0., args.blue_wave_cutoff, restframe=True)
@@ -1012,14 +1014,21 @@ def main(argv=None, ssp_info=None):
                                           (cnt, args.sfh, args.dust_law),
                                           imgtype = args.output_dict['image format'])
             mcsed_model.table.add_row(['Test', cnt, zi] + [0.]*(len(labels)-3))
-            print("Reached point before adding fit info to table")
+# WPBWPB delete
+#            print("Reached point before adding fit info to table")
             last = mcsed_model.add_fitinfo_to_table(percentiles)
-            print("Reached point after adding fit info to table but not yet truth info")
+# WPBWPB delete
+#            print("Reached point after adding fit info to table but not yet truth info")
             mcsed_model.add_truth_to_table(tr, last)
-            print("Reached point after adding truth info to table")
+# WPBWPB delete
+#            print("Reached point after adding truth info to table")
             print(mcsed_model.table)
 
-            names.append('Ln Prob')
+            if names[-1] != 'Ln Prob':
+                names.append('Ln Prob')
+#            print('heres a few samples and the names:')
+#            print(mcsed_model.samples[-5:])
+#            print(names)
             if args.output_dict['fitposterior']:
                 T = Table(mcsed_model.samples, names=names)
                 T.write('output/fitposterior_fake_%05d_%s_%s.dat' % (cnt, args.sfh, args.dust_law),

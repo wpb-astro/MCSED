@@ -404,8 +404,9 @@ def get_nebular_emission(ages, wave, spec, logU, metallicity,
 
     Returns
     -------
-    FILL IN :
+    nspec : numpy array (3 dim)
         nebular emission spectrum in units micro-Jy at 10 pc
+        dimensions: (wavelengths, ages, metallicities)
     '''
     while kind not in ['line', 'cont', 'both']:
         kind = input("Invalid entry. Please enter 'line', 'cont', or 'both'")
@@ -560,7 +561,7 @@ def collapse_emline_SSP(args, linewave, linespec, clight=2.99792e18):
 
 
 def make_gaussian_emission(wavebig, wave, stddev=1., clight=2.99792e18):
-    ''' FILL IN
+    ''' 
 
     Parameters
     ----------
@@ -585,7 +586,6 @@ def make_gaussian_emission(wavebig, wave, stddev=1., clight=2.99792e18):
 def number_ionizing_photons(wave, spectrum, clight=2.99792e18,
                             hplanck=6.626e-27):
     '''
-    FILL IN
 
     Parameters
     ----------
@@ -615,8 +615,25 @@ def read_ssp_fsps(args):
     ----------
     args : class
         The args class from mcsed.parse_args()
-WPBWPB: need to determine units of all outputs
-WPBWPB: operate under assumption that spec, linespec are in same units
+
+    Returns
+    -------
+    ages : numpy array (1d)
+        SSP age grid (Gyr)
+    wave : numpy array (1d)
+        SSP wavelength grid (Angstroms)
+    spec : numpy array (3d)
+        SSP spectra in units micro-Jy at a distance of 10 pc
+        dimensions: (wave, ages, metallicities)
+    metallicities : numpy array (1d)
+        SSP metallicities (in values of Z, where Zsolar = 0.019)
+    linewave : numpy array (1d)
+        rest-frame wavelengths of emission-line fluxes 
+        (if used in model calculation)
+    linespec : numpy array (3d)
+        line fluxes in units ergs / cm2 / s at distance of 10 pc
+        dimensions: (linewave, ages, metallicities)
+
     '''
     metallicities = np.array(args.metallicity_dict[args.ssp][args.isochrone])
 

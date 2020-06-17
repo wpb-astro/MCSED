@@ -22,7 +22,10 @@ class stellar_metallicity:
 
         Parameters
         ----------
-        TODO Fill these in
+        met : float
+            the stellar metallicity (in log solar units)
+        fix_met : bool
+            treat stellar metallicity as a fixed or free parameter
         '''
         self.met = met
         self.met_lims = met_lims

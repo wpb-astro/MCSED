@@ -2,9 +2,11 @@
 
 
 1) Dust Laws
-    a) Calzetti:
-    b) Noll:
-    FILL THESE IN
+    a) calzetti
+    b) noll
+    c) reddy
+    d) conroy
+    e) cardelli
 
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
