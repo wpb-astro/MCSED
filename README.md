@@ -3,7 +3,7 @@
 ## Background
 MCSED models the optical, near-infrared and infrared spectral energy distribution (SED) of galactic systems.  In light of the fact that there are so many such codes already publicly available, we describe the motivation for MCSED and highlight areas in which this code stands out from the crowd.  First of all, galaxies over cosmic time span a wide range of parameters related to their baryonic content including total stellar mass, gas and stellar metallcity, dust mass and distribution, and star formation history.  This large variation for the totality of all galaxies makes it extremely difficult to develope a general enough SED fitting code to work for all systems.  Instead, most codes are taylored to work best for specific populations.  
 
-MCSED targets galaxies at cosmic noon (z ~ 1-3) that are selected via their emission lines either in the rest-frame optical or ultraviolet wavelengths.  These sources are drawn from the 3DHST survey (http://3dhst.research.yale.edu/Home.html) as well as the HETDEX survey (http://hetdex.org/).  Initial SED fitting efforts revealed that these systems are forming stars at a rate of 1-100 solar masses per year and have total stellar masses of 10^7-10^10 ([Hagen et al. 2016](http://adsabs.harvard.edu/abs/2016ApJ...817...79H)).  
+MCSED targets galaxies at cosmic noon (z ~ 1-3) that are selected via their emission lines either in the rest-frame optical or ultraviolet wavelengths.  These sources are drawn from the 3DHST survey (http://3dhst.research.yale.edu/Home.html) as well as the HETDEX survey (http://hetdex.org/).  Initial SED fitting efforts revealed that these systems are forming stars at a rate of 1-1000 solar masses per year and have total stellar masses of 10^8-10^11 ([Bowman et al. 2019](https://ui.adsabs.harvard.edu/abs/2019ApJ...875..152B/abstract)).  
 
 ## Installation
 To acquire and install this code, simply move to a directory where you would like it stored and type:
@@ -32,7 +32,7 @@ And you will find a help menu like this.
                         
         -tf, --test_field: Test filters will match the given input field, default "cosmos"
         
-All of the available options for MCSED are found in [config.py](https://github.com/grzeimann/MCSED/edit/master/config.py).  Here we break down the most important of those: 
+All of the available options for MCSED are found in [config.py](https://github.com/wpb-astro/MCSED/master/config.py).  Here we break down the most important of those: 
 
         ssp = 'fsps'          
         isochrone = 'padova' 
@@ -52,8 +52,11 @@ To run MCSED for a set of objects, simply input a file that has the format:
 The call would look like:
 
         python run_mcsed.py -f PATH/FILENAME 
-        
-The output of such a call is located in "outputs" and includes a figure like this:
+
+Users can take advantage of multiple available cores by including the -p option in the command line call, which will initialize the parallel fitting mode. This call will distribute the total number of objects across (N-i) cores, where N is the total number of cores on the machine, and i is the number of cores which should not be used in the calculation (specified by the "reserved_cores" keyword in config.py). This mode is extremely useful when fitting large galaxy samples.
+
+The output files are stored in a directory called "outputs". Several output files are available and can be turned on/off via the "output_dict" dictionary options in config.py. These include: a summary table of best-fit model parameters (and associated confidence intervals); full posterior distributions for model parameters; the best-fit SED model; modeled and observed photometric fluxes, emission lines, and absorption line indices; an age-weighted plot of the SSP spectra used in the fitting; and a summary diagnostic figure (example shown below).
+ 
 <p align="center">
   <img src="example_triangle.png" width="650"/>
 </p>

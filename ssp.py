@@ -15,7 +15,7 @@ import os.path as op
 import scipy.interpolate as scint
 from astropy.convolution import Gaussian1DKernel, convolve
 
-#plt.ioff() # UNCOMMENT THIS LINE IF RUNNING ON LINUX
+plt.ioff() # UNCOMMENT THIS LINE IF RUNNING ON LINUX
 
 def bin_ssp_ages(ssp_ages, ssp_spec, ssp_linespec, sfh_ages, galaxy_age, t_birth):
     '''
