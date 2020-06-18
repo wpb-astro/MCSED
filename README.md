@@ -8,13 +8,13 @@ MCSED targets galaxies at cosmic noon (z ~ 1-3) that are selected via their emis
 ## Installation
 To acquire and install this code, simply move to a directory where you would like it stored and type:
 
-        git clone https://github.com/grzeimann/MCSED.git
+        git clone https://github.com/wpb-astro/MCSED.git
 
 A directory called "MCSED" will be created containing all of the necessary files for the program.  This is a python based code and does require a few standard python based packages.  All of the packages required can be found in the Anaconda distribution environment.  To install Anaconda, see:
 https://docs.anaconda.com/anaconda/install/
 
 ## How to Run MCSED
-The primary script is run_mcsed.py, which can be called from the command line with input arguments.  To view the input arguments, simply type:
+The primary script is run_mcsed_fit.py, which can be called from the command line with input arguments.  To view the input arguments, simply type:
 
         python run_mcsed.py -h
 
@@ -32,24 +32,20 @@ And you will find a help menu like this.
                         
         -tf, --test_field: Test filters will match the given input field, default "cosmos"
         
-All of the available options for MCSED are found in [config.py](https://github.com/grzeimann/MCSED/edit/master/config.py).  Here we break down the most important of those, which include four key variables:
+All of the available options for MCSED are found in [config.py](https://github.com/grzeimann/MCSED/edit/master/config.py).  Here we break down the most important of those: 
 
-        ssp = 'fsps'  # options include: 'fsps'
-        isochrone = 'padova'  # options include: 'padova'
-        sfh = 'empirical'  # options include: 'double_powerlaw', 'empirical'
-        dust_law = 'noll'  # options include: 'noll'
+        ssp = 'fsps'          
+        isochrone = 'padova' 
+        sfh = 'binned_lsfr'
+        dust_law = 'calzetti'
+        dust_em = 'DL07'   
+        metallicity = 0.0077
 
-The single stellar population (SSP) model is left flexible in MCSED as it has a strong weight on the inferred parameters.  We also allow the user to define the isochrone applied within a given SSP model.  To build a composite stellar population the user can set the type of star formation history as well as dust attenuation law to go from instrinsic emission to observed flux.  We are still in the early phases of development and so not many options for either of these four key variables are available.  However, as these are flexible and modular in nature, we expect this to have a great impact on any experimental design.
+The current version of MCSED includes the single stellar population (SSP) models from FSPS using Padova isochrones and users can easily substitute their own SSP grid. To build a composite stellar population the user can set the type of star formation history as well as dust attenuation law to go from instrinsic emission to observed flux. We include options for six star formation histories and four dust attenuation laws (and one extinction law). Another key feature in SED fitting is the metallicity of the SSPs.  We offer two options: fixed metallicity or treating stellar metallicity as a free model parameter.
 
-Another key feature in SED fitting is the metallicity of the SSPs.  We offer two options: fixed metallicity or a relationship between stellar mass and stellar metallicty as given by [Ma et al. (2016)](http://adsabs.harvard.edu/abs/2016MNRAS.456.2140M). (NOTE: only fixed metallicity is currently available.)
+To run MCSED for a set of objects, simply input a file that has the format: 
 
-        # Use metallicity-mass relationship from Ma et al. 2016
-        metallicity_mass_relationship = False  # set to True for this option
-        # Fixed metallicity of SSP models if fit_metallicity is False
-        metallicity = 0.0006  # for fixed metallicity
-
-To run MCSED for a set of objects, simply input a file that has the format: Field ID z
-
+        Field     ID     z
         COSMOS   18945  2.188
         COSMOS   13104  2.292
 

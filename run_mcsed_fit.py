@@ -109,12 +109,20 @@ def parse_args(argv=None):
                         help='''Running in parallel?''',
                         action="count", default=0)
 
+    parser.add_argument("-t", "--test",
+                        help='''Test script with fake data''',
+                        action="count", default=0)
+
+    parser.add_argument("-tf", "--test_field",
+                        help='''Test filters will match the given field''',
+                        type=str, default='cosmos')
+
+    parser.add_argument("-no", "--nobjects",
+                        help='''Number of test objects''',
+                        type=int, default=None)
+
     parser.add_argument("-s", "--ssp",
                         help='''SSP Models, default fsps''',
-                        type=str, default=None)
-
-    parser.add_argument("-z", "--metallicity",
-                        help='''Fixed metallicity for SSP models (0.019 is solar), False if free parameter''',
                         type=str, default=None)
 
     parser.add_argument("-i", "--isochrone",
@@ -133,6 +141,14 @@ def parse_args(argv=None):
                         help='''Dust emission class, e.g., DL07''',
                         type=str, default=None)
 
+    parser.add_argument("-aeb", "--assume_energy_balance",
+                        help='''If selected, normalization of dust IR emission based on attenuation amount''',
+                        action="count", default=0)
+
+    parser.add_argument("-z", "--metallicity",
+                        help='''Fixed metallicity for SSP models (0.019 is solar), False if free parameter''',
+                        type=str, default=None)
+
     parser.add_argument("-nw", "--nwalkers",
                         help='''Number of walkers for EMCEE''',
                         type=int, default=None)
@@ -144,18 +160,6 @@ def parse_args(argv=None):
     parser.add_argument("-lu", "--logU",
                         help='''Ionization Parameter for nebular gas''',
                         type=float, default=None)
-
-    parser.add_argument("-t", "--test",
-                        help='''Test script with fake data''',
-                        action="count", default=0)
-
-    parser.add_argument("-tf", "--test_field",
-                        help='''Test filters will match the given field''',
-                        type=str, default='cosmos')
-
-    parser.add_argument("-no", "--nobjects",
-                        help='''Number of test objects''',
-                        type=int, default=None)
 
     parser.add_argument("-ism", "--ISM_correct_coords",
                         help='''If a coordinate system is given, MW dust correction will

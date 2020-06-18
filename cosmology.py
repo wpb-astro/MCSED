@@ -44,10 +44,8 @@ class Cosmology:
         '''
         if z>0.55:
             stepsize = 0.001
-        elif z>1e-6:
-            stepsize = 10.**(0.994 * np.log10(z)-2.731)
         else:
-            stepsize = 1e-10
+            stepsize = 10.**(0.994 * np.log10(z)-2.731)
         return stepsize 
 
 
