@@ -64,7 +64,7 @@ class stellar_metallicity:
         ''' Return names of each parameter '''
         l = []
         if not self.fix_met:
-            l.append('Log Z')
+            l.append('Log Z/Zsun')
         return l
 
     def prior(self):

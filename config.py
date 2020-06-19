@@ -42,7 +42,7 @@ wave_dust_em     = 2.5   # rest-frame wavelength in microns
 # If False, leave metallicity as a free parameter
 # else, must be float: fixed metallicity of SSP models
 # if True, metallicity is fixed at 0.0077 (where Zsolar = 0.019)
-metallicity = 0.0077 
+metallicity = False #0.0077 
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed

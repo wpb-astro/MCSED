@@ -971,7 +971,7 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         ax1.set_yticklabels(['0.01', '0.1', '1', '10', '100', '1000'])
 #        ax1.set_yticks([1e-2, 1, 1e1, 1e3])
 #        ax1.set_yticklabels(['0.01', '1', '10', '1000'])
-        ax1.set_xlim([10**-3, 10**self.sfh_class.age])
+        ax1.set_xlim([10**-3, max(10**self.sfh_class.age, 1.02)])
         ax1.set_ylim([10**-2.3, 1e3])
         ax1.minorticks_on()
 
