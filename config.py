@@ -42,7 +42,7 @@ wave_dust_em     = 2.5   # rest-frame wavelength in microns
 # If False, leave metallicity as a free parameter
 # else, must be float: fixed metallicity of SSP models
 # if True, metallicity is fixed at 0.0077 (where Zsolar = 0.019)
-metallicity = False #0.0077 
+metallicity = 0.0077 
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
@@ -59,8 +59,8 @@ test_zrange = (1.9, 2.35) # redshift range of test objects (uniform prior)
 # minimum fractional errors in observed photometry, 
 # emission line fluxes, and absorption line indices 
 phot_floor_error    = 0.05
-emline_floor_error  = 0.10
-absindx_floor_error = 0.10
+emline_floor_error  = 0.05
+absindx_floor_error = 0.05
 
 # Fractional error expected from the models, i.e., fractional error adopted
 # for model photometry, emission line fluxes, and absorption line indices

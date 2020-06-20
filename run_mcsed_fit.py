@@ -1112,16 +1112,16 @@ def main(argv=None, ssp_info=None):
 #            mcsed_model.remove_waverange_filters( Ebwave-dwave, Ebwave+dwave, restframe=True )
 
             if ebvi>1.0e-12: # Only for when there is a nonzero E(B-V) Milky Way value to be fit
-                TauISM_lam = ebvi*tauISMf(mcsed_model.wave)/1.086
-                mcsed_model.TauISM_lam = TauISM_lam
+                tauISM_lam = ebvi*tauISMf(mcsed_model.wave)/1.086
+                mcsed_model.tauISM_lam = tauISM_lam
             else:
-                mcsed_model.TauISM_lam = None
+                mcsed_model.tauISM_lam = None
             if args.IGM_correct:
-                TauIGM_lam = tauIGMf(mcsed_model.wave,mcsed_model.redshift)
-                TauIGM_lam.reshape(len(mcsed_model.wave))
-                mcsed_model.TauIGM_lam = TauIGM_lam
+                tauIGM_lam = tauIGMf(mcsed_model.wave,mcsed_model.redshift)
+                tauIGM_lam.reshape(len(mcsed_model.wave))
+                mcsed_model.tauIGM_lam = tauIGM_lam
             else:
-                mcsed_model.TauIGM_lam = None
+                mcsed_model.tauIGM_lam = None
 
             mcsed_model.fit_model()
             print('i have fit the model')

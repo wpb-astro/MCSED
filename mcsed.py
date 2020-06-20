@@ -37,14 +37,19 @@ sns.set_style({"xtick.direction": "in","ytick.direction": "in",
 #WPBWPB re organize the arguments (aesthetic purposes)
 class Mcsed:
     def __init__(self, filter_matrix, ssp_spectra,
-                 emlinewave, ssp_emline, ssp_ages,
-                 ssp_met, wave, sfh_class, dust_abs_class, dust_em_class,
+                 emlinewave, ssp_emline, ssp_ages, ssp_met, wave, 
+                 sfh_class, dust_abs_class, dust_em_class, met_class=None,
+                 nparams=None, t_birth=None, SSP=None, lineSSP=None, 
                  data_fnu=None, data_fnu_e=None, 
                  data_emline=None, data_emline_e=None, emline_dict=None,
-                 redshift=None,
-                 filter_flag=None, input_spectrum=None, input_params=None,
-                 sigma_m=0.1, nwalkers=40, nsteps=1000, true_fnu=None, 
-                 chi2=None, TauISM_lam=None, TauIGM_lam=None):
+                 use_emline_flux=None, linefluxCSPdict=None,
+                 data_absindx=None, data_absindx_e=None, absindx_dict=None,
+                 use_absorption_indx=None, absindxCSPdict=None,
+                 fluxwv=None, fluxfn=None, medianspec=None, spectrum=None, 
+                 redshift=None, Dl=None, filter_flag=None, 
+                 input_params=None, true_fnu=None, true_spectrum=None, 
+                 sigma_m=0.1, nwalkers=40, nsteps=1000, 
+                 chi2=None, tauISM_lam=None, tauIGM_lam=None):
         ''' Initialize the Mcsed class.
 
         Init
@@ -81,10 +86,23 @@ class Mcsed:
             This is the input class for dust absorption.
         dust_em_class : str
             Converted from str to class in initialization
-            This is the input class for dust absorption.
+            This is the input class for dust emission.
+        met_class : str
+            Converted from str to class in initialization
+            This is the input class for stellar metallicity
+        nparams : int
+            number of free model parameters
+        t_birth : float
+            Age of the birth cloud in Gyr
+            set from the value provided in config.py
+        SSP : numpy array (2 dim)
+            Grid of SSP spectra at current guess of stellar metallicity
+            (set from ssp_spectra)
+        lineSSP : numpy array (2 dim)
+            Grid of emission line fluxes at each age in the SSP grid
+            (set from ssp_emline)
         data_fnu : numpy array (1 dim)
             Photometry for data.  Length = (filter_flag == True).sum()
-WPBWPB units + are dimensions correct??
         data_fnu_e : numpy array (1 dim)
             Photometric errors for data
         data_emline : Astropy Table (1 dim)
@@ -95,17 +113,48 @@ WPBWPB units + are dimensions correct??
             Keys are emission line names (str)
             Values are a two-element tuple:
                 (rest-frame wavelength in Angstroms (float), weight (float))
+            emline_list_dict defined in config.py, containing only the 
+            emission lines that were also provided in the input file
+            (i.e., only the measurements that will be used to constrain the model)
         use_emline_flux : bool
             If emline_dict contains emission lines, set to True. Else, False
+        linefluxCSPdict : dict
+            Emission-line fluxes for current SED model
+        data_absindx : Astropy Table (1 dim)
+            Absorption line indices
+        data_absindx_e : Astropy Table (1 dim)
+            Absorption line index errors
+        absindx_dict : dict
+            absorption_index_dict defined in config.py, containing only 
+            measurements that were also provided in the input file
+            (i.e., only the measurements that will be used to constrain the model)
+        use_absorption_indx : bool
+            True, if index measurements were included in the input file and
+            should be used in the model selection
+        absindxCSPdict : dict
+            Absorption line index measurements for current SED model
+        fluxwv : numpy array (1 dim)
+            wavelengths of photometric filters
+        fluxfn : numpy array (1 dim)
+            flux densities of modeled photometry
+        medianspec : numpy array (1 dim)
+            best-fit SED model (same length as self.wave)
+            set after fitting the model
+        spectrum : numpy array (1 dim)
+            current SED model (same length as self.wave) 
         redshift : float
             Redshift of the source
+        Dl : float
+            Luminosity distance of the galaxy (in units of 10 pc)
         filter_flag : numpy array (1 dim)
             Length = filter_matrix.shape[1], True for filters matching data
-        input_spectrum : numpy array (1 dim)
-            F_nu(wave) for input
         input_params : list
             input parameters for modeling.  Intended for testing fitting
             procedure.
+        true_fnu : numpy array (1 dim)
+            True photometry for test mode.  Length = (filter_flag == True).sum()
+        true_spectrum : numpy array (1 dim)
+            truth model spectrum in test model (realized from input_params)
         sigma_m : float
             Fractional error expected from the models.  This is used in
             the log likelihood calculation.  No model is perfect, and this is
@@ -114,15 +163,16 @@ WPBWPB units + are dimensions correct??
             The number of walkers for emcee when fitting a model
         nsteps : int
             The number of steps each walker will make when fitting a model
-        true_fnu : WPBWPB FILL IN
-        chi2 : WPBWPB FILL IN
-        TauISM_lam : numpy array (1 dim)
-            Array of effective optical depths as function of wavelength for MW dust correction
-        TauIGM_lam : numpy array (1 dim)
-            Array of effective optical depths as function of wavelength for IGM gas correction
-
-
-WPBWPB: describe self.t_birth, set using args and units of Gyr
+        chi2 : dict
+            keys: 'dof', 'chi2', 'rchi2'
+            Track the degrees of freedom (accounting for data and model parameters)
+            and the chi2 and reduced chi2 of the current fit
+        tauISM_lam : numpy array (1 dim)
+            Array of effective optical depths as function of wavelength 
+            for MW dust correction
+        tauIGM_lam : numpy array (1 dim)
+            Array of effective optical depths as function of wavelength 
+            for IGM gas correction
         '''
         # Initialize all argument inputs
         self.filter_matrix = filter_matrix
@@ -135,38 +185,47 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         self.dnu = np.abs(np.hstack([0., np.diff(2.99792e18 / self.wave)]))
         self.sfh_class = getattr(sfh, sfh_class)()
         self.dust_abs_class = getattr(dust_abs, dust_abs_class)()
-        self.met_class = getattr(metallicity, 'stellar_metallicity')()
         self.dust_em_class = getattr(dust_emission, dust_em_class)()
-# WPBWPB: describe SSP, lineSSP in comments... 
-# ssp_spectra span many metallicities, SSP only span ages
-        self.SSP = None
-        self.lineSSP = None
+        self.met_class = getattr(metallicity, 'stellar_metallicity')()
         self.param_classes = ['sfh_class', 'dust_abs_class', 'met_class',
                               'dust_em_class']
+        self.nparams = nparams
+        self.t_birth = t_birth
+        self.SSP = None
+        self.lineSSP = None
         self.data_fnu = data_fnu
         self.data_fnu_e = data_fnu_e
         self.data_emline = data_emline
         self.data_emline_e = data_emline_e
         self.emline_dict = emline_dict
+        self.use_emline_flux = use_emline_flux
+        self.linefluxCSPdict = None
+        self.data_absindx = data_absindx
+        self.data_absindx_e = data_absindx_e
+        self.absindx_dict = absindx_dict
+        self.use_absorption_indx = use_absorption_indx
+        self.absindxCSPdict = None
+        self.fluxwv = fluxwv
+        self.fluxfn = fluxfn
+        self.medianspec = medianspec
+        self.spectrum = None
         self.redshift = redshift
+        if self.redshift is not None:
+            self.set_new_redshift(self.redshift)
+        self.Dl = Dl
         self.filter_flag = filter_flag
-        self.input_spectrum = input_spectrum
         self.input_params = input_params
+        self.true_fnu = true_fnu
+        self.true_spectrum = true_spectrum
         self.sigma_m = sigma_m
         self.nwalkers = nwalkers
         self.nsteps = nsteps
-        self.true_fnu = true_fnu
-        self.TauISM_lam = TauISM_lam
-        self.TauIGM_lam = TauIGM_lam
-        if self.redshift is not None:
-            self.set_new_redshift(self.redshift)
         self.chi2 = chi2
+        self.tauISM_lam = tauISM_lam
+        self.tauIGM_lam = tauIGM_lam
 
         # Set up logging
         self.setup_logging()
-
-        # Time array for sfh
-        self.age_eval = np.logspace(-3, 1, 4000)
 
     def set_new_redshift(self, redshift):
         ''' Setting redshift
@@ -333,7 +392,8 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         Input
         -----
         theta : list
-            list of input parameters for sfh, dust att., and dust em.
+            list of input parameters for sfh, dust attenuation, 
+            stellar metallicity, and dust emission
         '''
         start_value = 0
         ######################################################################
@@ -349,7 +409,7 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
 # WPBWPB modify: pass a dust_abs_birthcloud keyword, see if its the same, blah
 
         ######################################################################
-        # SSP Parameters
+        # STELLAR METALLICITY 
 ## WPBWPB delete
 #        print(start_value)
         self.met_class.set_parameters_from_list(theta, start_value)
@@ -574,10 +634,10 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
                         spec_dustobscured * (1. + self.redshift))
 
         # Correct for ISM and/or IGM (or neither)
-        if self.TauIGM_lam is not None:
-            csp *= np.exp(-self.TauIGM_lam)
-        if self.TauISM_lam is not None:
-            csp *= np.exp(-self.TauISM_lam)
+        if self.tauIGM_lam is not None:
+            csp *= np.exp(-self.tauIGM_lam)
+        if self.tauISM_lam is not None:
+            csp *= np.exp(-self.tauISM_lam)
 
         # Update dictionary of modeled emission line fluxes
         linefluxCSPdict = {}
@@ -971,7 +1031,7 @@ WPBWPB: describe self.t_birth, set using args and units of Gyr
         ax1.set_yticklabels(['0.01', '0.1', '1', '10', '100', '1000'])
 #        ax1.set_yticks([1e-2, 1, 1e1, 1e3])
 #        ax1.set_yticklabels(['0.01', '1', '10', '1000'])
-        ax1.set_xlim([10**-3, max(10**self.sfh_class.age, 1.02)])
+        ax1.set_xlim([10**-3, max(10**self.sfh_class.age, 1.)])
         ax1.set_ylim([10**-2.3, 1e3])
         ax1.minorticks_on()
 
