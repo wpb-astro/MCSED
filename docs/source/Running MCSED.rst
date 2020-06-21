@@ -3,11 +3,6 @@
 Running MCSED
 =============
 
-``MCSED`` can be run in two different modes: a live mode, where SED fits
-are performed on a set of galaxies defined in an input file, and a test
-mode, where ``MCSED`` is run on mock galaxies with known parameters. 
-Both of these modes can take advantage of the parallel feature, which 
-makes use of a system that has multiple cores. We describe these modes below.
 
 ``MCSED`` calculates the log-likelihood of a solution as
 
@@ -30,6 +25,13 @@ default value of :math:`\sigma_{m,frac} = 0.1`.
 The final :math:`\sigma_i^2` term is calculated as
 
 .. math:: \sigma_i^2 = \sigma_{i,obs}^2 + \left( \mu_i \sigma_{m,frac} \right)^2
+
+``MCSED`` can be run in two different modes: a live mode, where SED fits
+are performed on a set of galaxies defined in an input file, and a test
+mode, where ``MCSED`` is run on mock galaxies with known parameters. 
+Both of these modes can take advantage of the parallel feature, which 
+makes use of a system that has multiple cores. We describe these modes below.
+
   
 .. _subsec:livemode:
 
