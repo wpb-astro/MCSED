@@ -6,7 +6,7 @@ Running MCSED
 ``MCSED`` calculates the likelihood of a solution in the usual fashion,
 i.e.,
 
-.. math:: \log L (\mu) = \sum_{i=1}^N -{N \over 2} \ln \sigma_i +  {\left( x_i - \mu \right)^2 \over 2 \sigma_i^2}
+.. math:: \log L (\mu) = -{1 \ over 2} \sum_{i=1}^N \left[ \ln \left( w_i \sigma_i^2 \right) +  { w_i \left( x_i - \mu \right)^2 \over 2 \sigma_i^2} \right]
 
 where :math:`\mu` is the model, :math:`x_i` are the data points, and
 :math:`\sigma_i` are the uncertainties. As pointed out in
