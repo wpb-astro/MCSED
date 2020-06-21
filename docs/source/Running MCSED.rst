@@ -13,8 +13,7 @@ where :math:`\mu_i` are the modeled quantities, :math:`x_i` are the data points,
 By default, :math:`w_i \equiv 1` for all photometric points, while emission 
 lines and absorption line indices can have user-defined weights
 (as described in :ref:`section:inputs`).
- As pointed out in
-:ref:`subsec:columns`, the values of
+ As pointed out in :ref:`subsec:columns`, the values of
 :math:`\sigma_i` may be based on the errors given in the input file or
 the minimum fractional uncertainties defined by ``phot_floor_error``,
 ``emline_floor_error``, and ``absorption_floor_error``. In addition, the
