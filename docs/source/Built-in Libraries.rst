@@ -67,11 +67,11 @@ to ``run_mcsed_fit.py``:
    +-------------+-------------+----------------+---------------+-----------------------+
 
 This subroutine should be called as an alternative to
-``ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)`` in
+``ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp_fsps(args)`` in
 ``run_mcsed_fit.py``. The last two arrays in the table contain the
 wavelengths and model line strengths for emission-lines that may be used
 in the computation of the fit likelihood (see :ref:`subsec:nebular-emission`). The emission lines in this grid are drawn from the ``emline_list_dict``
-(defined in ``config.py``) and will only include lines that also appear in the input file (i.e., those which will
+(defined in ``config.py``) and will only include lines that also appear in the input file (i.e., those which will
 be used in the model selection). Otherwise, these variables will not be used in the calculation and can be
 arrays of arbitrary values (but must be of the appropriate dimensions).
 
