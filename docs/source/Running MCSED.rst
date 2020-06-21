@@ -3,28 +3,27 @@
 Running MCSED
 =============
 
-``MCSED`` calculates the likelihood of a solution in the usual fashion,
-i.e.,
+``MCSED`` calculates the log-likelihood of a solution as
 
-.. math:: \log L = -{1 \over 2} \sum_{i=1}^N \left[ \ln \left( w_i \sigma_i^2 \right) +  { w_i \left( x_i - \mu_i \right)^2 \over 2 \sigma_i^2} \right]
+.. math:: \log L = -{1 \over 2} \sum_{i=1}^N \left[ \ln \left( w_i \sigma_i^2 \right) +  { w_i \left( x_i - \mu_i \right)^2 \over \sigma_i^2} \right]
 
-where :math:`\mu_i` are the modeled quantities, :math:`x_i` are the data points,
+where :math:`\mu_i` are the modeled quantities, :math:`x_i` are the observed quantities,
 :math:`\sigma_i` are the uncertainties, and :math:`w_i` are the weights.
 By default, :math:`w_i \equiv 1` for all photometric points, while emission 
 lines and absorption line indices can have user-defined weights
 (as described in :ref:`section:inputs`). 
-The :math:`\sigma_i` terms includes contributions from the uncertainties associated 
+The :math:`\sigma_i` terms include contributions from the uncertainties associated 
 with both the observations and the models. As pointed out in :ref:`subsec:columns`, 
 the observed uncertainties may be based on the errors given in the input file 
 or the minimum fractional uncertainties defined by ``phot_floor_error``,
 ``emline_floor_error``, and ``absorption_floor_error``. In addition, the
-:math:`\sigma_i` values also include an additional term associated with
+:math:`\sigma_i` values include a term associated with
 the uncertainties of the models themselves. This fractional error is defined in the file
 ``config.py`` via the ``model_floor_error`` keyword and is given the 
-default value of :math:`\sigma_m = 0.1`. 
-The final :math:`\sigma_i` term is calculated as
+default value of :math:`\sigma_{m,frac} = 0.1`. 
+The final :math:`\sigma_i^2` term is calculated as
 
-.. math:: \sigma_i^2 = \sigma_{obs}^2 + \left( \mu_i \sigma_m \right)^2
+.. math:: \sigma_i^2 = \sigma_{i,obs}^2 + \left( \mu_i \sigma_{m,frac} \right)^2
   
 
 ``MCSED`` can be run in 3 different modes: a live mode, where SED fits
