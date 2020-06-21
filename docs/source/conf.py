@@ -20,8 +20,8 @@
 # -- Project information -----------------------------------------------------
 
 project = u'mcsed'
-copyright = u'2020, William Bowman, Gautam Nagaraj, Robin Ciardullo'
-author = u'William Bowman, Gautam Nagaraj, Robin Ciardullo'
+copyright = u'2020, William P. Bowman, Greg Zeimann, Gautam Nagaraj, Robin Ciardullo'
+author = u'William P. Bowman, Greg Zeimann, Gautam Nagaraj, Robin Ciardullo'
 
 # The short X.Y version
 version = u''
@@ -132,7 +132,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'mcsed.tex', u'mcsed Documentation',
-     u'William Bowman, Gautam Nagaraj, Robin Ciardullo', 'manual'),
+     u'William P. Bowman, Greg Zeimann, Gautam Nagaraj, Robin Ciardullo', 'manual'),
 ]
 
 
