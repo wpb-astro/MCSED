@@ -578,9 +578,8 @@ def read_input_file(args):
             colname, ecolname = '%s_FLUX' % emline, '%s_ERR' % emline
             if colname in Fcols:
                 em_arr = np.array(F[colname]  * args.emline_factor)
-                emerr_arr = np.max([abs(F[ecolname]/F[colname]),
-                                    np.array([args.emline_floor_error]*len(F))],0)
-                emerr_arr *= abs(em_arr)
+                emerr_arr = np.max([abs(F[ecolname]),
+                                    np.array([args.emline_floor_error*abs(F[colname])])],0)
 
                 # account for objects with null measurements
                 null_idx = np.where(abs(np.array(F[colname])-line_fill_value)<1e-10)[0]
@@ -615,10 +614,9 @@ def read_input_file(args):
                     efloor_arr = np.array([efloor]*len(F))
                     indxerr_arr = np.max([abs(F[ecolname]), efloor_arr],0)
                 else:
-                    efloor_arr = np.array([args.absindx_floor_error]*len(F))
-                    indxerr_arr = np.max([abs(F[ecolname]/F[colname]),
+                    efloor_arr = np.array([args.absindx_floor_error]*abs(F[colname]))
+                    indxerr_arr = np.max([abs(F[ecolname]),
                                           efloor_arr],0)
-                    indxerr_arr *= abs(indx_arr)
 
                 # account for objects with null measurements
                 null_idx = np.where(abs(np.array(F[colname])-line_fill_value)<1e-10)[0]
