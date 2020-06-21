@@ -6,10 +6,14 @@ Running MCSED
 ``MCSED`` calculates the likelihood of a solution in the usual fashion,
 i.e.,
 
-.. math:: \log L (\mu) = -{1 \ over 2} \sum_{i=1}^N \left[ \ln \left( w_i \sigma_i^2 \right) +  { w_i \left( x_i - \mu \right)^2 \over 2 \sigma_i^2} \right]
+.. math:: \log L (\mu) = -{1 \over 2} \sum_{i=1}^N \left[ \ln \left( w_i \sigma_i^2 \right) +  { w_i \left( x_i - \mu \right)^2 \over 2 \sigma_i^2} \right]
 
-where :math:`\mu` is the model, :math:`x_i` are the data points, and
-:math:`\sigma_i` are the uncertainties. As pointed out in
+where :math:`\mu` is the model, :math:`x_i` are the data points,
+:math:`\sigma_i` are the uncertainties, and :math:`w_i` are the weights.
+By default, :math:`w_i \equiv 1` for all photometric points, while emission 
+lines and absorption line indices can have user-defined weights
+(as described in :ref:`section:inputs`).
+ As pointed out in
 :ref:`subsec:columns`, the values of
 :math:`\sigma_i` may be based on the errors given in the input file or
 the minimum fractional uncertainties defined by ``phot_floor_error``,
