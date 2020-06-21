@@ -6,9 +6,9 @@ Running MCSED
 ``MCSED`` calculates the likelihood of a solution in the usual fashion,
 i.e.,
 
-.. math:: \log L (\mu) = -{1 \over 2} \sum_{i=1}^N \left[ \ln \left( w_i \sigma_i^2 \right) +  { w_i \left( x_i - \mu \right)^2 \over 2 \sigma_i^2} \right]
+.. math:: \log L (\mu) = -{1 \over 2} \sum_{i=1}^N \left[ \ln \left( w_i \sigma_i^2 \right) +  { w_i \left( x_i - \mu_i \right)^2 \over 2 \sigma_i^2} \right]
 
-where :math:`\mu` is the model, :math:`x_i` are the data points,
+where :math:`\mu_i` are the modeled quantities, :math:`x_i` are the data points,
 :math:`\sigma_i` are the uncertainties, and :math:`w_i` are the weights.
 By default, :math:`w_i \equiv 1` for all photometric points, while emission 
 lines and absorption line indices can have user-defined weights
@@ -18,10 +18,11 @@ lines and absorption line indices can have user-defined weights
 :math:`\sigma_i` may be based on the errors given in the input file or
 the minimum fractional uncertainties defined by ``phot_floor_error``,
 ``emline_floor_error``, and ``absorption_floor_error``. In addition, the
-:math:`\sigma` values also include an additional term associated with
+:math:`\sigma_i` values also include an additional term associated with
 the uncertainties of the models themselves. This fractional error (which
 is added in quadrature to the other errors) is defined in the file
-``mcsed.py`` and is given the default of ``sigma_m = 0.1``.
+``config.py`` via the ``model_floor_error`` keyword and is given the 
+default of :math:`sigma_m = 0.1`.
 
 ``MCSED`` can be run in 3 different modes: a live mode, where SED fits
 are performed on a set of galaxies defined in an input file, a test
