@@ -86,7 +86,7 @@ the mock SED and perturbing those fluxes about their associated
 photometric uncertainties. Finally, these mock observations are used to
 fit an SED model and estimate the corresponding model parameters. Upon
 completion, ``MCSED`` will return the calculated parameters from the
-run, as well as the initially fixed parameters.
+run, as well as the "truth" model parameters, filter fluxes, and SED.
 
 .. _subsec:parallelmode:
 
