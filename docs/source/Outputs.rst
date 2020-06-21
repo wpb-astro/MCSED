@@ -63,7 +63,7 @@ Best Fit SEDs (``bestfitspec = True``)
 
 For each object, a file containing the best fit SED will be returned,
 with columns of wavelength and flux density. The default wavelength
-range is from 500 Å to 10 :math:`\mu`\ m in the observers frame. The
+range is from rest-frame 500 Å to 350 :math:`\mu`\ m. If dust emission is not being fit (``dust_em = False``), the spectrum will extend to the rest-frame wavelength specified by the ``wave_dust_em`` keyword in ``config.py``. The
 flux densities are given in units of :math:`\mu`\ Jy. The default is
 ``bestfitspec = True``.
 
@@ -88,7 +88,8 @@ line fluxes will be returned. The list of lines are those defined by
 ``emline_list_dict`` in ``config.py``, and the columns returned are the
 name of line, it observed monochromatic flux, the uncertainty in the
 measurement, and the modeled flux. The default for this option is
-``lineflux = True``.
+``lineflux = True``. The file will only be saved if emission line 
+fluxes are provided in the input file and used in constraining the SED fit.
 
 .. _subsec:outputabsorption:
 
@@ -100,7 +101,8 @@ line indices will be returned. The list of features are those defined by
 ``absorption_index_dict`` in ``config.py``, and the columns returned are
 the name of index, it observed value, the uncertainty in the
 measurement, and the modeled value. The default for this option is
-``absorption = True``.
+``absorption = True``. The file will only be saved if absorption line indices are provided in
+the input file and used in constraining the SED fit.
 
 Sample Plot (``sample plot = True``)
 ------------------------------------
@@ -133,4 +135,4 @@ probability distribution functions. The user may select the image format
 for these figures using the dictionary ``output_dict`` in ``config.py``,
 with the available options being
 ``image format = .eps, .pdf, .pgf, .png, .ps, .raw, .rgba, .svg`` and
-``’.svgz’``. By default, ``image format = .png``.
+``’.svgz’``. By default, ``image format = .png``. The default for this option is ``triangle plot = True``.

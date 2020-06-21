@@ -5,7 +5,7 @@ Input Files
 
 ``MCSED`` is designed to model the SEDs of a set of galaxies with a
 common set of photometric and spectroscopic data. Since ``MCSED`` can
-accept a wide range of constraints, with dozens of possible filters
+accept a wide range of constraints, with dozens of possible filter
 combinations, emission line fluxes, and/or absorption line spectra
 indices, the format of the input file has some flexibility. But the
 basic file structure is simple: the data are entered in a simple,
@@ -20,7 +20,7 @@ Required Columns
 ----------------
 
 The input data file has three required columns, which must have these
-exact labels: ``Field``, ``obj_id``, and ``z``. In other words, an
+exact labels: ``Field``, ``ID``, and ``z``. In other words, an
 object’s identification consists in two parts: a string which contains
 the name of the field in which the object is found, and a unique integer
 ID which is specific to that field. If both field and ID are
@@ -107,14 +107,11 @@ emission lines currently included in ``config.py`` are given below.
 Additional lines can be added by expanding the ``emline_list_dict`` in
 ``config.py``.
 
-.. raw:: latex
-
-   \centering
-
 .. table:: Emission Lines Definitions
 
    +------------------------+----------+------------+--------+
-   |  Line                  | Name     | Wavelength | Weight |         
+   |  Line                  | Name     | Wavelength | Weight | 
+   |                        |          | (Å)        |        |        
    +========================+==========+============+========+
    | H\ :math:`\beta`       | ``Hb``   | 4861       | 1.0    |
    +------------------------+----------+------------+--------+
@@ -149,7 +146,7 @@ emission lines.
    +-------+-------+--------+-------+------------+-------+-----------+-------+-------+
    |       | Index Band (Å) | Blue Continuum (Å) | Red Continuum (Å) |               |
    +=======+=======+========+=======+============+=======+===========+=======+=======+
-   | Name  | Blue  | Red    | Blue  | Red        | Blue  | Red       | Units | Weight|
+   | Name  | Blue  | Red    | Blue  | Red        | Blue  | Red       | Units¹| Weight|
    +-------+-------+--------+-------+------------+-------+-----------+-------+-------+
    | Lick  | 4142. | 4177.  | 4080. | 4117.      | 4244. | 4284.     | 1     | 1.0   |
    | CN_1  | 125   | 125    | 125   | 625        | 125   | 125       |       |       |
@@ -228,6 +225,8 @@ emission lines.
    +-------+-------+--------+-------+------------+-------+-----------+-------+-------+
    | D4000 | …     | …      | 3750. | 3950.      | 4050. | 4250.     | 2     | 1.0   |
    |       |       |        | 000   | 000        | 000   | 000       |       |       |
+   +-------+-------+--------+-------+------------+-------+-----------+-------+-------+
+   |¹Unit codes: 0 = Å; 1 = mag; 2 = ratio                                           |
    +-------+-------+--------+-------+------------+-------+-----------+-------+-------+
 
 These definitions come from Bruzual (1983) and Worthey et al. (1994);

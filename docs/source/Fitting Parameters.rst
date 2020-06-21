@@ -6,7 +6,7 @@ Fitting Parameters
 ``MCSED`` contains numerous options for fitting a galaxy’s spectral
 energy distribution. Many of these options can be specified either on
 the command line or entered directly in the ``config.py`` configuration
-script, including 4 dust attenuation laws and 7 star formation rate
+script, including 5 dust attenuation laws and 6 star formation rate
 histories. These options (and others) are described below.
 
 .. _subsec:attenuation:
@@ -327,7 +327,7 @@ As detailed in Draine et al. (2007) and in the equation above, the total dust 
 :math:`M_{\rm dust}`, is used to normalize the dust emission spectrum.
 This normalization can be a free parameter completely determined by
 far-IR photometry, or linked to the amount of dust attenuation via the
-assumption of energy balance. In theory, energy balance should always
+assumption of energy balance. In theory, energy balance should
 apply, as the energy attenuated should equal that emitted. However,
 because the former measurement is sight-line dependent, while the latter
 is generally isotropic, individual objects may appear to violate this
@@ -345,9 +345,8 @@ option ``-aeb`` will then instruct ``MCSED`` to assume energy balance in
 the SED calculation. (This last step can also be done by setting the
 ``assume_energy_balance = True`` in ``config.py``.)
 
-If dust emission is fit, ``MCSED`` returns the three fitted parameters
-(:math:`U_{\rm min}`, :math:`\gamma`, :math:`q_{\rm PAH}`) and two
-derived values: the dust mass (:math:`M_{\rm dust}`) and the fraction of
+If dust emission is fit, ``MCSED`` returns the 3-4 fitted parameters
+(:math:`U_{\rm min}`, :math:`\gamma`, :math:`q_{\rm PAH}`, and :math:`M_{\rm dust}` if ``assume_energy_balance=False``) and 1-2 derived values: the dust mass (:math:`M_{\rm dust}`, if ``assume_energy_balance=True``) and the fraction of
 the total dust luminosity that is radiated by dust grains in regions
 where :math:`U > 100` (similar to :math:`\gamma` but for the hardest
 radiation).
@@ -375,9 +374,9 @@ Star Formation History
 
 The choice of star formation history can be specified at the command
 line using the ``-sfh`` argument or by setting ``sfr`` in ``config.py``.
-``MCSED`` contains 7 built-in options which describe how the star
+``MCSED`` contains 6 built-in options which describe how the star
 formation rate in a galaxy evolves with time: five analytic expressions,
-and two defined via a series of user-defined age bins. Both the
+and one defined via a series of user-defined age bins. Both the
 parameterized and binned versions of SFR history can be found in
 ``sfh.py``, along with the definitions of their parameters.
 
@@ -417,6 +416,10 @@ observed redshift and :math:`z = 20`. The default limits on the
 e-folding timescale, ``tau`` are ``[-3.5,3.5]`` (in log Gyr) and the
 range of ``logsfr`` normalizations go from ``[-3,3.0]`` in
 :math:`\log M_{\odot}` yr\ :math:`^{-1}`.
+
+The default behavior is the SFR decaying exponentially with lookback time. This can be changed (i.e.
+exponential growth with lookback time) by changing the ``sign`` variable to -1 in the ``exponential`` star
+formation history class in ``sfh.py``.
 
 ``sfh = ’double_powerlaw’``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -516,41 +519,21 @@ be the median age of the pivot points and set the input lookback time
        P(x) &= y_1 x^n + y_2 x^{n-1} + \dots + y_{n+1} \\
        \text{SFR} &= 10^{P\left(\log{t}+9-a_{\textrm{mid}}\right)}\end{aligned}
 
-``sfh = ’binned_fmass’``
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-In the ``’binned_fmass’`` option, the star formation rate history of a
-galaxy is divided into a series of age bins, with the SFR internal to
-each bin assumed to be constant. ``MCSED`` then determines each bin’s
-SFR from the amount of stellar mass accumulated during that period in
-the galaxy’s history, i.e., the model parameters are the fractions of
-the total stellar mass formed within each time bin. In other words, if
-:math:`M_{\rm tot}` is the total stellar mass of the galaxy, if
-:math:`\vec {\bf f}` is the vector of mass fractions accumulated during
-each age bin, and :math:`\vec {\bf \Delta t}` is the vector sizes of the
-age bins (in years) then
-
-.. math:: \mathrm{SFR}_i = M_\mathrm{tot} \frac{f_i}{\mathbf{\Delta t} \cdot \mathbf{f}}
-
-As a default, ``MCSED`` has six (log) age bins which are defined in
-``sfh.py`` via the array ``ages = [8.0,8.5,9.0,9.5, 9.8, 10.12]``; these
-values are adopted from Leja et al. (2017) and are motivated by physical
-considerations. The user can easily modify these age bins by editing the
-``ages`` keyword defined in the ``binned_fmass`` class in ``sfh.py``.
-While these ages extend to the age of the universe, only the SSP spectra
-that are younger than the age of the galaxy will contribute to the final
-SED model.
-
 ``sfh = ’binned_lsfr’``
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-If ``’binned_lsfr’`` is used, the star formation rate history of a
-galaxy is again divided into a series of age bins, with the SFR internal
-to each bin assumed to be constant; however, in this case, the model
-parameters are the (log) SFRs in each bin (whereas the
-``’binned_fmass’`` class fits for the mass fractions). The default (log)
-age bins are the same as for the ``’binned_fmass’`` class and can be
-modified in an analogous manner as that described above.
+In the ``'binned lsfr'`` option, the star formation rate history of a galaxy is divided into a series of age bins,
+with the SFR internal to each bin assumed to be constant. ``MCSED`` fits for the log SFR within each time bin.
+``MCSED`` has six (log) age bins defined by the ``ages`` array within ``sfh.py``; as a default, the bins are define as
+ages = [8.0, 8.5, 9.0, 9.5, 9.8, 10.12]. These values are adopted from Leja et al. (2017) and are motivated
+by physical considerations. The user can easily modify these age bins by editing 
+the ages keyword defined in the ``binned_lsfr``
+class in ``sfh.py``. While these ages extend to the age of the universe, only the SSP spectra
+that are younger than the age of the galaxy will contribute to the nal SED model.
+Since the SFR is assumed to be constant within each age bin, the computational efficiency can be
+improved by collapsing the SSP grid and summing the spectra within each SFH time bin via a weighted
+average, where the weights are determined by the amount of time between the SSP ages. This step is
+automatically implemented and uses the ``bin_ssp_ages`` function defined in ``ssp.py``.
 
 .. _subsubsection:otherSFR:
 
@@ -584,7 +567,7 @@ metallicity is a free parameter, the model parameter is
 By default, ``MCSED`` sets ``metallicity`` to a fixed value of 0.0077
 (:math:`\sim 40\%` solar). (A near-future option will allow the
 metallicity to be tied to a galaxy’s stellar mass, as suggested by Peng
-& Maiolino (2014) and Ma et al. (2016).) In either case,
+& Maiolino 2014 and Ma et al. 2016.) In either case,
 ``MCSED`` introduces a small metallicity scatter into the calculation
 using a Gaussian kernel with dispersion
 :math:`\sigma = 0.15 \, \log (Z / Z_{\odot})`. This minimizes potential
@@ -665,10 +648,8 @@ command-line option ``-igm`` (no other arguments) or by selecting
 
 If statistical corrections for IGM absorption are insufficient, the user
 can opt to exclude all filters with significant throughputs shortward of
-a given wavelength from the SED fit. By default, no filters are removed,
-but the user can specify a minimum wavelength used by ``MCSED`` via the
-command-line option ``-rsf wavelength`` or specifying
-``remove_short_filters = wavelength`` in ``config.py``.
+a given wavelength from the SED fit. By default, no filters are re-
+moved, but the user can specify a minimum wavelength used by ``MCSED`` by specifying ``blue_wave_cutoff = wavelength`` in ``config.py`` (rest-frame wavelength in Angstroms).
 
 ISM Corrections
 ---------------
@@ -685,10 +666,6 @@ by including the command-line option ``-ism coord_system`` or by setting
 ``ISM_correct_coords`` in ``config.py``. In either case, the user must
 provide the coordinates of the objects in the input file; the available
 options for ``coordinate_system`` include
-
-.. raw:: latex
-
-   \centering
 
 .. table:: Coordinate Systems
 

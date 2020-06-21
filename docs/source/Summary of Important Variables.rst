@@ -45,7 +45,9 @@ Summary of Important Variables
 +---------------+------------------+-------------+-------------+-------------+
 | *SSP Parameters*                 |             |             |             |
 +---------------+------------------+-------------+-------------+-------------+
-| ssp           | config.py        | fsps-padova | …           | SSP Spectra |
+| ssp           | config.py        | fsps        | …           | SSP Spectra |
++---------------+------------------+-------------+-------------+-------------+
+| isochrone     | config.py        | padova      | …           |SSP Isochrone|
 +---------------+------------------+-------------+-------------+-------------+
 | metallicity   | config.py        | False       | [0.0001,    | Galaxy      |
 |               |                  |             | 0.04]       | Metallicity |
@@ -139,6 +141,12 @@ Summary of Important Variables
 |               |                  |             |             | & Li (2007) |
 |               |                  |             |             | model       |
 +---------------+------------------+-------------+-------------+-------------+
+| mdust         | dust_emission.py | 7.0         | [4.5, 10.0] | Log Dust    |
+|               |                  |             |             | Mass (fit if|
+|               |                  |             |             | energy      |
+|               |                  |             |             | balance     |
+|               |                  |             |             | not assumed)|
++---------------+------------------+-------------+-------------+-------------+
 | *Star Formation History Parameters*            |             |             |
 +---------------+------------------+-------------+-------------+-------------+
 | sfh           | config.py        | binned_lsfr | …           | Star        |
@@ -223,14 +231,22 @@ Summary of Important Variables
 |               |                  |             |             | to          |
 |               |                  |             |             | ergs/cm²/s  |
 +---------------+------------------+-------------+-------------+-------------+
+| ISM_correct   | config.py        | None        | Valid       | Coordinate  |
+| _coords       |                  |             | Coord.      | system      |
+|               |                  |             | System      | (string) of |
+|               |                  |             |             | sources for |
+|               |                  |             |             | Milky Way   |
+|               |                  |             |             | dust        |
+|               |                  |             |             | correction  |
++---------------+------------------+-------------+-------------+-------------+
 | IGM_correct   | config.py        | False       | [T,F]       | Boolean for |
 |               |                  |             |             | applying    |
 |               |                  |             |             | correlation |
 |               |                  |             |             | for IGM     |
 |               |                  |             |             | absorption  |
 +---------------+------------------+-------------+-------------+-------------+
-| remove_short  | config.py        | 1216        | …           | Minimum     |
-| _filters      |                  |             |             | wavelength  |
+| blue_wave     | config.py        | 1216        | …           | Minimum     |
+| _cutoff       |                  |             |             | wavelength  |
 |               |                  |             |             | to fit (Å)  |
 +---------------+------------------+-------------+-------------+-------------+
 | *Calculation Parameters*         |             |             |             |

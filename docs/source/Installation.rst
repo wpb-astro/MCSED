@@ -41,7 +41,7 @@ must install the Schlegel, Finkbeiner, & Davis (1998) 2-D dust maps, as
 described in the `dustmaps documentation <https://dustmaps.readthedocs.io/en/latest/installation.html>`__.
 After installing ``dustmaps``, make a directory called ``sfd`` in the
 location of the ``MCSED`` directory and then begin an interactive python
-session by issuing a ``ipython``, ``python -i``, or ``python`` in a
+session by issuing the command ``ipython``, ``python -i``, or ``python`` in a
 terminal session. Once the interactive session begins, issue:
 
 ``>> from dustmaps.config import config``
@@ -54,3 +54,7 @@ terminal session. Once the interactive session begins, issue:
 
 where ``<MCSED_LOCATION>`` is the location of the ``MCSED`` directory
 that is created by the ``git clone`` call in :ref:`section-install`.
+
+**Note**: One of the components required by ``dustmaps``, ``healpy``, is not available on Windows, so currently,
+the ISM corrections will not work on Windows machines.
+

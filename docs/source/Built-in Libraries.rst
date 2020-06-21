@@ -17,15 +17,8 @@ NEWFIRM and Mosaic Cameras, Keck’s LRIS, the VLT’s VIMOS and ISAAC, the
 Magellan Telescopes’s Four Star, and the Sloan Digital Sky Survey.
 Additional filters can easily be added to ``MCSED``’s library in the
 ``FILTERS`` subdirectory.
-
-To enable ``MCSED`` to recognize filters, the user creates a two-column
-file which contains the filter filename in the first column and a
-user-defined filter name in the second column. The name of this file is
-then specified, either in ``config.py`` or through the command line.
-Many filter transmission curves can be found on `the SVO Filter Profile
-Service <http://svo2.cab.inta-csic.es/theory/fps/>`__. Their ascii files
-are in exactly the correct format and can simply be renamed as “.res”
-files.
+Additional filters can easily be added to ``MCSED``’s library in the ``FILTERS`` subdirectory by providing a file with two columns
+containing the wavelength in Angstroms and the relative transmission.
 
 .. _subsec:stellar-isochrones:
 
@@ -46,20 +39,12 @@ If a user wishes to use a different set of SSP spectra, they can simply
 add a subroutine within ``ssp.py``, which returns the following arrays
 to ``run_mcsed_fit.py``:
 
-.. raw:: latex
-
-   \centering
-
-.. raw:: latex
-
-   \small
-
 .. table:: SSP Arrays
 
    +-------------+-------------+----------------+---------------+-----------------------+
-   | Array       | Dimension   | Length         | Description   | Units                 |
+   | Array       | Dimen.      | Length         | Description   | Units                 |
    +=============+=============+================+===============+=======================+
-   | ``ages``    | 1           | [Ages]         | SSP ages      | :math:`\log` yr       |
+   | ``ages``    | 1           | [Ages]         | SSP ages      | Gyr                   |
    +-------------+-------------+----------------+---------------+-----------------------+
    | ``wave``    | 1           | [Wavelengths]  | Spectral      | Å                     |
    |             |             |                | Wavelengths   |                       |
@@ -71,20 +56,24 @@ to ``run_mcsed_fit.py``:
    | ``met``     | 1           |[Metallicities] | SSP           | Z                     |
    |             |             |                | Metallicities |                       |
    +-------------+-------------+----------------+---------------+-----------------------+
-   |``linewave`` | 1           | [Lines]        | Emission      | Å                     |
-   |             |             |                | Line          |                       |
+   |``linewave`` | 1           | [Line          | Emission      | Å                     |
+   |             |             | wavelengths]   | Line          |                       |
    |             |             |                | Wavelengths   |                       |
    +-------------+-------------+----------------+---------------+-----------------------+
-   | ``lineSSP`` | 1           | [Lines]        | Emission      | ergs cm\ :math:`^{-2}`|
-   |             |             |                | Line Fluxes   | s\ :math:`^{-1}`      |
-   |             |             |                |               |  at 10 pc             |
+   | ``lineSSP`` | 3           | [Line          | Emission      | ergs cm\ :math:`^{-2}`|
+   |             |             | wavelengths,   | Line Fluxes   | s\ :math:`^{-1}`      |
+   |             |             | Ages,          |               |  at 10 pc             |
+   |             |             | Metallicities] |               |                       |
    +-------------+-------------+----------------+---------------+-----------------------+
 
 This subroutine should be called as an alternative to
 ``ages, masses, wave, SSP, met, linewave, lineSSP = read_ssp(args)`` in
 ``run_mcsed_fit.py``. The last two arrays in the table contain the
 wavelengths and model line strengths for emission-lines that may be used
-in the computation of the fit likelihood (see :ref:`subsec:nebular-emission`).
+in the computation of the fit likelihood (see :ref:`subsec:nebular-emission`). The emission lines in this grid are drawn from the ``emline_list_dict``
+(defined in ``config.py``) and will only include lines that also appear in the input file (i.e., those which will
+be used in the model selection). Otherwise, these variables will not be used in the calculation and can be
+arrays of arbitrary values (but must be of the appropriate dimensions).
 
 .. _subsec:nebular-emission:
 
@@ -98,8 +87,7 @@ organized by Byler et al. (2017) into a grid with 11 metallicities
 (:math:`-2.0 \leq \log Z/Z_{\odot} \leq +0.2`), 7 ionization parameters
 (:math:`-4 < \log U < -1`), and 9 ages
 (:math:`0.5 \leq t({\rm Myr}) < 10`). One important feature of this grid
-is its self-consistency with the Padova isochrone-FSPS spectra: the
-prescription for nebular line and continuum emission are based on the
+is its self-consistency with the Padova isochrone-FSPS spectra: the lines and continuum fluxes nebular line and continuum emission were generated using the
 same SSP SEDs included in ``MCSED``. The data files from Byler
 et al. (2017), which separate continuum and line emission, are stored in
 the subdirectory ``nebular``, and are read in within ``ssp.py``.

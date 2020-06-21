@@ -13,7 +13,9 @@ open a terminal in the ``MCSED`` directory and issue:
 You will see a drop down menu of all the available input arguments. This
 menu is reproduced below.
 
-``python run_mcsed_fit.py -h usage: -h [-h] [-f FILENAME] [-o OUTPUT_FILENAME] [-p] [-s SSP] [-z METALLICITY] [-i ISOCHRONE] [-sfh SFH] [-dl DUST_LAW] [-nw NWALKERS] [-ns NSTEPS] [-lu LOGU] [-fd] [-aeb] [-t] [-tf TEST_FIELD] [-no NOBJECTS]``
+| ``python run_mcsed_fit.py -h usage: -h [-h] [-f FILENAME] [-o OUTPUT_FILENAME] [-p] [-s SSP]`` 
+| ``[-z METALLICITY] [-i ISOCHRONE] [-sfh SFH] [-dl DUST_LAW] [-nw NWALKERS] [-ns NSTEPS] [-lu LOGU]``
+| ``[-de DUST_EM_TYPE] [-aeb] [-t] [-tf TEST_FIELD] [-no NOBJECTS]``
 
 **Optional Arguments:** 
 
@@ -41,7 +43,7 @@ menu is reproduced below.
 
 ``-lu LOGU, --logU LOGU``: Ionization Parameter for nebular gas 
 
-``-fd, --fit_dust_em``: If true, (Draine & Li 2007) dust emission parameters are fitted
+``-de, --dust_em``: If ``True`` or ``'DL07'``, (Draine & Li 2007) dust emission parameters are fitted
 
 ``-aeb, --assume_energy_balance``: If true, normalization of dust IR emission based on attenuation amount 
 
@@ -54,5 +56,3 @@ menu is reproduced below.
 ``-ism, --ISM_correct_coords``: If a coordinate system is given, MW dust correction will be performed
 
 ``-igm, --IGM_correct``: If selected, Madau statistical IGM correction will be done (affecting wavelengths up to rest-frame Ly\ :math:`alpha`)
-
-``-rsf, --remove_short_filters``: Filters with non-negligible response shortward of the given rest-frame wavelength in Angstroms will be removed
