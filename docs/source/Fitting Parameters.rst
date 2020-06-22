@@ -164,8 +164,8 @@ years, most extragalactic applications of the Cardelli law have adopted
 the mean Milky Way total-to-differential extinction ratio of
 :math:`R_V = 3.1`. In the Conroy et al. (2010) modification of this law,
 the attenuation in nearby galaxies is best reproduced using
-:math:`B = 0.8`, the expression for :math:`f_a` is a weak function of
-:math:`B` and :math:`R_V`, and :math:`R_V \approx 2.0`.
+:math:`B = 0.8`, the expression for :math:`f_a` as a weak function of
+:math:`B` and :math:`R_V`, and :math:`R_V = 2.0`.
 
 In ``MCSED``, if ``dust_law = ’conroy’``, then by default, ``Rv = 2.0``
 and ``B = 0.8``; if ``dust_law = ’cardelli’``, then ``Rv = 3.1`` and
@@ -528,7 +528,7 @@ with the SFR internal to each bin assumed to be constant. ``MCSED`` fits for the
 ``MCSED`` has six (log) age bins defined by the ``ages`` array within ``sfh.py``; as a default, the bins are define as
 ages = [8.0, 8.5, 9.0, 9.5, 9.8, 10.12]. These values are adopted from Leja et al. (2017) and are motivated
 by physical considerations. The user can easily modify these age bins by editing 
-the ages keyword defined in the ``binned_lsfr``
+the ``ages`` keyword defined in the ``binned_lsfr``
 class in ``sfh.py``. While these ages extend to the age of the universe, only the SSP spectra
 that are younger than the age of the galaxy will contribute to the nal SED model.
 Since the SFR is assumed to be constant within each age bin, the computational efficiency can be
