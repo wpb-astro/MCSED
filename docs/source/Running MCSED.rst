@@ -80,9 +80,8 @@ The mock SED is realized from a set of “truth” model parameters
 specified on the command line) and randomly drawn from the prior
 distributions. The redshift of the mock galaxy is randomly drawn from a
 uniform distribution spanning the range of redshifts specified by the
-``test_zrange`` keyword in ``config.py``. (The default redshift range in
-test mode is :math:`1.90 < z < 2.35`, mirroring the redshift range of the
-Bowman et al. (2019) sample.) Photometric data for the mock
+``test_zrange`` keyword in ``config.py`` (the default range 
+is :math:`1 < z < 2`). Photometric data for the mock
 galaxy are then simulated by measuring the filter flux densities from
 the mock SED and perturbing those fluxes about their associated
 photometric uncertainties. Finally, these mock observations are used to
@@ -102,7 +101,7 @@ in the calculation. The number of reserved cores can be specified by the
 user in ``config.py`` using the ``reserved_cores`` keyword. This mode is
 extremely useful for fitting large samples of galaxies.
 
-To run ``MCSED`` in parallel mode, use the ``-p`` option on the command
+To run ``MCSED`` in parallel mode, include the ``-p`` option on the command
 line, e.g.,
 
 ``python run_mcsed_fit.py -f <input_file> -p``

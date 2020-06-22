@@ -54,7 +54,7 @@ nsteps   = 1000
 
 # Number of test objects
 nobjects = 5
-test_zrange = (1.9, 2.35) # redshift range of test objects (uniform prior)
+test_zrange = (1.0, 2.0) # redshift range of test objects (uniform prior)
 
 # minimum fractional errors in observed photometry, 
 # emission line fluxes, and absorption line indices 
