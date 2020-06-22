@@ -18,7 +18,7 @@ dust_law = 'calzetti'   # options include: 'noll', 'calzetti', 'reddy',
 # if False, do not fit for dust emission component and remove all filters 
 #           redward of rest-frame wave_dust_em microns  (defined below)
 # else, set to string of desired dust emission class 
-dust_em = False # options include: 'DL07', False 
+dust_em = 'DL07' # options include: 'DL07', False 
 # Assume energy balance or normalize the dust IR spectrum as a free parameter
 assume_energy_balance = False
 

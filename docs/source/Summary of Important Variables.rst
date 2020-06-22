@@ -30,13 +30,13 @@ Summary of Important Variables
 |               |                  |             |             | error for   |
 |               |                  |             |             | photometry  |
 +---------------+------------------+-------------+-------------+-------------+
-| emline_floor  | config.py        | 0.10        | …           | Minimum     |
+| emline_floor  | config.py        | 0.05        | …           | Minimum     |
 | _error        |                  |             |             | fractional  |
 |               |                  |             |             | error for   |
 |               |                  |             |             | emission    |
 |               |                  |             |             | line fluxes |
 +---------------+------------------+-------------+-------------+-------------+
-| absindx_floor | config.py        | 0.10        | …           | Minimum     |
+| absindx_floor | config.py        | 0.05        | …           | Minimum     |
 | _error        |                  |             |             | fractional  |
 |               |                  |             |             | error for   |
 |               |                  |             |             | absorption  |
@@ -49,14 +49,8 @@ Summary of Important Variables
 +---------------+------------------+-------------+-------------+-------------+
 | isochrone     | config.py        | padova      | …           |SSP Isochrone|
 +---------------+------------------+-------------+-------------+-------------+
-| metallicity   | config.py        | False       | [0.0001,    | Galaxy      |
+| metallicity   | config.py        | 0.0077      | [0.0001,    | Galaxy      |
 |               |                  |             | 0.04]       | Metallicity |
-+---------------+------------------+-------------+-------------+-------------+
-| metallicity   | config.py        | False       | …           | Choose      |
-| _mass         |                  |             |             | metallicity |
-| _relationship |                  |             |             | based on    |
-|               |                  |             |             | mass (not   |
-|               |                  |             |             | implemented)|
 +---------------+------------------+-------------+-------------+-------------+
 | *Dust Attenuation Parameters*    |             |             |             |
 +---------------+------------------+-------------+-------------+-------------+
@@ -83,12 +77,6 @@ Summary of Important Variables
 |               |                  |             |             | attenuation |
 |               |                  |             |             | law         |
 +---------------+------------------+-------------+-------------+-------------+
-| B             | dust_abs.py      | 1.0         | [-0.05,     | Bump        |
-|               |                  |             | 1.5]        | strength for|
-|               |                  |             |             | Conroy      |
-|               |                  |             |             | attenuation |
-|               |                  |             |             | law         |
-+---------------+------------------+-------------+-------------+-------------+
 | delta         | dust_abs.py      | 0.0         | [-1.0,+1.0] | UV slope of |
 |               |                  |             |             | Noll        |
 |               |                  |             |             | attenuation |
@@ -101,11 +89,6 @@ Summary of Important Variables
 |               |                  |             |             | law         |
 +---------------+------------------+-------------+-------------+-------------+
 | *Dust Emission Parameters*       |             |             |             |
-+---------------+------------------+-------------+-------------+-------------+
-| fit_dust_em   | config.py        | False       | [T,F]       | Boolean for |
-|               |                  |             |             | fitting     |
-|               |                  |             |             | dust        |
-|               |                  |             |             | emission    |
 +---------------+------------------+-------------+-------------+-------------+
 | dust_em       | config.py        | DL07        | …           | Prescription|
 |               |                  |             |             | for dust    |
@@ -277,8 +260,8 @@ Summary of Important Variables
 |               |                  |             |             | objects to  |
 |               |                  |             |             | analyze     |
 +---------------+------------------+-------------+-------------+-------------+
-| test_range    | config.py        | …           | [1.90,      | Range of    |
-|               |                  |             | 2.35]       | redshifts   |
+| test_zrange   | config.py        | …           | [1.0,       | Range of    |
+|               |                  |             | 2.0]        | redshifts   |
 |               |                  |             |             | for test    |
 |               |                  |             |             | objects     |
 +---------------+------------------+-------------+-------------+-------------+
@@ -320,7 +303,7 @@ Summary of Important Variables
 |               |                  |             |             | lines       |
 +---------------+------------------+-------------+-------------+-------------+
 | output_dict:  | config.py        | True        | [T,F]       | Save        |
-| absorption    |                  |             |             | comparison  |
+| absindx       |                  |             |             | comparison  |
 |               |                  |             |             | of observed |
 |               |                  |             |             | and modeled |
 |               |                  |             |             | absorption  |
