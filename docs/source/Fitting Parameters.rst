@@ -551,10 +551,10 @@ via the ``sfh`` keyword in ``config.py``.
 Stellar Metallicity
 -------------------
 
-``MCSED`` uses a library of SSP spectra which are layed out over a
-two-dimensional grid in age and metallicity. In forming the CSP of a
-galaxy, one can either fix the metallicity to some value, or allow
-metallicity to be a free parameter. This choice is accomplished either
+``MCSED`` uses a library of SSP spectra which span a three-dimensional grid in 
+wavelength, age, and metallicity. In forming the composite stellar population 
+of a galaxy, one can either fix the metallicity to some value, or allow
+metallicity to be a free model parameter. This choice is accomplished either
 on the command line via the ``-z`` option, or by setting the variable
 ``metallicity`` in ``config.py``; a real value fixes the metallicity
 :math:`Z` (where :math:`Z_\odot = 0.019`), while the boolean ``False``
@@ -582,7 +582,7 @@ line indices) in the SED fits.
 
 The current version of ``MCSED`` has no provision for following the
 chemical evolution of the various stellar populations within a galaxy.
-Only a single metallicity is used in the fits.
+Only a single metallicity is used in each iteration of the fit.
 
 .. _subsec:ionization-param:
 
