@@ -100,8 +100,8 @@ photometric data point; a weight of 0.0 implies that the line is
 ignored. The user then provides the objects’ emission line strengths and
 :math:`1\,\sigma` error bars by entering the data in the input file and labeling
 the columns as ``Name_FLUX`` and ``Name_ERR``, where ``Name`` is the
-line’s keyword listed in the ``emline_list_dict`` defined in ``config.py``. 
-The emission line fluxes and
+line’s keyword listed in the ``emline_list_dict`` dictionary 
+defined in ``config.py``.  The emission line fluxes and
 errors must be specified in units of :math:`10^{-17}` ergs
 cm\ :math:`^{-2}` s\ :math:`^{-1}`, unless a different multiplication
 factor to the base unit of ergs cm\ :math:`^{-2}` s\ :math:`^{-1}` is
@@ -136,10 +136,10 @@ Absorption Line Indices
 
 Absorption line indices can also be used in ``MCSED``’s likelihood
 function. These measurements are input in a similar way as additional
-photometry or emission line fluxes are included.
-In the input file, the columns containing an absorption line index and
-its uncertainty are labeled as ``Name_INDX`` and ``Name_Err``, where
-``Name`` is the line’s keyword, as listed in the ``absorption_index_dict``
+photometry or emission line fluxes are included. In the input file, the 
+columns containing an absorption line index and its uncertainty are 
+labeled as ``Name_INDX`` and ``Name_Err``, where ``Name`` is the line’s 
+keyword, as listed in the ``absorption_index_dict`` dictionary
 defined in ``config.py``. The indices that are pre-defined in ``MCSED`` are 
 listed in the table below. As one can see from the table,
 the indices are defined via their wavelength ranges, the units they are
