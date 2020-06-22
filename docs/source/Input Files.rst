@@ -65,23 +65,26 @@ encouraged to use the grism redshifts for the redshift column.
 
 Additional photometry not included in the Skelton catalogs can be
 specified in the input file in the same way as general photometry as
-discussed in :ref:`subsubsec:genphot`
+discussed in :ref:`subsubsec:genphot`.
 
 .. _subsubsec:genphot:
 
 General Case
 ~~~~~~~~~~~~
 
-In the general case, photometric measurements should be given as flux
+If the input objects are not associated with the Skelton et al. (2014) catalog
+(identified via the ``Field`` and ``ID`` columns described above), or if users
+wish to supplement this catalog with additional photometry, the input file must
+include additional columns. Photometric measurements should be given as flux
 densities with :math:`1\,\sigma` uncertainties associated with each
-measurement. The columns containing these data should be labeled
+measurement. The columns containing these data in the input file should be labeled
 ``f_filter_name`` and ``e_filter_name``, where ``filter_name`` is the
 name of a ``.res`` file in the ``FILTERS`` directory. (In other words,
 columns named ``f_hst_acsF606W`` and ``e_hst_acsF606W`` should refer to
 the flux densities (not magnitudes!) and uncertainties taken through the
 filter defined in ``FILTERS/hst_acsF606W.res``.) Following Skelton
 et al. (2014), the units for flux density are scaled to an AB magnitude
-of 25, so :math:`1.00 = 3.63 \times 10^{-30}` ergs cm\ :math:`^{-2}` s\ :math:`^{-1}` Hz\ :math:`^{-1}`. This implies that if the user’s flux densities are in :math:`\mu`\ Jy, the values must be multiplied by :math:`10^{0.4(25-23.9)} \approx 2.754`.
+of 25, so :math:`1.00 = 3.63 \times 10^{-30}` ergs cm\ :math:`^{-2}` s\ :math:`^{-1}` Hz\ :math:`^{-1}` (e.g., if the user’s flux densities are in :math:`\mu`\ Jy, the values must be multiplied by :math:`10^{0.4(25-23.9)} \approx 2.754`).
 
 .. _subsec:emission-lines:
 

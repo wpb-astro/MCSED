@@ -16,7 +16,7 @@ menu is reproduced below.
 | ``usage: -h [-h] [-f FILENAME] [-o OUTPUT_FILENAME] [-p] [-t] [-tf TEST_FIELD]``
 |           ``[-no NOBJECTS] [-s SSP] [-i ISOCHRONE] [-sfh SFH] [-dl DUST_LAW]``
 |           ``[-de DUST_EM] [-aeb] [-z METALLICITY] [-nw NWALKERS] [-ns NSTEPS]``
-| ``          [-lu LOGU] [-ism ISM_CORRECT_COORDS] [-igm]``
+|           ``[-lu LOGU] [-ism ISM_CORRECT_COORDS] [-igm]``
 
 
 **Optional Arguments:** 
