@@ -13,9 +13,11 @@ open a terminal in the ``MCSED`` directory and issue:
 You will see a drop down menu of all the available input arguments. This
 menu is reproduced below.
 
-| ``python run_mcsed_fit.py -h usage: -h [-h] [-f FILENAME] [-o OUTPUT_FILENAME] [-p] [-s SSP]`` 
-| ``[-z METALLICITY] [-i ISOCHRONE] [-sfh SFH] [-dl DUST_LAW] [-nw NWALKERS] [-ns NSTEPS] [-lu LOGU]``
-| ``[-de DUST_EM_TYPE] [-aeb] [-t] [-tf TEST_FIELD] [-no NOBJECTS]``
+| ``usage: -h [-h] [-f FILENAME] [-o OUTPUT_FILENAME] [-p] [-t] [-tf TEST_FIELD]``
+| ``          [-no NOBJECTS] [-s SSP] [-i ISOCHRONE] [-sfh SFH] [-dl DUST_LAW]``
+| ``          [-de DUST_EM] [-aeb] [-z METALLICITY] [-nw NWALKERS] [-ns NSTEPS]``
+| ``          [-lu LOGU] [-ism ISM_CORRECT_COORDS] [-igm]``
+
 
 **Optional Arguments:** 
 
@@ -25,11 +27,15 @@ menu is reproduced below.
 
 ``-o OUTPUT_FILENAME, --output_filename OUTPUT_FILENAME``: Output filename for given run
 
-``-p, --parallel``: Running in parallel (multi-core only)
+``-p, --parallel``: Running in parallel?
+
+``-t, --test``: Test mode with mock galaxies
+
+``-tf TEST_FIELD, --test_field TEST_FIELD``: Test filters will match the given field
+
+``-no NOBJECTS, --nobjects NOBJECTS``: Number of test objects
 
 ``-s SSP, --ssp SSP``: SSP (single stellar population) Models, default fsps 
-
-``-z METALLICITY, --metallicity METALLICITY``: Fixed metallicity for SSP models (0.02 is solar), False if free parameter
 
 ``-i ISOCHRONE, --isochrone ISOCHRONE``: Isochrone for SSP model, e.g. padova
 
@@ -37,22 +43,18 @@ menu is reproduced below.
 
 ``-dl DUST_LAW, --dust_law DUST_LAW``: Dust law, e.g. calzetti 
 
-``-nw NWALKERS, --nwalkers NWALKERS``: Number of walkers for EMCEE 
-
-``-ns NSTEPS, --nsteps NSTEPS``: Number of steps for EMCEE 
-
-``-lu LOGU, --logU LOGU``: Ionization Parameter for nebular gas 
-
-``-de, --dust_em``: If ``True`` or ``'DL07'``, (Draine & Li 2007) dust emission parameters are fitted
+``-de, --dust_em``: Dust emission class, e.g., DL07 
 
 ``-aeb, --assume_energy_balance``: If true, normalization of dust IR emission based on attenuation amount 
 
-``-t, --test``: Test script with fake data 
+``-z METALLICITY, --metallicity METALLICITY``: Fixed metallicity for SSP models (0.019 is solar), False if free parameter
 
-``-tf TEST_FIELD, --test_field TEST_FIELD``: Test filters will match the given field 
+``-nw NWALKERS, --nwalkers NWALKERS``: Number of walkers for EMCEE
 
-``-no NOBJECTS, --nobjects NOBJECTS``: Number of test objects
+``-ns NSTEPS, --nsteps NSTEPS``: Number of steps for EMCEE
+
+``-lu LOGU, --logU LOGU``: Ionization Parameter for nebular gas
 
 ``-ism, --ISM_correct_coords``: If a coordinate system is given, MW dust correction will be performed
 
-``-igm, --IGM_correct``: If selected, Madau statistical IGM correction will be done (affecting wavelengths up to rest-frame Ly\ :math:`alpha`)
+``-igm, --IGM_correct``: If selected, Madau statistical IGM correction will be done (affecting wavelengths up to rest-frame Ly\ :math:`\alpha`)

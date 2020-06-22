@@ -36,8 +36,8 @@ errors, ``MCSED`` also allows the user to specify a minimum fractional
 uncertainty for any type of observation. The defaults for the minimum
 errors can be found in ``config.py``, and by default are set to
 ``phot_floor_error`` = 0.05 (for photometric errors),
-``emline_floor_error`` = 0.10 (for errors in emission-line fluxes), and
-``absindx_floor_error`` = 0.10 (for errors in absorption line indices).
+``emline_floor_error`` = 0.05 (for errors in emission-line fluxes), and
+``absindx_floor_error`` = 0.05 (for errors in absorption line indices).
 These defaults can be changed by editing the above parameters in
 ``config.py``.
 

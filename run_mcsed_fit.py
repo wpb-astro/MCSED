@@ -110,7 +110,7 @@ def parse_args(argv=None):
                         action="count", default=0)
 
     parser.add_argument("-t", "--test",
-                        help='''Test script with fake data''',
+                        help='''Test mode with mock galaxies''',
                         action="count", default=0)
 
     parser.add_argument("-tf", "--test_field",

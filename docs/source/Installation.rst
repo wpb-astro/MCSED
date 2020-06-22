@@ -6,7 +6,7 @@ Installation
 To install ``MCSED``, move to a directory where you would like it to be
 stored and type:
 
-``git clone https://github.com/grzeimann/MCSED.git``
+``git clone https://github.com/wpb-astro/MCSED.git``
 
 A directory called ``MCSED`` will be created containing all of the
 necessary files for the program.
