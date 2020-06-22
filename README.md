@@ -19,19 +19,45 @@ The primary script is run_mcsed_fit.py, which can be called from the command lin
         python run_mcsed.py -h
 
 And you will find a help menu like this.
-  
-        -f, --filename: File to be read for galaxy data
-                        
-        -s, --ssp: SSP Models, default "fsps"
-                        
-        -z, --metallicity: Metallicity for SSP models, 0.019 is solar
-                        
-        -i, --isochrone: Isochrone for SSP model, e.g. "padova"
-                        
-        -t, --test: Test script with mock data
-                        
-        -tf, --test_field: Test filters will match the given input field, default "cosmos"
-        
+
+        -f FILENAME, --filename FILENAME: File to be read for galaxy data
+
+        -o OUTPUT_FILENAME, --output_filename OUTPUT_FILENAME: Output filename for given run
+
+        -p, --parallel: Running in parallel?
+
+        -t, --test: Test mode with mock galaxies
+
+        -tf TEST_FIELD, --test_field TEST_FIELD: Test filters will match the given field
+
+        -no NOBJECTS, --nobjects NOBJECTS: Number of test objects
+
+        -s SSP, --ssp SSP: SSP models, default fsps
+
+        -i ISOCHRONE, --isochrone ISOCHRONE: Isochrone for SSP model, e.g. padova
+
+        -sfh SFH, --sfh SFH: Star formation history, e.g. constant
+
+        -dl DUST_LAW, --dust_law DUST_LAW: Dust law, e.g. calzetti
+
+        -de, --dust_em: Dust emission class, e.g., DL07 (Draine & Li 2007)
+                        or False (if dust emission should be ignored)
+
+        -aeb, --assume_energy_balance: If true, normalization of dust IR emission based on attenuation amount
+
+        -z METALLICITY, --metallicity METALLICITY: Fixed metallicity for SSP models (0.019 is solar), 
+                                                   or False if free parameter
+
+        -nw NWALKERS, --nwalkers NWALKERS: Number of walkers for EMCEE
+
+        -ns NSTEPS, --nsteps NSTEPS: Number of steps for EMCEE
+
+        -lu LOGU, --logU LOGU: Ionization Parameter for nebular gas
+
+        -ism, --ISM_correct_coords: If a coordinate system is given, MW dust correction will be performed
+
+        -igm, --IGM_correct: If selected, Madau statistical IGM correction will be done (affecting wavelengths up to rest-frame Lyman-alpha)
+
 All of the available options for MCSED are found in [config.py](https://github.com/wpb-astro/MCSED/master/config.py).  Here we break down the most important of those: 
 
         ssp = 'fsps'          

@@ -138,7 +138,8 @@ def parse_args(argv=None):
                         type=str, default=None)
 
     parser.add_argument("-de", "--dust_em",
-                        help='''Dust emission class, e.g., DL07''',
+                        help='''Dust emission class, e.g., DL07 (Draine & Li 2007)\n''' 
+                            +'''or False (if dust emission should be ignored)''',
                         type=str, default=None)
 
     parser.add_argument("-aeb", "--assume_energy_balance",
@@ -146,7 +147,8 @@ def parse_args(argv=None):
                         action="count", default=0)
 
     parser.add_argument("-z", "--metallicity",
-                        help='''Fixed metallicity for SSP models (0.019 is solar), False if free parameter''',
+                        help='''Fixed metallicity for SSP models (0.019 is solar),\n'''
+                            +'''or False if stellar metallicity is a free parameter''',
                         type=str, default=None)
 
     parser.add_argument("-nw", "--nwalkers",
