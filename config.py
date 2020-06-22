@@ -89,7 +89,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
                'bestfitspec'   : True,   # best-fit SED model
                'fluxdensity'   : True,   # modeled and observed photometry
                'lineflux'      : True,   # modeled and observed emission lines
-               'absorption'    : True,   # modeled, observed absorption indices
+               'absindx'       : True,   # modeled, observed absorption indices
                'triangle plot' : True,   # summary diagnostic plot
                'sample plot'   : False,  # parameter estimates for MCMC chains
                'template spec' : True,   # save a plot of SSP spectra 
@@ -131,7 +131,7 @@ absorption_index_dict = {"Lick_CN1"    : [ 1., (4142.125, 4177.125), (4080.125, 
                          "Lick_CN2"    : [ 1., (4142.125, 4177.125), (4083.875, 4096.375), (4244.125, 4284.125), 1],
                          "Lick_Ca4227" : [ 1., (4222.25, 4234.75),   (4211.0, 4219.75),    (4241.0, 4251.0),     0],
                          "Lick_G4300"  : [ 1., (4281.375, 4316.375), (4266.375, 4282.625), (4318.875, 4335.125), 0],
-                         "Lick_Fe4383" : [ 1., (4369.125, 4420.375), (4359.125, 4370.375), (4442.875, 4455.375), 0],
+                         "lICK_fE4383" : [ 1., (4369.125, 4420.375), (4359.125, 4370.375), (4442.875, 4455.375), 0],
                          "Lick_Ca4455" : [ 1., (4452.125, 4474.625), (4445.875, 4454.625), (4477.125, 4492.125), 0],
                          "Lick_Fe4531" : [ 1., (4514.25, 4559.25),   (4504.25, 4514.25),   (4560.5, 4579.25),    0],
                          "Lick_Fe4668" : [ 1., (4634.0, 4720.25),    (4611.5, 4630.25),    (4742.75, 4756.5),    0],

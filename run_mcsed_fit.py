@@ -579,7 +579,7 @@ def read_input_file(args):
             if colname in Fcols:
                 em_arr = np.array(F[colname]  * args.emline_factor)
                 emerr_arr = np.max([abs(F[ecolname]),
-                                    np.array([args.emline_floor_error*abs(F[colname])])],0)
+                                    args.emline_floor_error*abs(np.array(F[colname]))],0)
 
                 # account for objects with null measurements
                 null_idx = np.where(abs(np.array(F[colname])-line_fill_value)<1e-10)[0]
@@ -612,11 +612,9 @@ def read_input_file(args):
                 if unit == 1: # magnitudes
                     efloor = 2.5*np.log10(1.+args.absindx_floor_error)
                     efloor_arr = np.array([efloor]*len(F))
-                    indxerr_arr = np.max([abs(F[ecolname]), efloor_arr],0)
                 else:
-                    efloor_arr = np.array([args.absindx_floor_error]*abs(F[colname]))
-                    indxerr_arr = np.max([abs(F[ecolname]),
-                                          efloor_arr],0)
+                    efloor_arr = args.absindx_floor_error*abs(np.array(F[colname]))
+                indxerr_arr = np.max([abs(F[ecolname]), efloor_arr],0)
 
                 # account for objects with null measurements
                 null_idx = np.where(abs(np.array(F[colname])-line_fill_value)<1e-10)[0]
@@ -1188,7 +1186,7 @@ def main(argv=None, ssp_info=None):
                 if len(T):
                     T.write('output/lineflux_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                             overwrite=True, format='ascii.fixed_width_two_line')
-            if (args.output_dict['absorption']) & (mcsed_model.use_absorption_indx):
+            if (args.output_dict['absindx']) & (mcsed_model.use_absorption_indx):
                 abs_names = list(mcsed_model.absindx_dict.keys())
                 # each name: name, weight, modeled, measured, error
                 wht, model, measure, error = [], [], [], []
