@@ -98,13 +98,13 @@ rest-frame wavelength (in Angstroms), and relative weight in the
 contributes just as much weight to the likelihood function as a
 photometric data point; a weight of 0.0 implies that the line is
 ignored. The user then provides the objects’ emission line strengths and
-:math:`1\,\sigma` error bars in exactly the same way as for the
-photometry, i.e., by entering the data in the input file and labeling
+:math:`1\,\sigma` error bars by entering the data in the input file and labeling
 the columns as ``Name_FLUX`` and ``Name_ERR``, where ``Name`` is the
-line’s keyword as defined in ``config.py``. The emission line fluxes and
-errors must be specified in units of :math:`10^{-17}` erg
+line’s keyword listed in the ``emline_list_dict`` defined in ``config.py``. 
+The emission line fluxes and
+errors must be specified in units of :math:`10^{-17}` ergs
 cm\ :math:`^{-2}` s\ :math:`^{-1}`, unless a different multiplication
-factor to the base unit of erg cm\ :math:`^{-2}` s\ :math:`^{-1}` is
+factor to the base unit of ergs cm\ :math:`^{-2}` s\ :math:`^{-1}` is
 specified by the keyword ``emline_factor`` in ``config.py``. The
 emission lines currently included in ``config.py`` are given below.
 Additional lines can be added by expanding the ``emline_list_dict`` in
@@ -127,7 +127,7 @@ Additional lines can be added by expanding the ``emline_list_dict`` in
    | [N II]                 | ``NII``  | 6583       | 0.5    |
    +------------------------+----------+------------+--------+
 
-Currently, ``MCSED`` can not fit blended emission lines.
+Currently, ``MCSED`` cannot fit blended emission lines.
 
 .. _subsec:absorption-lines:
 
@@ -135,11 +135,13 @@ Absorption Line Indices
 -----------------------
 
 Absorption line indices can also be used in ``MCSED``’s likelihood
-function. The way to do this is similar to that used for emission lines.
+function. These measurements are input in a similar way as additional
+photometry or emission line fluxes are included.
 In the input file, the columns containing an absorption line index and
 its uncertainty are labeled as ``Name_INDX`` and ``Name_Err``, where
-``Name`` is the line’s keyword, as defined in ``config.py``. The indices
-that are pre-defined in ``MCSED`` are listed in the table below. As one can see from the table,
+``Name`` is the line’s keyword, as listed in the ``absorption_index_dict``
+defined in ``config.py``. The indices that are pre-defined in ``MCSED`` are 
+listed in the table below. As one can see from the table,
 the indices are defined via their wavelength ranges, the units they are
 quoted in, and a relative weight similar to that defined for the
 emission lines.
