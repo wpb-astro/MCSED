@@ -29,8 +29,6 @@ def calzettilaw(wave, Rv=4.05):
     k : numpy array (1 dim)
         A(wave) / Av = k(wave) / Rv
     '''
-# WPB DELETE
-#    print('this is Rv:  '+str(Rv))
     invwv = 1/(wave/1e4)
     sel1 = np.nonzero(wave < 0.63e4)[0]
     sel2 = np.nonzero(np.logical_and(wave >= 0.63e4, wave < 2.2e4))[0]
@@ -134,8 +132,6 @@ class calzetti:
             Observed = True * 10**(-0.4 * Av / Rv * k(wave))
             A(wave) = E(B-V) * k(wave) = Av / Rv * k(wave)
         '''
-# WPB DELETE
-#        print('this is self.Rv:  '+str(self.Rv))
         if self.calz is None:
             self.calz = calzettilaw(wave, self.Rv)
         if new_wave:
@@ -258,10 +254,8 @@ class noll:
         Alam : numpy array (1 dim)
             Effective optical depth as a function of wavelength
         '''
-# WPB DELETE
-#        print('this is self.Rv:  '+str(self.Rv))
         dellam = 350.
-        lam0 = 2175.
+        lam0   = 2175.
         if self.calz is None:
             self.calz = calzettilaw(wave, self.Rv)
         if new_wave:
@@ -360,8 +354,6 @@ class reddy:
         k : numpy array (1 dim)
             A(wave) / Av = k(wave) / Rv
         '''
-# WPB DELETE
-#        print('this is self.Rv:  '+str(self.Rv))
         Rv = self.Rv
         invwv = 1/(wave/1e4)
         sel1 = np.nonzero(wave < 0.60e4)[0]

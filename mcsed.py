@@ -32,14 +32,11 @@ sns.set_style({"xtick.direction": "in","ytick.direction": "in",
                })
 
 
-
-
-#WPBWPB re organize the arguments (aesthetic purposes)
 class Mcsed:
     def __init__(self, filter_matrix, ssp_spectra,
                  emlinewave, ssp_emline, ssp_ages, ssp_met, wave, 
                  sfh_class, dust_abs_class, dust_em_class, met_class=None,
-                 nparams=None, t_birth=None, SSP=None, lineSSP=None, 
+                 nfreeparams=None, t_birth=None, SSP=None, lineSSP=None, 
                  data_fnu=None, data_fnu_e=None, 
                  data_emline=None, data_emline_e=None, emline_dict=None,
                  use_emline_flux=None, linefluxCSPdict=None,
@@ -90,7 +87,7 @@ class Mcsed:
         met_class : str
             Converted from str to class in initialization
             This is the input class for stellar metallicity
-        nparams : int
+        nfreeparams : int
             number of free model parameters
         t_birth : float
             Age of the birth cloud in Gyr
@@ -189,7 +186,7 @@ class Mcsed:
         self.met_class = getattr(metallicity, 'stellar_metallicity')()
         self.param_classes = ['sfh_class', 'dust_abs_class', 'met_class',
                               'dust_em_class']
-        self.nparams = nparams
+        self.nfreeparams = nfreeparams
         self.t_birth = t_birth
         self.SSP = None
         self.lineSSP = None
@@ -236,7 +233,7 @@ class Mcsed:
             Redshift of the source for fitting
         '''
         self.redshift = redshift
-        # Need luminosity distance to adjust ssp_spectra from 10pc to Dl
+        # Need luminosity distance to adjust spectrum to distance of the source
         self.Dl = cosmology.Cosmology().luminosity_distance(self.redshift)
         self.sfh_class.set_agelim(self.redshift)
 
@@ -302,7 +299,7 @@ class Mcsed:
 
 
     def get_filter_wavelengths(self):
-        ''' FILL IN
+        '''Get central wavelengths of photometric filters 
         '''
         wave_avg = np.dot(self.wave, self.filter_matrix[:, self.filter_flag])
         return wave_avg
@@ -318,9 +315,6 @@ class Mcsed:
         f_nu : numpy array (1 dim)
             Photometric flux densities for an input spectrum
         '''
-## WPBWPB delete
-#        print('shape of spectrum, filter_matrix, filter_flag:')
-#        print((self.spectrum.shape, self.filter_matrix.shape, self.filter_flag.shape))
         f_nu = np.dot(self.spectrum, self.filter_matrix[:, self.filter_flag])
         return f_nu
 
@@ -328,8 +322,6 @@ class Mcsed:
     def measure_absorption_index(self):
         '''
         measure absorption indices using current spectrum
-
-
         '''
         self.absindxCSPdict = {}
         if self.use_absorption_indx:
@@ -355,10 +347,6 @@ class Mcsed:
                 if abs(np.argmin(abs(wave-wave_red[0]))-np.argmin(abs(wave-wave_red[1])))<2:
                     sel_red[np.argmin(abs(wave-wave_red[0])):np.argmin(abs(wave-wave_red[0]))+2] = True
 
-#                sel_index = (wave >= wave_indx[0]) & (wave <= wave_indx[1])
-#                sel_blue  = (wave >= wave_blue[0]) & (wave <= wave_blue[1])
-#                sel_red   = (wave >= wave_red[0])  & (wave <= wave_red[1])
-
                 # estimate continuum in the index:
                 fw_blue  = np.dot(spec[sel_blue][0:-1], np.diff(wave[sel_blue])) 
                 fw_blue /= np.diff(wave[sel_blue][[0,-1]])
@@ -372,7 +360,7 @@ class Mcsed:
                 # flux ratio of index and continuum
                 spec_index = spec[sel_index] / cont_index
 
-                if unit==0: # return measurement in equivalent width
+                if unit==0: # return measurement in equivalent width (Angstroms)
                     value = np.dot( 1. - spec_index[0:-1], np.diff(wave[sel_index]) )
 
                 if unit==1: # return measurement in magnitudes
@@ -399,32 +387,23 @@ class Mcsed:
         ######################################################################
         # STAR FORMATION HISTORY
         self.sfh_class.set_parameters_from_list(theta, start_value)
-        # Keeping track of theta index for age of model and other classes
         start_value += self.sfh_class.get_nparams()
 
         ######################################################################
         # DUST ATTENUATION
         self.dust_abs_class.set_parameters_from_list(theta, start_value)
         start_value += self.dust_abs_class.get_nparams()
-# WPBWPB modify: pass a dust_abs_birthcloud keyword, see if its the same, blah
 
         ######################################################################
         # STELLAR METALLICITY 
-## WPBWPB delete
-#        print(start_value)
         self.met_class.set_parameters_from_list(theta, start_value)
         start_value += self.met_class.get_nparams()
-## WPBWPB delete
-#        print(start_value)
+
         ######################################################################
         # DUST EMISSION
         self.dust_em_class.set_parameters_from_list(theta, start_value)
         start_value += self.dust_em_class.get_nparams()
 
-#        print('this is start_value (is it equal to number of free params?)')
-#        print(start_value)
-#        print(len(theta))
-        # set self.nparams -- number of parameters in the model
 
     def get_ssp_spectrum(self):
         '''
@@ -447,8 +426,6 @@ class Mcsed:
         '''
         if self.met_class.fix_met:
             if self.SSP is not None:
-## WPBWPB delete
-#                print('self.SSP is not None!')
                 return self.SSP, self.lineSSP
         Z = np.log10(self.ssp_met)
         Zsolar = 0.019
@@ -457,19 +434,10 @@ class Mcsed:
         wei = np.exp(-(X)**2 / (2. * 0.15**2))
         wei /= wei.sum()
         self.SSP = np.dot(self.ssp_spectra, wei)
-# WPBWPB: this is where I would relax logU criteria, same as metallicity
-# careful: needs to be dealt with when measuring line fluxes originally
-
-        # only treat the emission line grid if requested
-## WPBWPB delete
-#        print('shape of emline SSP before/after wei')
-#        print(self.ssp_emline.shape)
         if self.use_emline_flux:
             self.lineSSP = np.dot(self.ssp_emline, wei)
         else:
             self.lineSSP = self.ssp_emline[:,:,0]
-## WPBWPB delete
-#        print(self.lineSSP.shape)
         return self.SSP, self.lineSSP
 
     def build_csp(self, sfr=None):
@@ -493,47 +461,21 @@ class Mcsed:
             sfr = self.sfh_class.evaluate(self.ssp_ages)
         ageval = 10**self.sfh_class.age # Gyr
 
-## WPBWPB delete
-#        print('these are the sfr in SFH age grid in Gyr:')
-#        sfh_ages = 10.**(np.array(self.sfh_class.ages)-9.)
-#        print(sfh_ages)
-#        print(self.sfh_class.evaluate(sfh_ages))
-
         # Treat the birth cloud and diffuse component separately
-# WPBWPB: may want to modify: have this as user-defined setting...
-        age_birth = self.t_birth #10**-2 # Gyr 
-
-### WPBWPB delete - both in Gyr
-##        print('this is the ageval: %s' % ageval)
-##        print('this is ssp ages: %s' % self.ssp_ages)
-##        return
-
-## WPBWPB delete
-##        for ageval, age_birth in [ [0.008, 0.011 ], [0.005011872336272725, 0.011 ], [0.01, 0.011 ], [0.14, 0.011 ], [0.0116, 0.011 ], [0.1, 0.011 ], [0.0145, 0.01 ], [0.011, 0.011 ], [0.01, 0.01 ] ]:
-#        for ageval, age_birth in [ [0.01116, 0.011] ]:
-#            self.build_dustfree_CSP(sfr, ageval, age_birth)
-#        return
+        age_birth = self.t_birth 
 
         # Get dust-free CSPs, properly accounting for ages
         # ageval sets limit on ssp_ages that are useable in model calculation
         # age_birth separates birth cloud and diffuse components
-# WPBWPB delete -- ageval, ssp_ages, age_birth are in units Gyr
         sel = (self.ssp_ages > age_birth) & (self.ssp_ages <= ageval)
         sel_birth = (self.ssp_ages <= age_birth) & (self.ssp_ages <= ageval)
         sel_age = self.ssp_ages <= ageval
 
-        # The weight is the time between ages of each SSP
+        # The weight is the linear time between ages of each SSP
         weight = np.diff(np.hstack([0, self.ssp_ages])) * 1e9 * sfr
-# WPBWPB delete
         weight_orig = weight.copy()
         weight_birth = weight.copy()
         weight_age = weight.copy()
-        # Ages greater than ageval should have zero weight in CSP
-        # weight should only include populations younger than ageval
-        # and older than age_birth
-        # weight_birth should only include populations younger than ageval
-        # and no older than age_birth
-        # weight_age only considers the age of the system (for mass)
         weight[~sel] = 0
         weight_birth[~sel_birth] = 0
         weight_age[~sel_age] = 0
@@ -561,7 +503,7 @@ class Mcsed:
         A = np.nonzero(self.ssp_ages <= age_birth)[0][-1]
         # indices of SSP ages that are too old
         select_too_old = np.nonzero(self.ssp_ages >= age_birth)[0]
-        if (len(select_too_old)>0): # & (ageval>=age_birth):
+        if (len(select_too_old)>0): 
             # B: index of first SSP that is too old
             B = select_too_old[0]
             if A != B:
@@ -575,7 +517,6 @@ class Mcsed:
                     weight_birth[B] = weight_age[B]
 
         # Finally, do the matrix multiplication using the weights
-        #print("Max(SSP) = %.3e"%(np.amax(self.SSP)))
         spec_dustfree = np.dot(self.SSP, weight)
         spec_birth_dustfree = np.dot(self.SSP, weight_birth)
         linespec_dustfree = np.dot(self.lineSSP, weight_birth)
@@ -586,9 +527,6 @@ class Mcsed:
         spec_dustobscured = spec_dustfree * 10**(-0.4 * Alam)
 
         # Correct the corresponding birth cloud spectrum separately
-# WPBWPB: check which law using for the birth cloud
-# if attenuating it directly tied to overall dust law,
-# modified by coefficient between EBV_stars ~ gas, get it here
         Alam_birth = Alam / self.dust_abs_class.EBV_old_young
         spec_birth_dustobscured = spec_birth_dustfree * 10**(-0.4 * Alam_birth)
 
@@ -596,40 +534,22 @@ class Mcsed:
         spec_dustfree += spec_birth_dustfree
         spec_dustobscured += spec_birth_dustobscured
 
-        # compute attenuation for emission lines
+        # Compute attenuation for emission lines
         Alam_emline = (self.dust_abs_class.evaluate(self.emlinewave,new_wave=True)
                        / self.dust_abs_class.EBV_old_young)
-# WPBWPB: else, use a separate model
-
-## WPBWPB delete
-#        print(emwaves)
-#        print(Alam_emline)
-#        print('shape of linespec_dustfree, emwaves : (%s, %s)' % (linespec_dustfree.shape, emwaves.shape))
         linespec_dustobscured = linespec_dustfree * 10**(-0.4*Alam_emline)
 
-## WPBWPB compare Alam in diffuse, birthcloud components
-#        print('diffuse, birth, emline Alam:')
-#        print(Alam[ np.searchsorted(self.wave, self.emlinewave) ])
-#        print(Alam_birth[ np.searchsorted(self.wave, self.emlinewave) ])
-#        print(Alam_emline)
-
-        # Add dust emission
-#        if min(spec_dustobscured[self.wave>5.0e4])<0.0: #Check to see that we don't have nonsensical results
-# WPBWPB delete
-#            print("Before adding dust: min(spec_dustobscured[wave>5.0 um]) =",
-#                  min(spec_dustobscured[self.wave>5.0e4]))
         if self.dust_em_class.assume_energy_balance:
-            L_bol = (np.dot(self.dnu, spec_dustfree) - np.dot(self.dnu, spec_dustobscured)) #Bolometric luminosity of dust attenuation (for energy balance)
+            # Bolometric luminosity of dust attenuation (for energy balance)
+            L_bol = (np.dot(self.dnu, spec_dustfree) - np.dot(self.dnu, spec_dustobscured)) 
             dust_em = self.dust_em_class.evaluate(self.wave)
-            L_dust = np.dot(self.dnu,dust_em) #Bolometric luminosity of dust emission (but not yet multiplied by dust mass)
-            # print("Lbol: %.3e;   Ldust: %.3e"%(L_bol,L_dust)) 
-            mdust_eb = L_bol/L_dust #We want total luminosities to be same for absorption (attenuation) and emission; linear units for mdust_eb for now
+            L_dust = np.dot(self.dnu,dust_em)
+            mdust_eb = L_bol/L_dust 
             spec_dustobscured += mdust_eb * dust_em
         else:
             spec_dustobscured += self.dust_em_class.evaluate(self.wave)
-        #print("After adding dust: min(spec_dustobscured[wave>5.0 um]) =",min(spec_dustobscured[self.wave>5.0e4]))
 
-        # Redshift to observed frame
+        # Redshift the spectrum to the observed frame
         csp = np.interp(self.wave, self.wave * (1. + self.redshift),
                         spec_dustobscured * (1. + self.redshift))
 
@@ -650,9 +570,6 @@ class Mcsed:
                 # Correct flux from 10pc to redshift of source
                 linefluxCSPdict[emline] = linespec_dustobscured[indx] / self.Dl**2
         self.linefluxCSPdict = linefluxCSPdict
-
-## WPBWPB delete
-#        print( linefluxCSPdict )
 
         # Correct spectra from 10pc to redshift of the source
         if self.dust_em_class.assume_energy_balance:
@@ -681,7 +598,7 @@ class Mcsed:
 
         Returns
         -------
-        log likelihood, mass, sfr10, sfr100, fpdr, mdust_eb : float, float, float, float, float, float, float
+        log likelihood, mass, sfr10, sfr100, fpdr, mdust_eb : (all float)
             The log likelihood includes a chi2_term and a parameters term.
             The mass comes from building of the composite stellar population
             The parameters sfr10, sfr100, fpdr, mdust_eb are derived in get_derived_params(self)
@@ -701,10 +618,8 @@ class Mcsed:
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
 
         # calculate the degrees of freedom and store the current chi2 value
-        # only need to calculate the degrees of freedom once
         if not self.chi2:
             dof_wht = list(np.ones(len(self.data_fnu)))
-
 
         # likelihood contribution from the absorption line indices
         self.measure_absorption_index()
@@ -727,19 +642,11 @@ class Mcsed:
                     parm_term += -0.5 * np.log(indx_weight * sigma2)
                     if not self.chi2:
                         dof_wht.append(indx_weight) 
-#                    print('this is absorption thing:')
-#                    print((indx, obs_indx, obs_indx_e, model_indx, absindx_term))
-#                    print((type(indx), type(obs_indx), type(obs_indx_e), type(model_indx), type(absindx_term)))
 
         # likelihood contribution from the emission lines
         if self.use_emline_flux:
             # if all lines have null line strengths, ignore 
             if not min(self.data_emline) == max(self.data_emline) == -99:
-## WPBWPB delete
-#                print('this is emline_dict:' + str(self.emline_dict))
-#                print('this is emline data, error:')
-#                print(self.data_emline)
-#                print(self.data_emline_e)
                 for emline in self.emline_dict.keys():
                     if self.data_emline['%s_FLUX' % emline] > -99: # null value
                         emline_wave, emline_weight = self.emline_dict[emline]
@@ -763,32 +670,22 @@ class Mcsed:
         self.chi2['chi2']  = -2. * chi2_term
         self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
 
-        if np.isnan(chi2_term + parm_term):
-            print('lnlike is nanny, heres chi2 and parm:')
-            print((chi2_term, parm_term))
-
         return (chi2_term + parm_term, mass,sfr10,sfr100,fpdr,mdust_eb)
 
     def lnprob(self, theta):
-        ''' Calculate the log probabilty and return the value and stellar mass (as well as derived parameters)
-        of the model
+        ''' Calculate the log probabilty and return the value and stellar mass 
+        (as well as derived parameters) of the model
 
         Returns
         -------
-        log prior + log likelihood, [mass,sfr10,sfr100,fpdr,mdust_eb]: float,float,float,float,float,float
+        log prior + log likelihood, [mass,sfr10,sfr100,fpdr,mdust_eb]: (all floats) 
             The log probability is just the sum of the logs of the prior and
             likelihood.  The mass comes from the building of the composite
             stellar population. The other derived parameters are calculated in get_derived_params()
         '''
         self.set_class_parameters(theta)
         lp = self.lnprior()
-# WPBWPB delete
-#        print('here is theta:')
-#        print(theta)
-#        print('here is lnprior:')
-#        print(lp)
         if np.isfinite(lp):
-            #lnl,mass,sfr10,sfr100,fpdr,mdust,mdust2 = self.lnlike()
             lnl,mass,sfr10,sfr100,fpdr,mdust_eb = self.lnlike()
             if not self.dust_em_class.fixed:
                 if self.dust_em_class.assume_energy_balance:
@@ -796,13 +693,8 @@ class Mcsed:
                 else:
                     return lp + lnl, np.array([mass, sfr10, sfr100, fpdr])
             else:
-## WPBWPB delete
-#                print('lp is finite. heres the output from lnprob:')
-#                print( (lp + lnl, np.array([mass, sfr10, sfr100]) ) )
                 return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
-## WPBWPB delete
-#            print('I reached the else in lnprob')        
             if not self.dust_em_class.fixed:
                 if self.dust_em_class.assume_energy_balance:
                     return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
@@ -865,9 +757,6 @@ class Mcsed:
         vals = []
         for par_cl in self.param_classes:
             vals.append(getattr(self, par_cl).get_params())
-## WPBWPB delete
-#            print(par_cl)
-#            print(vals)
         vals = list(np.hstack(vals))
         self.nfreeparams = len(vals)
         return vals
@@ -918,7 +807,7 @@ class Mcsed:
                       (np.mean(sampler.acceptance_fraction)))
         self.log.info("AutoCorrelation Steps: %i, Number of Burn-in Steps: %i"
                       % (np.round(tau), burnin_step))
-## WPBWPB: need to clean this up eventually (don't hard code numderpar)
+
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
@@ -933,11 +822,13 @@ class Mcsed:
             for j in xrange(len(sampler.blobs[0])):
                 for k in xrange(len(sampler.blobs[0][0])):
                     x = sampler.blobs[i][j][k]
-                    if k==0 or k==4: #Stellar mass or Dust mass--can't take log of negative numbers; also, want reasonable values
+                    # stellar mass and dust mass
+                    if k==0 or k==4: 
                         new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
-                                               np.log10(x), -99.) #Stellar mass and dust mass (energy balance version)
+                                               np.log10(x), -99.)
+                    # other derived parameters 
                     else: 
-                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) #Other derived params
+                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) 
         new_chain[:, :, -1] = sampler.lnprobability
         self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
 
@@ -946,13 +837,14 @@ class Mcsed:
         ''' These are not free parameters in the model, but are instead
         calculated from free parameters
         '''
-        ageval = 10**self.sfh_class.age #Age in Gyr
-        t_sfr100 = np.linspace(1.0e-9,0.1,num=251) #From 100 Mya to present (observed time); avoid t=0 for log purposes
-        t_sfr10 = np.linspace(1.0e-9,0.01,num=251) #From 10 Mya to present (observed time); avoid t=0 for log purposes
+        # Lookback times for past 10 and 100 Myr (avoid t=0 for log purposes)
+        t_sfr100 = np.linspace(1.0e-9,0.1,num=251)
+        t_sfr10 = np.linspace(1.0e-9,0.01,num=251)
+        # Time-averaged SFR over the past 10 and 100 Myr 
         sfrarray = self.sfh_class.evaluate(t_sfr100)
-        sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0]) #Mean value over last 100 My
+        sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0])
         sfrarray = self.sfh_class.evaluate(t_sfr10)
-        sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0]) #Mean value over last 10 My
+        sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0])
 
         if self.dust_em_class.fixed:
             fpdr = None
@@ -1029,8 +921,6 @@ class Mcsed:
         ax1.set_xticklabels(['1 Myr', '10 Myr', '100 Myr', '1 Gyr'])
         ax1.set_yticks([1e-2, 1e-1, 1, 1e1, 1e2, 1e3])
         ax1.set_yticklabels(['0.01', '0.1', '1', '10', '100', '1000'])
-#        ax1.set_yticks([1e-2, 1, 1e1, 1e3])
-#        ax1.set_yticklabels(['0.01', '1', '10', '1000'])
         ax1.set_xlim([10**-3, max(10**self.sfh_class.age, 1.)])
         ax1.set_ylim([10**-2.3, 1e3])
         ax1.minorticks_on()
@@ -1043,26 +933,20 @@ class Mcsed:
         ax2.set_xticklabels(xtick_lbl)
         ax2.set_xlim([1000, 10000])
         ax2.set_ylim([0.01, 4])
-#        ax2.set_ylabel(r'Dust Attenuation (mag)')
         ax2.set_ylabel(r'$A_\lambda$ [mag]')
         ax2.set_xlabel(r'Wavelength [$\AA$]')
 
     def add_spec_plot(self, ax3):
-# WPBWPB: adjust wavelength range, depending on whether dust emission is fit
         ax3.set_xscale('log')
         if self.dust_em_class.fixed:
             xtick_pos = [1000, 3000, 5000, 10000, 20000, 40000]
             xtick_lbl = ['0.1', '0.3', '0.5', '1', '2', '4']
-# WPBWPB delete
-#            xlims = [3000, 50000]
             xlims = (1. + self.redshift) * np.array([1150, 20000])
             xlims[0] = min( xlims[0], min(self.fluxwv) - 200)
             xlims[1] = max( xlims[1], max(self.fluxwv) + 5000) 
         else:
             xtick_pos = [3000, 5000, 10000, 40000, 100000, 400000, 1000000]
             xtick_lbl = ['0.3', '0.5', '1', '4', '10', '40', '100']
-# WPBWPB delete
-#            xlims = [3000, 2000000]
             xlims = (1. + self.redshift) * np.array([1150, 700000])
             xlims[0] = min( xlims[0], min(self.fluxwv) - 200)
             xlims[1] = max( xlims[1], max(self.fluxwv) + 50000) 
@@ -1075,9 +959,6 @@ class Mcsed:
 
     def add_subplots(self, ax1, ax2, ax3, nsamples, rndsamples=200):
         ''' Add Subplots to Triangle plot below '''
-### WPBWPB -- I think all of this can be deleted - migrated to a separate method that does not require plotting (double-commented lines within this method)
-##        wv = self.get_filter_wavelengths()
-##        rndsamples = 200
         sp, fn = ([], []) 
         for i in np.arange(rndsamples):
             ind = np.random.randint(0, nsamples.shape[0])
@@ -1086,21 +967,11 @@ class Mcsed:
             self.dust_abs_class.plot(ax2, self.wave, alpha=0.1)
             self.spectrum_plot(ax3, alpha=0.1)
 
-##            fnu = self.get_filter_fluxdensities()
-##            sp.append(self.spectrum * 1.)
-##            fn.append(fnu * 1.)
-## WPB edit: plotting HBeta line
-## used to have self.hbflux = self.measure_hb() --> changed
-##            hbm.append(self.hbflux * 1.)
-##        # Plotting median value:
-##        self.medianspec = np.median(np.array(sp), axis=0)
-###        self.hbmedian = np.median(hbm)
         ax3.plot(self.wave, self.medianspec, color='dimgray')
-##        self.fluxwv = wv
-##        self.fluxfn = np.median(np.array(fn), axis=0)
-
         ax3.scatter(self.fluxwv, self.fluxfn, marker='x', s=200,
                     color='dimgray', zorder=8)
+
+        # plot "truths" if in test mode
         if self.input_params is not None:
             self.set_class_parameters(self.input_params)
             self.sfh_class.plot(ax1, color='k', alpha=1.0)
@@ -1110,6 +981,7 @@ class Mcsed:
             p = ax3.scatter(self.fluxwv, self.true_fnu, marker='o', s=150,
                             color=[0.216, 0.471, 0.749], zorder=9)
             p.set_facecolor('none')
+
         ax3.errorbar(self.fluxwv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
                      fillstyle='none', markersize=150,
                      color=[0.510, 0.373, 0.529], zorder=10)
@@ -1144,13 +1016,11 @@ class Mcsed:
         imgtype : string
             The file extension of the output plot
         '''
-# WPBWPB: since median fits have already been set, may be able to remove lnprobcut -- just use attributes that are already set.
         # Make selection for three sigma sample
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :]
-# WPBWPB: understand this line....
-        o = 0  # self.sfh_class.nparams
+        o = 0 
         names = self.get_param_names()[o:]
         names.append('Log Mass')
         if self.dust_em_class.assume_energy_balance:
@@ -1169,11 +1039,10 @@ class Mcsed:
                 numderpar = 5
             else:
                 numderpar = 4
-        start = time.time()
         if self.dust_em_class.assume_energy_balance:
-            indarr = np.concatenate((np.arange(o,len(nsamples[0])-numderpar),np.array([-2]))) #Want to include dust mass and stellar mass as well as all free parameters in triangle plot
+            indarr = np.concatenate((np.arange(o,len(nsamples[0])-numderpar),np.array([-2]))) 
         else:
-            indarr = np.arange(o,len(nsamples[0])-numderpar) #Want to include stellar mass and all free parameters (this time including dust mass) in triangle plot
+            indarr = np.arange(o,len(nsamples[0])-numderpar) 
         fsgrad = 11+int(round(0.75*len(indarr)))
         fig = corner.corner(nsamples[:, indarr], labels=names,
                             range=percentilerange,
@@ -1183,38 +1052,23 @@ class Mcsed:
                             quantiles=[0.16, 0.5, 0.84], bins=30)
         w = fig.get_figwidth()
         fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
-        end = time.time()
-        print('made the corner. it took me %s s' % (end - start))
 
         # Adding subplots
         w = fig.get_figwidth()
         fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         ax1 = fig.add_subplot(3, 1, 1)
-        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
+        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 
+                          0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
         ax2 = fig.add_subplot(3, 1, 2)
-        ax2.set_position([0.7+0.008*(15-len(indarr)), 0.39, 0.28-0.008*(15-len(indarr)), 0.15])
+        ax2.set_position([0.7+0.008*(15-len(indarr)), 0.39, 
+                          0.28-0.008*(15-len(indarr)), 0.15])
         ax3 = fig.add_subplot(3, 1, 3)
-        ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
+        ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 
+                          0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
         self.add_sfr_plot(ax1)
-# WPBWPB delete:
-#        print("I've added the sfr plot")
         self.add_dust_plot(ax2)
-# WPBWPB delete:
-#        print("I've added the dust plot")
         self.add_spec_plot(ax3)
-# WPBWPB delete:
-#        print("I've added the spec plot")
         self.add_subplots(ax1, ax2, ax3, nsamples)
-# WPBWPB delete:
-#        print("I've added the subplots")
-# WPB edit: printing HBeta line flux on the figure
-# used to have self.hbflux = self.measure_hb() --> changed
-#        if self.sfh_class.hblim is not None:
-#            fig.text(.5, .75, r'H$\beta$ input: %0.2f' %
-#                     (self.sfh_class.hblim * 1e17), fontsize=18)
-#        fig.text(.5, .70, r'H$\beta$ model: %0.2f' % (self.hbmedian * 1e17),
-#                 fontsize=18)
-        # fig.set_size_inches(15.0, 15.0)
 
         for ax_loc in fig.axes:
             ax_loc.minorticks_on() 
@@ -1222,8 +1076,6 @@ class Mcsed:
 
         fig.savefig("%s.%s" % (outname, imgtype), dpi=150)
         plt.close(fig)
-        end = time.time()
-        print("Time taken to make triangle plot: %.3f s"%(end-start))
 
     def sample_plot(self, outname, imgtype='png'):
         ''' Make a sample plot
@@ -1275,3 +1127,5 @@ class Mcsed:
     def add_truth_to_table(self, truth, start_value):
         for i, tr in enumerate(truth):
             self.table[-1][start_value + i + 1] = tr
+
+

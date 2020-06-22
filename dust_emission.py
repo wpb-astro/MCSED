@@ -12,9 +12,11 @@ import matplotlib.pyplot as plt
 
 class DL07:
     ''' Prescription for dust emission comes from Draine & Li (2007) '''
-    def __init__(self, umin=2.0, gamma=0.05, qpah=2.5, mdust=7.0, umin_lims=[0.1, 25.0],
-                 gamma_lims=[0, 1.], qpah_lims=[0.47, 4.58], mdust_lims=[4.5,10.0],umin_delta=0.4,
-                 gamma_delta=0.02, qpah_delta=1.0, mdust_delta=0.3, fixed=True, assume_energy_balance=False):
+    def __init__(self, umin=2.0, gamma=0.05, qpah=2.5, mdust=7.0, 
+                 umin_lims=[0.1, 25.0], gamma_lims=[0, 1.], 
+                 qpah_lims=[0.47, 4.58], mdust_lims=[4.5,10.0],
+                 umin_delta=0.4, gamma_delta=0.02, qpah_delta=1.0, 
+                 mdust_delta=0.3, fixed=True, assume_energy_balance=False):
         ''' Initialize Class
 
         Parameters
@@ -26,9 +28,11 @@ class DL07:
         qpah : float
             Percentage of PAH emission
         mdust: float
-            Log10(M_dust/M_sun), where M_dust is the total mass of dust in the galaxy
+            Log10(M_dust/M_sun)
+            where M_dust is the total mass of dust in the galaxy
         assume_energy_balance: 
-            If true, use energy balance between dust attenuation and emission to normalize dust IR spectrum
+            If true, use energy balance between dust attenuation 
+            and emission to normalize dust IR spectrum
             If false, dust IR spectrum normalization is a free parameter
         '''
         self.umin = umin
@@ -48,19 +52,27 @@ class DL07:
         self.get_dust_emission_matrix()
 
     def get_dust_emission_matrix(self):
-        '''Draine & Li (2007) provide ascii files giving dust emissivity at various values of umin and qpah.
+        '''Draine & Li (2007) provide ascii files giving dust emissivity 
+        at various values of umin and qpah.
         We specifically use the MW3.1 models with Umax = 1e6.
-        This function creates a 2D linear interpolator for dust emissivity (units of uJy*(10pc)^2/M_sun)
-        The dust emissivity has two components: emission of dust heated by starlight at Umin (DE1) and emission of dust
+
+        This function creates a 2D linear interpolator 
+        for dust emissivity (units of uJy*(10pc)^2/M_sun)
+
+        The dust emissivity has two components: emission of dust 
+        heated by starlight at Umin (DE1) and emission of dust
         heated by starlight with U>Umin (DE2)
         '''
         DE1, DE2 = (np.zeros((7, 22, 1001)), np.zeros((7, 22, 1001)))
-        #DE1mod, DE2mod = (np.zeros((7, 22, 1001)), np.zeros((7, 22, 1001)))
-        self.qpaharray = np.array([0.47, 1.12, 1.77, 2.50, 3.19, 3.90, 4.58]) #Set of qpah values in Draine & Li tables
-        self.htodarray = np.array([100., 100., 99.010, 98.039, 98.039, 97.087, 96.154]) #Ratio of total hydrogen to dust mass in the model for each qpah value
+        #Set of qpah values in Draine & Li tables
+        self.qpaharray = np.array([0.47, 1.12, 1.77, 2.50, 3.19, 3.90, 4.58])
+        #Ratio of total hydrogen to dust mass in the model for each qpah value
+        self.htodarray = np.array([100., 100., 99.010, 98.039, 98.039, 
+                                   97.087, 96.154])
+        #Set of umin values in Draine & Li tables
         self.uminarray = np.array([0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8,
                                    1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 7.0,
-                                   8.0, 12.0, 15.0, 20.0, 25.0]) #Set of umin values in Draine & Li tables
+                                   8.0, 12.0, 15.0, 20.0, 25.0]) 
         Xgrid, Ygrid = np.meshgrid(self.qpaharray, self.uminarray)
         X = np.vstack([Xgrid.ravel(), Ygrid.ravel()]).swapaxes(0, 1)
 
@@ -69,14 +81,8 @@ class DL07:
             self.wave = de[:, 0] * 1e4
             dnue = np.abs(np.hstack([0, np.diff(3e18 / self.wave)]))
             for k, v in enumerate(np.arange(1, de.shape[1], 2)):
-                #norm = np.dot(dnue, de[:, v])
                 DE1[j, k, :] = de[:, v]
-                #DE1mod[j,k,:] = de[:,v]
-                #norm = np.dot(dnue, de[:, v+1])
                 DE2[j, k, :] = de[:, v+1]
-                #DE2mod[j,k,:] = de[:,v+1]
-                #print "DE1[%d,%d,0] = %.3e"%(j,k,DE1[j,k,0])
-                #print "DE2[%d,%d,0] = %.3e"%(j,k,DE2[j,k,0])
         shape = DE1.shape
         self.interpumin = LinearNDInterpolator(X, DE1.reshape(shape[0] *
                                                               shape[1],
@@ -174,7 +180,6 @@ class DL07:
         ax.plot(wave, dustem, color=color, alpha=alpha)
 
     def plotpractice(self, wave, z):
-        #Distance in Mpc
         from cosmology import Cosmology
         C = Cosmology()
         D = C.luminosity_distance(z)
@@ -188,16 +193,10 @@ class DL07:
         plt.loglog(wave/1.0e4, nu*dustem, 'b-')
         xlims = np.array([2.0,1000.])/(1.+z)
         plt.xlim(xlims)
-        #plt.ylim(nu[-1]*dustem[-1],nu[-1]*dustem[-1]/3.0 * 2.0e5)
-        #yl = 5.0e20*1.0e-29/(1.0e5*D)**2
-        #yu = 3.0e25*1.0e-29/(1.0e5*D)**2
-        #plt.ylim(yl,yu)
         plt.xlabel(r"$\lambda$ ($\mu m$)")
-        #plt.ylabel(r"Dust emissivity ($\mu$Jy (10pc)$^2$ Hz M$_{sun}^{-1}$) ")
         plt.ylabel(r"Dust emissivity (erg cm$^{-1}$ s$^{-1}$) ")
         plt.savefig("DustTesting/%.2f_%.4f_%.2f_%.3f.png"%(self.umin,self.gamma,self.qpah,self.mdust))
         plt.show()
-        #plt.close()
 
     def evaluate(self, wave):
         ''' Evaluate Dust Law
@@ -210,31 +209,22 @@ class DL07:
         Returns
         -------
         DustE : numpy array (1 dim)
-            Dust emission spectrum (flux in uJy 10 pc)--linear combination of emission from dust heated by starlight at Umin and dust heated by starlight at U>Umin
+            Dust emission spectrum (flux in uJy 10 pc)
+            linear combination of emission from dust heated by starlight 
+            at Umin and dust heated by starlight at U>Umin
         '''
+        # Units Jy*cm^2/sr/H (hydrogen atom)--luminosity/solid angle/mass
         DustE = (self.interpumin(self.qpah, self.umin) * (1. - self.gamma) +
-                 self.interpumax(self.qpah, self.umin) * self.gamma) #Units Jy*cm^2/sr/H (hydrogen atom)--luminosity/solid angle/mass
+                 self.interpumax(self.qpah, self.umin) * self.gamma)
 
-        DustE *= 1.249e24 * np.interp(self.qpah,self.qpaharray,self.htodarray) #Converting from Jy*cm^2/sr/H to units uJy/M_sun (flux/mass unit) at 10 pc assuming isotropic emission and then multiplying by Hydrogen to dust mass ratio so that the factor to get quantity so that it just needs to be multiplied by dust mass to get the proper normalization
+        # Converting from Jy*cm^2/sr/H to units uJy/M_sun (flux/mass unit) 
+        # at 10 pc, assuming isotropic emission and then multiplying by 
+        # Hydrogen to dust mass ratio so that it just needs to be 
+        # multiplied by dust mass to get the proper normalization
+        DustE *= 1.249e24 * np.interp(self.qpah,self.qpaharray,self.htodarray) 
+
+        # Multiplying by total dust mass to get to flux in uJy at 10 pc
         if not self.assume_energy_balance:
-            DustE *= 10**self.mdust #Multiplying by total dust mass to get to flux in uJy at 10 pc
+            DustE *= 10**self.mdust 
 
         return np.interp(wave, self.wave, DustE)
-
-    # def evaluate2(self, wave):
-    #     ''' Evaluate Dust Law
-
-    #     Parameters
-    #     ----------
-    #     wave : numpy array (1 dim)
-    #         wavelength in Angstroms
-
-    #     Returns
-    #     -------
-    #     DustE : numpy array (1 dim)
-    #         Dust emission spectrum (units Jy cm^2 sr^-1 H^-1)--linear combination of emission from dust heated by starlight at Umin and dust heated by starlight at U>Umin
-    #     '''
-    #     DustE = (self.interpumin2(self.qpah, self.umin) * (1. - self.gamma) +
-    #              self.interpumax2(self.qpah, self.umin) * self.gamma)
-
-    #     return np.interp(wave, self.wave, DustE)

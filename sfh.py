@@ -290,7 +290,7 @@ class polynomial:
         Parameters
         ----------
         agelocs : list
-            TODO: Need to explain this list--it's a little confusing what happens in this SFH
+            << FILL IN >> 
         age : float
             Age of the galaxy when observed in log Gyrs
         age_lims : list
@@ -542,7 +542,6 @@ class exponential:
             assert len(force_params)==self.get_nparams()
             logsfr, age, tau = force_params
 
-# WPBWPB: ensure self.sign properly accounted for when inputing parameters (force_params)
         if self.sign > 0.0:
             var = t
         else:
@@ -745,7 +744,6 @@ class binned_lsfr:
 
     def get_nparams(self):
         ''' Return number of parameters '''
-# WPBWPB modify nparams to exclude bins that are too old
         return len(self.ages)
 
     def get_params(self):
@@ -802,8 +800,6 @@ class binned_lsfr:
         ''' Plot SFH for given set of parameters '''
         t = 10**(np.array([6] + self.ages) - 9.)
         sfr = self.evaluate(t)
-#        ax.step(10**t, np.hstack([sfr[0], sfr]), where='pre',
-#                color=color, alpha=alpha)
         ax.step(t, sfr, where='pre', color=color, alpha=alpha)
 
 
@@ -839,19 +835,13 @@ class binned_lsfr:
         sfr_bin = 10. ** logsfr 
         # Ensure that self.ages, t are both in units of log years
         t_logyr = np.log10( t * 1e9 ) 
-#        bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
-#        # adjust any times falling beyond the last SFH age bin
-#        bin_indx[ bin_indx > len(sfr_bin)-1 ] = len(sfr_bin)-1
-#        sfr = sfr_bin[ bin_indx ]
+
         bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
         # adjust any times falling beyond the last SFH age bin
         sel_too_old = bin_indx > len(sfr_bin)-1
         bin_indx[ sel_too_old ] = len(sfr_bin)-1
         sfr = sfr_bin[ bin_indx ]
         sfr[ sel_too_old ] = 1e-99
-# WPBWPB delete
-#        print('this is log sfr:')
-#        print(np.log10(sfr))
         return sfr
 
 

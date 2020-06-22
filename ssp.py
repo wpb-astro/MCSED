@@ -100,7 +100,6 @@ def bin_ssp_ages(ssp_ages, ssp_spec, ssp_linespec, sfh_ages, galaxy_age, t_birth
             binned_spec[:,i,imet] = np.dot(ssp_spec[:,sel,imet],wht) / wht.sum()
             binned_linespec[:,i,imet] = np.dot(ssp_linespec[:,sel,imet],wht) / wht.sum()
 
-
     return binned_ages, binned_spec, binned_linespec
 
 
@@ -121,7 +120,6 @@ def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
     redwave : float
         red wavelength cutoff (in Angstroms)
     '''
-# WPBWPB: coarse_wavelength, how specified by user?
     sel = np.where((wave > 500) * (wave < redwave))[0]
     spec = spec[sel, :]
     wave = wave[sel]
@@ -139,155 +137,6 @@ def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
                np.histogram(wave[nsel], nwb)[0])
         nspec[:, i] = np.hstack([sp[:nsel[0]], hsp, sp[(nsel[-1]+1):]])
     return nwave, nspec
-
-
-#def bin_ages_fsps_separate(args, ages, spec):
-#    ''' FILL IN
-#
-#    Parameters
-#    ----------
-#    args : FILL IN
-#    ages :
-#        SSP age grid in Gyr
-#
-#    returns age (Gyr), blah
-#    '''
-#    weight = np.diff(np.hstack([0., 1e9 * ages]))
-#
-### WPBWPB delete
-##    print('this is weight:')
-##    print(weight)
-#
-#    # convert max SSP age arguments to units Gyr
-#    max_ssp_ages = 10.**(np.array(args.max_ssp_age)-9.)
-#
-#    # start to build the list of age bin points
-#    agebin_list = [0., 10.**(args.t_birth-9.)]
-#
-### WPBWPB delete
-##    print('these are SSP ages before re-gridding')
-##    print(ages)
-#
-#    # add the SFH age bins:
-#    sfh_class = getattr(sfh, args.sfh)()
-#    sfh_ages_Gyr = 10.**(np.array(sfh_class.ages)-9.)
-#    agebin_list.append( sfh_ages_Gyr )
-#
-#    # account for the SSP ages that should not be binned:
-#    agebin = np.sort( np.unique(np.hstack(agebin_list) ))
-#    agebin = agebin[ agebin <= max_ssp_ages[0] ]
-#    sel_unbinned = ages > max_ssp_ages[0]
-#    age_unbinned, spec_unbinned = (ages[sel_unbinned], spec[:, sel_unbinned])
-#
-#    final_age = np.hstack([agebin[1:], age_unbinned])
-#    nspec = np.zeros( (spec.shape[0], len(final_age)) ) 
-#
-### WPBWPB delete
-##    print('this is age_unbinned:')
-##    print(age_unbinned)
-#
-#    agebin = np.hstack([agebin, age_unbinned])
-#
-#    for i in np.arange(nspec.shape[1]):
-#        # bin the original SSP grid, if possible
-#        if True: #i < len(agebin)-1:
-#            sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
-#
-#            wht = np.diff(np.hstack([0., 1e9 * ages[sel]]))
-#            wht[0] = np.diff( 1e9 * np.array([agebin[i], ages[sel][0]]) )
-#
-#            whtnew = wht.copy()
-##            print('this is new wht:')
-##            print(wht)
-#
-#            wht =  weight[sel]
-## IF I apply the following line, I can combine the binned and unbinned ages
-## into a single array
-## But the first element is different from the original binning. hmmmmm
-#            wht[0] = np.diff( 1e9 * np.array([agebin[i], ages[sel][0]]) )
-#
-#            if max(abs(whtnew-wht)>0):
-#                print(agebin[i:i+2])
-#                print('this is new wht:')
-#                print(whtnew)
-#
-#                print('this is old wht:')
-#                print(wht)
-#
-#            nspec[:,i] = np.dot(spec[:, sel], wht) / wht.sum()
-#
-#        # add in the remaining spectra from original SSP grid
-#        else:
-#            k = i - len(agebin) + 1
-#            nspec[:,i] = spec_unbinned[:,k]
-## questions:
-## weight is time between SSP age and previous, or time in bin?
-## combining binned spectra and unbinned SSP spectra
-#
-#
-#    return final_age, nspec
-#
-#
-#def bin_ages_fsps(args, ages, spec):
-#    ''' FILL IN
-#
-#    Parameters
-#    ----------
-#    args : FILL IN
-#    ages :
-#        SSP age grid in Gyr
-#
-#    returns age (Gyr), blah
-#    '''
-#    weight = np.diff(np.hstack([0., 1e9 * ages]))
-#
-### WPBWPB delete
-##    print('this is weight:')
-##    print(weight)
-#
-#    # convert max SSP age arguments to units Gyr
-#    max_ssp_ages = 10.**(np.array(args.max_ssp_age)-9.)
-#
-#    # start to build the list of age bin points
-#    agebin_list = [0., 10.**(args.t_birth-9.)]
-#
-### WPBWPB delete
-##    print('these are SSP ages before re-gridding')
-##    print(ages)
-#
-#    # add the SFH age bins:
-#    sfh_class = getattr(sfh, args.sfh)()
-#    sfh_ages_Gyr = 10.**(np.array(sfh_class.ages)-9.)
-#    agebin_list.append( sfh_ages_Gyr )
-#
-#    # account for the SSP ages that should not be binned:
-#    agebin = np.sort( np.unique(np.hstack(agebin_list) ))
-#    agebin = agebin[ agebin <= max_ssp_ages[0] ]
-#    sel_unbinned = ages > max_ssp_ages[0]
-#    age_unbinned, spec_unbinned = (ages[sel_unbinned], spec[:, sel_unbinned])
-#
-#    final_age = np.hstack([agebin[1:], age_unbinned])
-#    nspec = np.zeros( (spec.shape[0], len(final_age)) )
-#
-### WPBWPB delete
-##    print('this is age_unbinned:')
-##    print(age_unbinned)
-#
-#    agebin = np.hstack([agebin, age_unbinned])
-#
-#    for i in np.arange(nspec.shape[1]):
-#        sel = np.where((ages > agebin[i]) * (ages <= agebin[i+1]))[0]
-#
-#        wht = np.diff(np.hstack([0., 1e9 * ages[sel]]))
-#        wht[0] = np.diff( 1e9 * np.array([agebin[i], ages[sel][0]]) )
-#
-#        nspec[:,i] = np.dot(spec[:, sel], wht) / wht.sum()
-#
-## questions:
-## weight is time between SSP age and previous, or time in bin?
-#
-#    return final_age, nspec
-#
 
 
 def read_fsps_neb(filename):
@@ -383,8 +232,6 @@ def read_fsps_file(args, metallicity):
         sel_next = np.where(sel)[0][-1]+1
         sel[ sel_next ] = True
 
-#    sel = (ages >= 6.)
-
     return 10**(ages[sel]-9), wave, spec[:, sel]
 
 def get_nebular_emission(ages, wave, spec, logU, metallicity,
@@ -419,46 +266,29 @@ def get_nebular_emission(ages, wave, spec, logU, metallicity,
     V = np.array([10**cont_res[0]*0.019, cont_res[1]/1e6,
                   cont_res[2]]).swapaxes(0, 1)
     if kind != 'line':
-        # 1e48 factor avoids interpolating small numbers - removed later
         C = scint.LinearNDInterpolator(V, cont_res[3]*1e48)
     if kind != 'cont':
         L = scint.LinearNDInterpolator(V, lines_res[3]*1e48)
         garray = make_gaussian_emission(wave, lines_res[4])
-# WPBWPB: uncomment
     nspec = spec * 0.
-## WPBWPB delete: only when saving an array without gaussian emission:
-##    print(nspec.shape)
-#    nspec = nspec[0:len(lines_res[4]), :] 
-#    garray = 1.
+
     for i, age in enumerate(ages):
         if age <= 1e-2:
             if kind != 'line':
                 cont = C(metallicity, age*1e3, logU)
             if kind != 'cont':
                 lines = L(metallicity, age*1e3, logU)
-            # qq has units 1e-29 photons / s / cm^2 at 10 pc
-            # sollum has units ergs / s
-            # table values (lines) have units s / photons
-            # garray has units per Hz
-            # --> product has units micro-Jy at 10 pc
             qq = number_ionizing_photons(wave, spec[:, i]) / 1e48 * sollum
             if kind == 'both': 
                 nspec[:, i] = (nspec[:, i] 
                                + np.interp(wave, cont_res[4], cont*qq)
                                + (garray * lines * qq).sum(axis=1))
             if kind == 'line':
-## WPBWPB delete: only when saving an array without gaussian emission:
-#                nspec[:, i] = lines * qq
-# WPBWPB: uncomment - original code
                 nspec[:, i] = (nspec[:, i] 
                                + (garray * lines * qq).sum(axis=1))
             if kind == 'cont':
                 nspec[:, i] = (nspec[:, i] 
                                + np.interp(wave, cont_res[4], cont*qq))
-
-## WPBWPB: only for case when no gaussian emission is included
-#    np.savez('SSP_nongaussian', linewave0=lines_res[4], linespec0=nspec)
-#    return 
 
     return nspec
 
@@ -509,16 +339,9 @@ def collapse_emline_SSP(args, linewave, linespec, clight=2.99792e18):
     if (not args.use_emline_flux) | (args.emline_list_dict=={}):
         return np.array([1000.,2000.]), linespec[0:2,:,:]
 
-# loop through all emission line spectra for all ages, metallicities
-# WPBWPB: generalize such that does not assume only grid over ages and metallicities, but maybe ionization parameter (or arbitrary number of properties)
-# maybe I want to raise an error?
     emlines = args.emline_list_dict.keys() 
     emwaves = np.array(args.emline_list_dict.values())[:,0]
-## WPBWPB delete
-#    print('here are emwaves, type: %s, %s' % (emwaves, type(emwaves)))
     ssp_emline_collapsed = linespec[0:len(emlines),:,:]
-## WPBWPB delete
-#    waves_collapsed = []
     # loop through emission line spectra for all ages, metallicities
     dims = linespec.shape
     for i in range(dims[1]): # age array
@@ -531,14 +354,6 @@ def collapse_emline_SSP(args, linewave, linespec, clight=2.99792e18):
             spec = linespec[:,i,j]
             lineflux = []
             for emline in emlines:
-## WPBWPB delete
-#                print('here"s the emline dict and your element:')
-#                print(args.emline_list_dict)
-#                print([type(val) for val in args.emline_list_dict.values()])
-#                print(emline)
-#                print(args.emline_list_dict[emline])
-#                print(type(args.emline_list_dict[emline]))
-
                 w = args.emline_list_dict[emline][0]
                 indx = np.searchsorted(linewave, w)
                 if spec[indx] <= 0:
@@ -555,8 +370,6 @@ def collapse_emline_SSP(args, linewave, linespec, clight=2.99792e18):
                 lineflux.append(np.dot( y, np.abs(dnu) ) / 1e29)
             ssp_emline_collapsed[:,i,j] = lineflux
 
-    # return modified emission line wavelength and SSP grid: 
-    # fluxes at discrete wavelengths
     return np.array(emwaves), ssp_emline_collapsed
 
 
@@ -637,29 +450,14 @@ def read_ssp_fsps(args):
     '''
     metallicities = np.array(args.metallicity_dict[args.ssp][args.isochrone])
 
-## WPBWPB: m list unused
-#    s, ls, m = ([], [], [])
     s, ls = [], []
     for met in metallicities:
         if args.ssp.lower() == 'fsps':
             ages, wave, spec = read_fsps_file(args, met)
-        # add new SSP subroutines here:
-# WPBWPB: only carry linespec if going to measure emission lines?
         linespec = get_nebular_emission(ages, wave, spec, args.logU,
                                         met, kind='line')
         spec = add_nebular_emission(ages, wave, spec, args.logU,
                                         met)
-
-## WPBWPB add comment
-## WPBWPB testing if age binning is issue in binned SFH for the too-old bins
-##        if args.sfh in ['binned_lsfr', 'binned_fmass']: 
-#        if False:
-##            print('YOU NEED TO DEAL WITH THE SSP AGE BINNING!!!!')
-#            ages0 = ages.copy()
-### WPBWPB delete: useful if comparing to old "bin ages" function
-##            ages0 = np.log10(ages0)+9.
-#            ages, spec = bin_ages_fsps(args, ages0, spec)
-#            ages9, linespec = bin_ages_fsps(args, ages0, linespec)
 
         # do not smooth the emission line grid
         wave0 = wave.copy()
@@ -667,13 +465,8 @@ def read_ssp_fsps(args):
             wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=350e4)
         else:
             wave, spec = get_coarser_wavelength_fsps(wave0, spec)
-## WPBWPB delete -- appears unused
-#        wei = (np.diff(np.hstack([0., ages])) *
-#               getattr(sfh, args.sfh)().evaluate(ages))
         s.append(spec)
         ls.append(linespec)
-## WPBWPB following line appears unused... 
-#        m.append(np.dot(spec, wei)/spec.shape[1])
 
     # save plot of SSP spectra
     if args.output_dict['template spec']:
@@ -701,17 +494,8 @@ def read_ssp_fsps(args):
     spec = np.moveaxis(np.array(s), 0, 2)
     linespec = np.moveaxis(np.array(ls), 0, 2)
 
-## WPBWPB delete
-#    linespec0 = linespec.copy()
-
     # Collapse the emission line SSP grid
     linewave, linespec = collapse_emline_SSP(args, wave0, linespec) 
-
-## WPBWPB delete
-#    np.savez('SSP', wave=wave, spec=spec, linewave=linewave, linespec=linespec, linewave0=wave0, linespec0=linespec0)
-
-## WPB delete
-#    print('these are ages: %s' % ages)
 
     return ages, wave, spec, metallicities, linewave,linespec
 

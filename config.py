@@ -15,32 +15,33 @@ dust_law = 'calzetti'  # options include: 'calzetti', 'noll', 'reddy',
                        #                  'conroy', 'cardelli'
 
 # Dust emission parameters: 
-# if False, do not fit for dust emission component and remove all filters 
-#           redward of rest-frame wave_dust_em microns  (defined below)
-# else, set to string of desired dust emission class 
+#   if False, do not fit for dust emission component and remove all filters
+#             redward of rest-frame wave_dust_em microns  (defined below)
+#   else, set to string of desired dust emission class 
 dust_em = False # options include: 'DL07', False 
 # Assume energy balance or normalize the dust IR spectrum as a free parameter
 assume_energy_balance = False
 
 # Dust attenuation law parameters
-# extinction factor (if negative, use default value for dust law of choice)
+#   extinction factor (if negative, use default value for dust law of choice)
 Rv = -1 
 # The relative attenuation between the birth cloud and the diffuse component
-# in the dust model, such that 
-# E(B-V)_diffuse = EBV_old_young * E(B-V)_birth
+#   in the dust model, such that 
+#   E(B-V)_diffuse = EBV_old_young * E(B-V)_birth
 EBV_old_young = 0.44
 
 t_birth = 7. # age of the birth cloud (log years)
 
 # Ignore photometry, as appropriate
-# blue_wave_cutoff: ignore filters containing Lyman-alpha
-# wave_dust_em:     if not fitting dust emission component, ignore photometry
-#                   dominated by dust emission
+#   blue_wave_cutoff: ignore filters containing Lyman-alpha
+#   wave_dust_em:     if not fitting dust emission component, ignore photometry
+#                     dominated by dust emission
 blue_wave_cutoff = 1216. # rest-frame wavelength in Angstroms 
 wave_dust_em     = 2.5   # rest-frame wavelength in microns 
 
-# If False, leave metallicity as a free model parameter
-# else, must be float: fixed metallicity of SSP models (Z_solar = 0.019)
+# Stellar metallicity
+#   If False, leave metallicity as a free model parameter
+#   else, must be float: fixed metallicity of SSP models (Z_solar = 0.019)
 metallicity = 0.0077 
 
 # Nebular Emission Properties
@@ -56,18 +57,18 @@ nobjects = 5
 test_zrange = (1.0, 2.0) # redshift range of test objects (uniform prior)
 
 # Minimum fractional errors in observed photometry, 
-# emission line fluxes, and absorption line indices 
+#   emission line fluxes, and absorption line indices 
 phot_floor_error    = 0.05
 emline_floor_error  = 0.05
 absindx_floor_error = 0.05
 
 # Fractional error expected from the models, i.e., fractional error adopted
-# for model photometry, emission line fluxes, and absorption line indices
+#   for model photometry, emission line fluxes, and absorption line indices
 model_floor_error = 0.10
 
 # Use input data (photometry, emission lines, absorption line indices)
-# If True, use additional data provided in the input file
-# else, ignore input data (in which case input IDs must match Skelton+14 IDs)
+#   If True, use additional data provided in the input file
+#   else, ignore input data (in which case input Field,ID must match Skelton+14)
 use_input_data = True 
 
 # ISM/IGM correction
@@ -102,10 +103,10 @@ reserved_cores = 2 # integer
 
 # Input emission line strengths
 #   keys are emission line name (str) corresponding to Name in the input file
-#   with columns Name_FLUX, Name_ERR corresponding to line flux and error
 #   values are two-element tuple: (rest-frame wavelength (Angstroms), weight)
-#   lines will only contribution to the model likelihood if they appear in the
-#   input file (null value = -99)
+#   measurements in input file have column names Name_FLUX, Name_ERR 
+#   corresponding to line flux and error (null=-99) and lines will only
+#   contribute to the model likelihood if they appear in the input file
 emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
                     'Hb'  : (4861., 1.),  'Ha' : (6563., 1.),
                     'NII' : (6583., 0.5)
@@ -114,11 +115,13 @@ emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
 emline_factor = 1e-17 # numerical conversion from input values to units ergs/cm2/s
 
 # Input absorption line indices
-# keys are index name (str) corresponding to name in input file
-# values are list of [weight, index band, blue continuum, red continuum, units]
-# weight: contribution to likelihood function (1 = equal to photometric point)
-# units: 0=Angstroms, 1=mag, 2=flux ratio (red/blue)
-# indices will only be used if they appear in the input file
+#   keys are index name (str) corresponding to Name in input file
+#   values are list of [weight, index band, blue continuum, red continuum, units]
+#   units key: 0=Angstroms, 1=mag, 2=flux ratio (red/blue)
+#   measurements in input file have column names Name_INDX, Name_Err
+#   corresponding to index measurement and error (null=-99) and lines will only
+#   contribute to the model likelihood if they appear in the input file
+#
 #                                        weight     index              blue continuum        red continuum     units
 absorption_index_dict = {"Lick_CN1"    : [ 1., (4142.125, 4177.125), (4080.125, 4117.625), (4244.125, 4284.125), 1],
                          "Lick_CN2"    : [ 1., (4142.125, 4177.125), (4083.875, 4096.375), (4244.125, 4284.125), 1],
@@ -146,5 +149,5 @@ absorption_index_dict = {"Lick_CN1"    : [ 1., (4142.125, 4177.125), (4080.125, 
                          "Lick_Hd_F"   : [ 1., (4091.0, 4112.25),    (4057.25, 4088.5),    (4114.75, 4137.25),   0],
                          "Lick_Hg_F"   : [ 1., (4331.25, 4352.25),   (4283.5, 4319.75),    (4354.75, 4384.75),   0],
                          "D4000"       : [ 1., (False, False),       (3750., 3950.),       (4050., 4250.),       2]
-                     }
+                        }
  
