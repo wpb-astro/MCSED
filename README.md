@@ -59,7 +59,7 @@ And you will find a help menu like this.
 
         -igm, --IGM_correct: If selected, Madau statistical IGM correction will be done (affecting wavelengths up to rest-frame Lyman-alpha)
 
-All of the available options for MCSED are found in [config.py](https://github.com/wpb-astro/MCSED/master/config.py).  Here we break down the most important of those: 
+All of the available options for MCSED are found in [config.py](https://github.com/wpb-astro/MCSED/blob/master/config.py).  Here we break down the most important of those: 
 
         ssp = 'fsps'          
         isochrone = 'padova' 
