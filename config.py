@@ -6,13 +6,13 @@
 
 """
 # SSP code for models
-ssp = 'fsps'          # options include: 'fsps'
-isochrone = 'padova'  # options include: 'padova'
+ssp = 'fsps'           # options include: 'fsps'
+isochrone = 'padova'   # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'binned_lsfr'
 sfh = 'constant' 
-dust_law = 'calzetti'   # options include: 'noll', 'calzetti', 'reddy', 
-                        #                  'conroy', 'cardelli'
+dust_law = 'calzetti'  # options include: 'calzetti', 'noll', 'reddy', 
+                       #                  'conroy', 'cardelli'
 
 # Dust emission parameters: 
 # if False, do not fit for dust emission component and remove all filters 
@@ -39,9 +39,8 @@ t_birth = 7. # age of the birth cloud (log years)
 blue_wave_cutoff = 1216. # rest-frame wavelength in Angstroms 
 wave_dust_em     = 2.5   # rest-frame wavelength in microns 
 
-# If False, leave metallicity as a free parameter
-# else, must be float: fixed metallicity of SSP models
-# if True, metallicity is fixed at 0.0077 (where Zsolar = 0.019)
+# If False, leave metallicity as a free model parameter
+# else, must be float: fixed metallicity of SSP models (Z_solar = 0.019)
 metallicity = 0.0077 
 
 # Nebular Emission Properties
@@ -56,7 +55,7 @@ nsteps   = 1000
 nobjects = 5
 test_zrange = (1.0, 2.0) # redshift range of test objects (uniform prior)
 
-# minimum fractional errors in observed photometry, 
+# Minimum fractional errors in observed photometry, 
 # emission line fluxes, and absorption line indices 
 phot_floor_error    = 0.05
 emline_floor_error  = 0.05
@@ -95,24 +94,18 @@ output_dict = {'parameters'    : True,   # fitted parameters
                'template spec' : True,   # save a plot of SSP spectra 
                'image format'  : 'png'}  # image type for plots
 
-# percentiles of each parameter to report in the output file
+# Percentiles of each model parameter to report in the output file
 param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
 reserved_cores = 2 # integer
 
 # Input emission line strengths
-# keys are emission line name (str) corresponding to name in input file
-# values are two-element tuple: (rest-frame wavelength (Angstroms), weight)
-# WPBWPB describe the weight
-# see documentation XXXX for additional information
-# WPB edit (e.g., OIII is not the blended feature, 
-#           Balmer lines corrected for absorption, 
-#           keys must match input columns of form _FLUX, _ERR...)
-#           will only be used if present in input file,
-#           must have null value = -99
-#           must have both flux and error - cannot have flux with null error
-#           can also set to {} or None, if preferred
+#   keys are emission line name (str) corresponding to Name in the input file
+#   with columns Name_FLUX, Name_ERR corresponding to line flux and error
+#   values are two-element tuple: (rest-frame wavelength (Angstroms), weight)
+#   lines will only contribution to the model likelihood if they appear in the
+#   input file (null value = -99)
 emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
                     'Hb'  : (4861., 1.),  'Ha' : (6563., 1.),
                     'NII' : (6583., 0.5)

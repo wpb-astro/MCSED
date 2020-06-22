@@ -272,6 +272,7 @@ class burst:
         else:
             assert len(force_params)==self.get_nparams()
             logsfr, age, burst_age, burst_strength = force_params
+        burst_sigma = self.burst_sigma
 
         nage = burst_age - 9.
         norm = (burst_strength * 10**logsfr /

@@ -77,7 +77,8 @@ If the input objects are not associated with the Skelton et al. (2014) catalog
 wish to supplement this catalog with additional photometry, the input file must
 include additional columns. Photometric measurements should be given as flux
 densities with :math:`1\,\sigma` uncertainties associated with each
-measurement. The columns containing these data in the input file should be labeled
+measurement (null value :math:`=-99`). 
+The columns containing these data in the input file should be labeled
 ``f_filter_name`` and ``e_filter_name``, where ``filter_name`` is the
 name of a ``.res`` file in the ``FILTERS`` directory. (In other words,
 columns named ``f_hst_acsF606W`` and ``e_hst_acsF606W`` should refer to
