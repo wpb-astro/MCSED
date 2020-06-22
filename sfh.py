@@ -3,9 +3,11 @@
 
 1) Star Formation Histories:
     a) constant
-    b) exponential
-    c) double powerlaw
-    d) empirical
+    b) burst
+    c) polynomial
+    d) exponential
+    e) double_powerlaw
+    f) binned_lsfr
 
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
@@ -18,14 +20,13 @@ from cosmology import Cosmology
 class constant:
     ''' The constant star formation history '''
     def __init__(self, logsfr=1.0, age=-.5, logsfr_lims=[-3., 3.],
-                 age_lims=[-3., 0.4], logsfr_delta=0.4, age_delta=0.2,
-                 hblim=None):
+                 age_lims=[-3., 0.4], logsfr_delta=0.4, age_delta=0.2):
         ''' Initialize this class
 
         Parameters
         ----------
         logsfr : float
-            Constant SFR in log based 10
+            Constant SFR in log based 10 (M_sun / year)
         age : float
             Age of the galaxy when observed in log Gyrs
         logsfr_lims : list
@@ -43,14 +44,16 @@ class constant:
         self.age_lims = age_lims
         self.logsfr_delta = logsfr_delta
         self.age_delta = age_delta
-        self.nparams = 2
-        self.hblim = hblim
 
     def set_agelim(self, redshift):
         ''' Set the Age limit based on age of the universe '''
         C = Cosmology()
         self.age_lims[1] = np.log10(C.lookback_time(20.) -
                                     C.lookback_time(redshift))
+
+    def get_nparams(self):
+        ''' Return number of parameters '''
+        return 2
 
     def get_params(self):
         ''' Return current parameters '''
@@ -95,46 +98,75 @@ class constant:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
+    def evaluate(self, t, force_params=False):
         ''' Evaluate double power law SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method  
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr = self.logsfr
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr, age = force_params
         msfr = 10**self.logsfr * np.ones(t.shape)
         return msfr
 
-
 class burst:
-    ''' The constant star formation history '''
+    ''' The burst star formation history '''
     def __init__(self, logsfr=1.0, age=-.5, burst_age=7.2, burst_sigma=0.4,
                  burst_strength=5., logsfr_lims=[-3., 3.], age_lims=[-3., 0.4],
                  burst_age_lims=[6., 7.5], burst_sigma_lims=[0.003, 0.5],
                  burst_strength_lims=[1., 10.], logsfr_delta=0.4,
                  age_delta=0.2, burst_age_delta=0.3, burst_sigma_delta=0.005,
-                 burst_strength_delta=2., hblim=None):
+                 burst_strength_delta=2.):
         ''' Initialize this class
 
         Parameters
         ----------
         logsfr : float
-            Constant SFR in log based 10
+            constant SFR in log based 10--base onto which burst is added
         age : float
             Age of the galaxy when observed in log Gyrs
+        burst_age: float
+            Time in log yrs (NOT Gyrs) since burst
+        burst_sigma: float
+            Gaussian width (standard deviation) of burst in log Gyrs (basically duration of burst)
+        burst_strength: float
+            Measure of the star formation during the burst compared to quiescent times
         logsfr_lims : list
+            A two valued list for lower and upper boundary values for logsfr
         age_lims : list
             A two valued list for lower and upper boundary values for age
+        burst_age_lims: list
+            A two valued list for lower and upper boundary values for burst age
+        burst_sigma_lims: list
+            A two valued list for lower and upper boundary values for burst sigma
+        burst_strength_lims: list
+            A two valued list for lower and upper boundary values for burst strength
         logsfr_delta : float
             sigma to draw from a normal distribution when simulating galaxies
         age_delta : float
             sigma to draw from a normal distribution when simulating galaxies
+        burst_age_delta : float
+            sigma to draw from a normal distribution when simulating galaxies
+        burst_sigma_delta : float
+            sigma to draw from a normal distribution when simulating galaxies
+        burst_strength_delta: float
+            sigma to draw from a normal distribution when simulating galaxies
+        
+
         '''
         self.logsfr = logsfr
         self.age = age
@@ -151,14 +183,16 @@ class burst:
         self.burst_age_delta = burst_age_delta
         self.burst_sigma_delta = burst_sigma_delta
         self.burst_strength_delta = burst_strength_delta
-        self.nparams = 4
-        self.hblim = hblim
 
     def set_agelim(self, redshift):
         ''' Set the Age limit based on age of the universe '''
         C = Cosmology()
         self.age_lims[1] = np.log10(C.lookback_time(20.) -
                                     C.lookback_time(redshift))
+
+    def get_nparams(self):
+        ''' Return number of parameters '''
+        return 4
 
     def get_params(self):
         ''' Return current parameters '''
@@ -216,45 +250,51 @@ class burst:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate burst SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        nage = self.burst_age - 9.
-        norm = (self.burst_strength * 10**self.logsfr /
-                np.sqrt(2. * np.pi * self.burst_sigma))
-        gauss = norm * np.exp(-0.5 * (np.log10(t) - nage)**2 / self.burst_sigma**2)
-        msfr = 10**self.logsfr * np.ones(t.shape)
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr, age, burst_age, burst_strength = self.get_params()
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr, age, burst_age, burst_strength = force_params
+        burst_sigma = self.burst_sigma
+
+        nage = burst_age - 9.
+        norm = (burst_strength * 10**logsfr /
+                np.sqrt(2. * np.pi * burst_sigma))
+        gauss = norm * np.exp(-0.5 * (np.log10(t) - nage)**2 / burst_sigma**2)
+        msfr = 10**logsfr * np.ones(t.shape)
         return msfr + gauss
 
-
 class polynomial:
-    ''' The constant star formation history '''
+    ''' The polynomial star formation history '''
     def __init__(self, age_locs=[6.5, 7.5, 8.5], age=-.5,
-                 age_lims=[-3., 0.4], age_delta=0.2, hblim=None):
+                 age_lims=[-3., 0.4], age_delta=0.2):
         ''' Initialize this class
 
         Parameters
         ----------
-        logsfr : float
-            Constant SFR in log based 10
+        agelocs : list
+            << FILL IN >> 
         age : float
             Age of the galaxy when observed in log Gyrs
-        logsfr_lims : list
-            A two valued list for lower and upper boundary values for logsfr
         age_lims : list
             A two valued list for lower and upper boundary values for age
-        logsfr_delta : float
-            sigma to draw from a normal distribution when simulating galaxies
         age_delta : float
             sigma to draw from a normal distribution when simulating galaxies
         '''
@@ -274,8 +314,6 @@ class polynomial:
         self.age = age
         self.age_lims = age_lims
         self.age_delta = age_delta
-        self.nparams = len(age_locs) #+1
-        self.hblim = hblim
 
     def set_agelim(self, redshift):
         ''' Set the Age limit based on age of the universe '''
@@ -283,6 +321,11 @@ class polynomial:
         self.age_lims[1] = np.log10(C.lookback_time(20.) -
                                     C.lookback_time(redshift))
         self.age = self.age_lims[1]*1.
+
+    def get_nparams(self):
+        ''' Return number of parameters '''
+        return len(self.age_locs) #+1
+
     def get_params(self):
         ''' Return current parameters '''
         p = []
@@ -347,47 +390,68 @@ class polynomial:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate polynomial SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
+            
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        v = np.array(self.get_params()[:])
+        if isinstance(force_params, bool):
+            if not force_params:
+                v = np.array(self.get_params()[:]) 
+        else:
+            assert len(force_params)==self.get_nparams()
+            v = np.array(force_params[:])
+
         sol = np.linalg.lstsq(self.matrix, v)[0]
         msfr = 10**(np.polyval(sol, np.log10(t) - self.middle_age + 9.))
         return msfr
 
-
 class exponential:
-    ''' The constant star formation history '''
+    ''' The exponential star formation history '''
     def __init__(self, logsfr=1.0, age=-1.0, tau=-1.5, logsfr_lims=[-3., 3.],
                  age_lims=[-3., 0.4], tau_lims=[-3.5, 3.5],
-                 logsfr_delta=0.3, age_delta=0.2, tau_delta=0.4, hblim=None,
+                 logsfr_delta=0.3, age_delta=0.2, tau_delta=0.4,
                  sign=1.0):
         ''' Initialize this class
 
         Parameters
         ----------
         logsfr : float
-            Constant SFR in log based 10
+            Constant SFR in log based 10--amplitude/coefficient of exponential
         age : float
             Age of the galaxy when observed in log Gyrs
+        tau: float
+            Amount of time in log Gyrs for star formation rate to change 
+            (increase or decrease) by a factor of e (like a scale height)
         logsfr_lims : list
             A two valued list for lower and upper boundary values for logsfr
         age_lims : list
             A two valued list for lower and upper boundary values for age
+        tau_lims : list
+            A two valued list for lower and upper boundary values for tau
         logsfr_delta : float
             sigma to draw from a normal distribution when simulating galaxies
         age_delta : float
             sigma to draw from a normal distribution when simulating galaxies
+        tau_delta : float
+            sigma to draw from a normal distribution when simulating galaxies
+        sign: float
+            If sign is positive (ex: 1.0), SFR increases exponentially with 
+            time moving forward (exponential decay with lookback time)
+            If sign is negative (ex: -1.0), SFR decreases exponentially with 
+            time moving forward (exponential growth with lookback time)
         '''
         self.logsfr = logsfr
         self.age = age
@@ -398,8 +462,6 @@ class exponential:
         self.tau = tau
         self.tau_lims = tau_lims
         self.tau_delta = tau_delta
-        self.nparams = 3
-        self.hblim = hblim
         self.sign = sign
 
     def set_agelim(self, redshift):
@@ -407,6 +469,10 @@ class exponential:
         C = Cosmology()
         self.age_lims[1] = np.log10(C.lookback_time(20.) -
                                     C.lookback_time(redshift))
+
+    def get_nparams(self):
+        ''' Return number of parameters '''
+        return 3
 
     def get_params(self):
         ''' Return current parameters '''
@@ -453,25 +519,35 @@ class exponential:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate exponential SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr, age, tau = self.get_params()
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr, age, tau = force_params
+
         if self.sign > 0.0:
             var = t
         else:
-            var = 10**self.age - t
+            var = 10**age - t
             var = np.max([var, np.zeros(var.shape)], axis=0)
-        msfr = 10**self.logsfr * np.exp(-1. * var / 10**self.tau)
+        msfr = 10**logsfr * np.exp(-1. * var / 10**tau)
         return msfr
 
 
@@ -485,8 +561,7 @@ class double_powerlaw:
     def __init__(self, tau=-2.4, a=3.0, b=2., c=1., age=-.5,
                  tau_lims=[-3., 1.], a_lims=[-1., 5.], b_lims=[0., 5.],
                  c_lims=[0., 5.], age_lims=[-3., 0.4], tau_delta=0.2,
-                 a_delta=0.5, b_delta=0.5, c_delta=0.3, age_delta=0.2,
-                 hblim=None):
+                 a_delta=0.5, b_delta=0.5, c_delta=0.3, age_delta=0.2):
         ''' Initialize this class
 
         Parameters
@@ -499,6 +574,10 @@ class double_powerlaw:
             power for rising SFH
         c : float
             power for decling SFH
+        age : float
+            Age of the galaxy when observed in log Gyrs
+        age_lims : list
+            A two valued list for lower and upper boundary values for age
         tau_lims : list
             A two valued list for lower and upper boundary values for tau
         a_lims : list
@@ -507,6 +586,8 @@ class double_powerlaw:
             A two valued list for lower and upper boundary values for b
         c_lims : list
             A two valued list for lower and upper boundary values for c
+        age_delta : float
+            sigma to draw from a normal distribution when simulating galaxies
         '''
         self.tau = tau
         self.a = a
@@ -523,14 +604,16 @@ class double_powerlaw:
         self.c_delta = c_delta
         self.age_delta = age_delta
         self.age_lims = age_lims
-        self.hblim = hblim
-        self.nparams = 5
 
     def set_agelim(self, redshift):
         ''' Set the Age limit based on age of the universe '''
         C = Cosmology()
         self.age_lims[1] = np.log10(C.lookback_time(20.) -
                                     C.lookback_time(redshift))
+
+    def get_nparams(self):
+        ''' Return number of parameters '''
+        return 5
 
     def get_params(self):
         ''' Return current parameters '''
@@ -583,38 +666,60 @@ class double_powerlaw:
         sfr = self.evaluate(t)
         ax.plot(t, sfr, color=color, alpha=alpha)
 
-    def evaluate(self, t):
+    def evaluate(self, t, force_params=False):
         ''' Evaluate double power law SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        t1 = 10**self.tau
-        msfr = (10**(self.a) * ((t / t1)**self.b +
-                                (t / t1)**(-self.c))**(-1))
+        if isinstance(force_params, bool):
+            if not force_params:
+                tau, a, b, c, age = self.get_params()
+        else:
+            assert len(force_params)==self.get_nparams()
+            tau, a, b, c, age = force_params
+
+        t1 = 10**tau
+        msfr = (10**(a) * ((t / t1)**b +
+                                (t / t1)**(-c))**(-1))
         return msfr
 
-
-class empirical_direct:
-    ''' The empirical SFH includes 6 bins of SFR at discrete time intervals '''
+class binned_lsfr:
+    ''' 
+    The binned_lsfr SFH includes 6 bins of SFR at discrete time intervals
+    and fits for the log SFR within each bin
+    '''
     def __init__(self, init_log_sfr=1.2, init_log_sfr_lims=[-5., 3.],
-                 init_log_sfr_delta=0.7, hblim=None,
-                 ages=[8., 8.5, 9., 9.3]):
+                 init_log_sfr_delta=0.7,
+                 ages=[8., 8.5, 9., 9.5, 9.8, 10.12]):
         ''' Initialize this class
+
         Parameters
         ----------
-        TODO Fill these in
+        init_log_sfr: float
+            Not a class element--this is not one of the SFH parameters
+            It is a blind estimate of the current SFR; we base all initial SFR bin values on it
+        init_log_sfr_lims: list
+            A two valued list for lower and upper boundary values for the SFR in each bin
+        init_log_sfr_delta: float
+            sigma to draw from a normal distribution when simulating galaxies
+        ages: list
+            Right-hand side of (lookback) time bins in log yrs (NOT Gyrs)
+            For example, if ages[0]=8., the first time bin is the last 100 million years 
+            (until the time of observation)
         '''
         self.ages = ages
-        self.nparams = len(self.ages)
-        self.nums = np.arange(1, self.nparams+1, dtype=int)
+        self.nums = np.arange(1, self.get_nparams()+1, dtype=int)
         for num in self.nums:
             setattr(self, 'sfr_' + str(num), init_log_sfr - num**1.2 * 0.3)
             setattr(self, 'sfr_' + str(num) + '_lims', init_log_sfr_lims)
@@ -623,13 +728,23 @@ class empirical_direct:
         self.sfr_2_delta = 0.3
         self.age_lims = [-3., self.ages[-1]-9.]
         self.age = self.age_lims[1] * 1.
-        self.hblim = hblim
 
     def set_agelim(self, redshift):
         ''' Set the Age limit based on age of the universe '''
         C = Cosmology()
         self.age = np.log10(C.lookback_time(20.) -
                             C.lookback_time(redshift))
+        # adjust priors on all age bins that are too old
+        indx_too_old = np.where( self.age < np.array(self.ages)-9. )[0]
+        if len(indx_too_old) > 1:
+            for num in indx_too_old[1:]+1:
+                setattr(self, 'sfr_' + str(num), -99.)
+                setattr(self, 'sfr_' + str(num) + '_lims', [-99-1e-9,-99+1e-9])
+                setattr(self, 'sfr_' + str(num) + '_delta', 1e-9)
+
+    def get_nparams(self):
+        ''' Return number of parameters '''
+        return len(self.ages)
 
     def get_params(self):
         ''' Return current parameters '''
@@ -683,150 +798,51 @@ class empirical_direct:
 
     def plot(self, ax, color=[238/255., 90/255., 18/255.], alpha=0.2):
         ''' Plot SFH for given set of parameters '''
-        t = np.array([6] + self.ages) - 9.
+        t = 10**(np.array([6] + self.ages) - 9.)
         sfr = self.evaluate(t)
-        ax.step(10**t, np.hstack([sfr[0], sfr]), where='pre',
-                color=color, alpha=alpha)
-
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
-        Parameters
-        ----------
-        t : numpy array (1 dim)
-            time in Gyr
-        Returns
-        -------
-        msfr : numpy array (1 dim)
-            Star formation rate at given time in time array
-        '''
-        return [10**p for p in self.get_params()]
+        ax.step(t, sfr, where='pre', color=color, alpha=alpha)
 
 
-class empirical:
-    ''' The empirical SFH includes 6 bins of SFR at discrete time intervals '''
-    def __init__(self, mass=9.5, mass_lims=[6., 12.],
-                 mass_delta=0.5, ages=[7., 8., 8.5, 9., 9.3],
-                 hblim=None):
-        ''' Initialize this class
-
-        Parameters
-        ----------
-        TODO Fill these in
-        '''
-        self.ages = ages
-        self.nparams = len(self.ages)
-        self.nums = np.arange(1, self.nparams, dtype=int)
-        self.mass = mass
-        self.mass_lims = mass_lims
-        self.mass_delta = mass_delta
-        weight = 1. / (np.array(self.ages) - 6.5)**1.5
-        weight /= weight.sum()
-        for num, wei in zip(self.nums, weight[1:]):
-            setattr(self, 'frac_' + str(num+1), wei)
-            setattr(self, 'frac_' + str(num+1) + '_lims', [0., 1.])
-            setattr(self, 'frac_' + str(num+1) + '_delta', wei/2.5)
-        total = 0
-        for num in self.nums:
-            total += getattr(self, 'frac_' + str(num+1))
-        self.firstbin = 1. - total
-        self.age_lims = [self.ages[1]-9., self.ages[-1]-9.]
-        self.age = self.age_lims[1] * 1.
-        self.hblim = hblim
-        self.tdiff = np.diff(10**np.vstack([[0.] + self.ages,
-                             [self.age+9.]*(len(self.ages)+1)]).min(axis=0))
-
-    def set_agelim(self, redshift):
-        ''' Set the Age limit based on age of the universe '''
-        C = Cosmology()
-        # self.age_lims[1] = np.log10(C.lookback_time(20.) -
-        #                             C.lookback_time(redshift))
-        self.age = np.log10(C.lookback_time(20.) - C.lookback_time(redshift))
-        self.tdiff = np.diff(10**np.vstack([[0.] + self.ages,
-                             [self.age+9.]*(len(self.ages)+1)]).min(axis=0))
-
-    def get_params(self):
-        ''' Return current parameters '''
-        l = [self.mass]
-        for num in self.nums:
-            l.append(getattr(self, 'frac_' + str(num+1)))
-        return l
-
-    def get_param_lims(self):
-        ''' Return current parameters limits '''
-        l = [self.mass_lims]
-        for num in self.nums:
-            l.append(getattr(self, 'frac_' + str(num+1) + '_lims'))
-        return l
-
-    def get_param_deltas(self):
-        ''' Return current parameter deltas '''
-        l = [self.mass_delta]
-        for num in self.nums:
-            l.append(getattr(self, 'frac_' + str(num+1) + '_delta'))
-        return l
-
-    def get_names(self):
-        ''' Return names of each parameter '''
-        l = ['lmass']
-        for num in self.nums:
-            l.append('frac_' + str(num+1))
-        return l
-
-    def prior(self):
-        ''' Uniform prior based on boundaries '''
-        flag = True
-        total = 0.
-        for num in self.nums:
-            val = getattr(self, 'frac_' + str(num+1))
-            lims = getattr(self, 'frac_' + str(num+1) + '_lims')
-            flag *= ((val > lims[0]) * (val < lims[1]))
-            total += val
-        mass_flag = ((self.mass > self.mass_lims[0]) *
-                     (self.mass < self.mass_lims[1]))
-        return flag * (total <= 1.) * mass_flag
-
-    def set_parameters_from_list(self, input_list, start_value):
-        ''' Set parameters from a list and a start_value
-
-        Parameters
-        ----------
-        input_list : list
-            list of input parameters (could be much larger than number of
-            parameters to be set)
-        start_value : int
-            initial index from list to read out parameters
-        '''
-        self.mass = input_list[start_value]
-        total = 0
-        for num in self.nums:
-            v = input_list[start_value + num]
-            setattr(self, 'frac_' + str(num+1), v)
-            total += v
-        self.firstbin = 1. - total
-
-    def plot(self, ax, color=[238/255., 90/255., 18/255.], alpha=0.2):
-        ''' Plot SFH for given set of parameters '''
-        sel = np.where((np.array(self.ages)-9.) <= self.age)[0]
-        t = np.hstack([6., np.array(self.ages)[sel]]) - 9
-        sfr = np.array(self.evaluate(t))
-        ax.step(10**t, np.hstack([sfr[0], sfr[sel]]), where='pre',
-                color=color, alpha=alpha)
-
-    def evaluate(self, t):
-        ''' Evaluate double power law SFH
+    def evaluate(self, t, force_params=False):
+        ''' Evaluate binned_lsfr SFH
 
         Parameters
         ----------
         t : numpy array (1 dim)
-            time in Gyr
+            lookback time in Gyr (time = 0 is observation of galaxy)
+        force_params : bool or list
+            if list, use these values to compute SFR
+            same length and order as in get_params() method 
 
         Returns
         -------
         msfr : numpy array (1 dim)
             Star formation rate at given time in time array
         '''
-        v = self.get_params()
-        v.insert(1, self.firstbin)        
-        mass = 10**v[0]
-        denominator = np.dot(self.tdiff, v[1:])
-        return [mass * p / denominator for p in v[1:]]
+
+        if isinstance(force_params, bool):
+            if not force_params:
+                logsfr = np.array(self.get_params())
+        else:
+            assert len(force_params)==self.get_nparams()
+            logsfr = np.array(force_params)
+
+        if type(t) in [float, int]:
+            t = np.array([t])
+        elif type(t) != np.ndarray:
+            t = np.array(t)
+        # linear SFR in each SFH time bin
+        sfr_bin = 10. ** logsfr 
+        # Ensure that self.ages, t are both in units of log years
+        t_logyr = np.log10( t * 1e9 ) 
+
+        bin_indx = np.searchsorted(self.ages, t_logyr, side="left")
+        # adjust any times falling beyond the last SFH age bin
+        sel_too_old = bin_indx > len(sfr_bin)-1
+        bin_indx[ sel_too_old ] = len(sfr_bin)-1
+        sfr = sfr_bin[ bin_indx ]
+        sfr[ sel_too_old ] = 1e-99
+        return sfr
+
+
+

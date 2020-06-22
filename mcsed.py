@@ -1,42 +1,52 @@
 """ SED fitting class using emcee for parameter estimation
 
-    CURRENT LIMITATIONS:
-        A) Constant metallicity for input SSP
-        B) Dust Emission is ad hoc from Draine and Li (2007)
-
-    OPTIONAL FITTED PARAMETERS:
-        A) SFH
-            a) tau_sfh, age, a, b, c
-        B) Dust law
-            b) tau_dust, delta, Eb
-
-    OUTPUT PRODUCTS:
-        A) XXX Plot
-
 .. moduleauthor:: Greg Zeimann <gregz@astro.as.utexas.edu>
 
 """
-
 import logging
 import sfh
 import dust_abs
 import dust_emission
-import ssp
+import metallicity
 import cosmology
 import emcee
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import corner
 import time
-
+from scipy.integrate import simps
+from scipy.interpolate import interp1d
+from astropy.constants import c as clight
 import numpy as np
-import matplotlib.pyplot as plt
+
+plt.ioff() 
+
+import seaborn as sns
+sns.set_context("talk") # options include: talk, poster, paper
+sns.set_style("ticks")
+sns.set_style({"xtick.direction": "in","ytick.direction": "in",
+               "xtick.top":True, "ytick.right":True,
+               "xtick.major.size":12, "xtick.minor.size":4,
+               "ytick.major.size":12, "ytick.minor.size":4,
+               })
 
 
 class Mcsed:
-    def __init__(self, filter_matrix, ssp_spectra, ssp_ages, ssp_masses,
-                 ssp_met, wave, sfh_name, dust_abs_name, dust_em_name,
-                 data_fnu=None, data_fnu_e=None, redshift=None,
-                 filter_flag=None, input_spectrum=None, input_params=None,
-                 sigma_m=0.1, nwalkers=40, nsteps=1000, true_fnu=None):
+    def __init__(self, filter_matrix, ssp_spectra,
+                 emlinewave, ssp_emline, ssp_ages, ssp_met, wave, 
+                 sfh_class, dust_abs_class, dust_em_class, met_class=None,
+                 nfreeparams=None, t_birth=None, SSP=None, lineSSP=None, 
+                 data_fnu=None, data_fnu_e=None, 
+                 data_emline=None, data_emline_e=None, emline_dict=None,
+                 use_emline_flux=None, linefluxCSPdict=None,
+                 data_absindx=None, data_absindx_e=None, absindx_dict=None,
+                 use_absorption_indx=None, absindxCSPdict=None,
+                 fluxwv=None, fluxfn=None, medianspec=None, spectrum=None, 
+                 redshift=None, Dl=None, filter_flag=None, 
+                 input_params=None, true_fnu=None, true_spectrum=None, 
+                 sigma_m=0.1, nwalkers=40, nsteps=1000, 
+                 chi2=None, tauISM_lam=None, tauIGM_lam=None):
         ''' Initialize the Mcsed class.
 
         Init
@@ -44,36 +54,104 @@ class Mcsed:
         filter_matrix : numpy array (2 dim)
             The filter_matrix has rows of wavelength and columns for each
             filter (can be much larger than the filters used for fitting)
-        ssp_spectra : numpy array (2 dim)
+        ssp_spectra : numpy array (3 dim)
             single stellar population spectrum for each age in ssp_ages
+            and each metallicity in ssp_met 
+        emlinewave : numpy array (1 dim)
+            Rest-frame wavelengths of requested emission lines (emline_dict)
+            Corresponds to ssp_emline
+        ssp_emline : numpy array (3 dim)
+            Emission line SSP grid spanning emlinewave, age, metallicity
+            Only includes requested emission lines (from emline_dict)
+            Only used for calculating model emission line strengths
+            Spectral units are ergs / s / cm2 at 10 pc
         ssp_ages : numpy array (1 dim)
             ages of the SSP models
-        ssp_masses : numpy array (1 dim)
-            remnant masses of the SSP models
+        ssp_met : numpy array (1 dim)
+            metallicities of the SSP models
+            assume a grid of values Z, where Z_solar = 0.019
         wave : numpy array (1 dim)
             wavelength for SSP models and all model spectra
-        sfh_class : class
+        sfh_class : str
+            Converted from str to class in initialization
             This is the input class for sfh.  Each class has a common attribute
-            which is "sfh_class.nparams" for organizing the total model_params.
+            which is "sfh_class.get_nparams()" for organizing the total model_params.
             Also, each class has a key function, sfh_class.evaluate(t), with
             the input of time in units of Gyrs
-        dust_abs_class : class
+        dust_abs_class : str 
+            Converted from str to class in initialization
             This is the input class for dust absorption.
-        dust_em_class : class
-            This is the input class for dust absorption.
+        dust_em_class : str
+            Converted from str to class in initialization
+            This is the input class for dust emission.
+        met_class : str
+            Converted from str to class in initialization
+            This is the input class for stellar metallicity
+        nfreeparams : int
+            number of free model parameters
+        t_birth : float
+            Age of the birth cloud in Gyr
+            set from the value provided in config.py
+        SSP : numpy array (2 dim)
+            Grid of SSP spectra at current guess of stellar metallicity
+            (set from ssp_spectra)
+        lineSSP : numpy array (2 dim)
+            Grid of emission line fluxes at each age in the SSP grid
+            (set from ssp_emline)
         data_fnu : numpy array (1 dim)
             Photometry for data.  Length = (filter_flag == True).sum()
         data_fnu_e : numpy array (1 dim)
             Photometric errors for data
+        data_emline : Astropy Table (1 dim)
+            Emission line fluxes in units ergs / cm2 / s
+        data_emline_e : Astropy Table (1 dim)
+            Emission line errors in units ergs / cm2 / s
+        emline_dict : dictionary
+            Keys are emission line names (str)
+            Values are a two-element tuple:
+                (rest-frame wavelength in Angstroms (float), weight (float))
+            emline_list_dict defined in config.py, containing only the 
+            emission lines that were also provided in the input file
+            (i.e., only the measurements that will be used to constrain the model)
+        use_emline_flux : bool
+            If emline_dict contains emission lines, set to True. Else, False
+        linefluxCSPdict : dict
+            Emission-line fluxes for current SED model
+        data_absindx : Astropy Table (1 dim)
+            Absorption line indices
+        data_absindx_e : Astropy Table (1 dim)
+            Absorption line index errors
+        absindx_dict : dict
+            absorption_index_dict defined in config.py, containing only 
+            measurements that were also provided in the input file
+            (i.e., only the measurements that will be used to constrain the model)
+        use_absorption_indx : bool
+            True, if index measurements were included in the input file and
+            should be used in the model selection
+        absindxCSPdict : dict
+            Absorption line index measurements for current SED model
+        fluxwv : numpy array (1 dim)
+            wavelengths of photometric filters
+        fluxfn : numpy array (1 dim)
+            flux densities of modeled photometry
+        medianspec : numpy array (1 dim)
+            best-fit SED model (same length as self.wave)
+            set after fitting the model
+        spectrum : numpy array (1 dim)
+            current SED model (same length as self.wave) 
         redshift : float
             Redshift of the source
+        Dl : float
+            Luminosity distance of the galaxy (in units of 10 pc)
         filter_flag : numpy array (1 dim)
             Length = filter_matrix.shape[1], True for filters matching data
-        input_spectrum : numpy array (1 dim)
-            F_nu(wave) for input
         input_params : list
             input parameters for modeling.  Intended for testing fitting
             procedure.
+        true_fnu : numpy array (1 dim)
+            True photometry for test mode.  Length = (filter_flag == True).sum()
+        true_spectrum : numpy array (1 dim)
+            truth model spectrum in test model (realized from input_params)
         sigma_m : float
             Fractional error expected from the models.  This is used in
             the log likelihood calculation.  No model is perfect, and this is
@@ -82,40 +160,69 @@ class Mcsed:
             The number of walkers for emcee when fitting a model
         nsteps : int
             The number of steps each walker will make when fitting a model
+        chi2 : dict
+            keys: 'dof', 'chi2', 'rchi2'
+            Track the degrees of freedom (accounting for data and model parameters)
+            and the chi2 and reduced chi2 of the current fit
+        tauISM_lam : numpy array (1 dim)
+            Array of effective optical depths as function of wavelength 
+            for MW dust correction
+        tauIGM_lam : numpy array (1 dim)
+            Array of effective optical depths as function of wavelength 
+            for IGM gas correction
         '''
         # Initialize all argument inputs
         self.filter_matrix = filter_matrix
         self.ssp_spectra = ssp_spectra
+        self.emlinewave = emlinewave
+        self.ssp_emline = ssp_emline
         self.ssp_ages = ssp_ages
-        self.ssp_masses = ssp_masses
         self.ssp_met = ssp_met
         self.wave = wave
         self.dnu = np.abs(np.hstack([0., np.diff(2.99792e18 / self.wave)]))
-        self.sfh_class = getattr(sfh, sfh_name)()
-        self.dust_abs_class = getattr(dust_abs, dust_abs_name)()
-        self.ssp_class = getattr(ssp, 'fsps_freeparams')()
-        self.dust_em_class = getattr(dust_emission, dust_em_name)()
-        self.SSP = None
-        self.param_classes = ['sfh_class', 'dust_abs_class', 'ssp_class',
+        self.sfh_class = getattr(sfh, sfh_class)()
+        self.dust_abs_class = getattr(dust_abs, dust_abs_class)()
+        self.dust_em_class = getattr(dust_emission, dust_em_class)()
+        self.met_class = getattr(metallicity, 'stellar_metallicity')()
+        self.param_classes = ['sfh_class', 'dust_abs_class', 'met_class',
                               'dust_em_class']
+        self.nfreeparams = nfreeparams
+        self.t_birth = t_birth
+        self.SSP = None
+        self.lineSSP = None
         self.data_fnu = data_fnu
         self.data_fnu_e = data_fnu_e
+        self.data_emline = data_emline
+        self.data_emline_e = data_emline_e
+        self.emline_dict = emline_dict
+        self.use_emline_flux = use_emline_flux
+        self.linefluxCSPdict = None
+        self.data_absindx = data_absindx
+        self.data_absindx_e = data_absindx_e
+        self.absindx_dict = absindx_dict
+        self.use_absorption_indx = use_absorption_indx
+        self.absindxCSPdict = None
+        self.fluxwv = fluxwv
+        self.fluxfn = fluxfn
+        self.medianspec = medianspec
+        self.spectrum = None
         self.redshift = redshift
+        if self.redshift is not None:
+            self.set_new_redshift(self.redshift)
+        self.Dl = Dl
         self.filter_flag = filter_flag
-        self.input_spectrum = input_spectrum
         self.input_params = input_params
+        self.true_fnu = true_fnu
+        self.true_spectrum = true_spectrum
         self.sigma_m = sigma_m
         self.nwalkers = nwalkers
         self.nsteps = nsteps
-        self.true_fnu = true_fnu
-        if self.redshift is not None:
-            self.set_new_redshift(self.redshift)
+        self.chi2 = chi2
+        self.tauISM_lam = tauISM_lam
+        self.tauIGM_lam = tauIGM_lam
 
         # Set up logging
         self.setup_logging()
-
-        # Time array for sfh
-        self.age_eval = np.logspace(-3, 1, 4000)
 
     def set_new_redshift(self, redshift):
         ''' Setting redshift
@@ -126,7 +233,7 @@ class Mcsed:
             Redshift of the source for fitting
         '''
         self.redshift = redshift
-        # Need luminosity distance to adjust ssp_spectra from 10pc to Dl
+        # Need luminosity distance to adjust spectrum to distance of the source
         self.Dl = cosmology.Cosmology().luminosity_distance(self.redshift)
         self.sfh_class.set_agelim(self.redshift)
 
@@ -155,25 +262,44 @@ class Mcsed:
             self.log.setLevel(logging.DEBUG)
             self.log.addHandler(handler)
 
-    def remove_lya_filters(self):
-        ''' FILL IN
+    def remove_waverange_filters(self, wave1, wave2, restframe=True):
+        '''Remove filters in a given wavelength range
+
+        Parameters
+        ----------
+        wave1 : float
+            start wavelength of masked range (in Angstroms)
+        wave2 : float
+            end wavelength of masked range (in Angstroms)
+        restframe : bool
+            if True, wave1 and wave2 correspond to rest-frame wavelengths
         '''
-        loc = np.searchsorted(self.wave, 1216. * (1. + self.redshift))
-        loc2 = np.searchsorted(self.wave, 60000.)
+        wave1, wave2 = np.sort([wave1, wave2])
+        if restframe:
+            wave_factor = 1. + self.redshift
+        else:
+            wave_factor = 1.
+        loc1 = np.searchsorted(self.wave, wave1 * wave_factor)
+        loc2 = np.searchsorted(self.wave, wave2 * wave_factor)
+        # account for the case where indices are the same
+        if (loc1 == loc2):
+            loc2+=1
         maxima = np.max(self.filter_matrix, axis=0)
-        newflag = np.max(self.filter_matrix[:loc, :], axis=0) < maxima * 0.1
-        newflag2 = np.max(self.filter_matrix[loc2:, :], axis=0) < maxima * 0.1
+        try:
+            newflag = np.max(self.filter_matrix[loc1:loc2, :], axis=0) < maxima * 0.1
+        except ValueError:
+            return
         maximas = np.max(self.filter_matrix[:, self.filter_flag], axis=0)
-        newflags = np.max(self.filter_matrix[:loc, self.filter_flag], axis=0) < maximas * 0.1
-        newflags2 = np.max(self.filter_matrix[loc2:, self.filter_flag], axis=0) < maximas * 0.1
-        self.filter_flag = self.filter_flag * newflag * newflag2
+        newflags = np.max(self.filter_matrix[loc1:loc2, self.filter_flag], axis=0) < maximas * 0.1
+        self.filter_flag = self.filter_flag * newflag
         if self.true_fnu is not None:
-            self.true_fnu = self.true_fnu[newflags * newflags2]
-        self.data_fnu = self.data_fnu[newflags*newflags2]
-        self.data_fnu_e = self.data_fnu_e[newflags*newflags2]
+            self.true_fnu = self.true_fnu[newflags]
+        self.data_fnu = self.data_fnu[newflags]
+        self.data_fnu_e = self.data_fnu_e[newflags]
+
 
     def get_filter_wavelengths(self):
-        ''' FILL IN
+        '''Get central wavelengths of photometric filters 
         '''
         wave_avg = np.dot(self.wave, self.filter_matrix[:, self.filter_flag])
         return wave_avg
@@ -181,7 +307,7 @@ class Mcsed:
     def get_filter_fluxdensities(self):
         '''Convert a spectrum to photometric fluxes for a given filter set.
         The photometric fluxes will be in the same units as the spectrum.
-        Ideally, the spectrum should be in microjanskies(lambda) such that
+        The spectrum is in microjanskies(lambda) such that
         the photometric fluxes will be in microjanskies.
 
         Returns
@@ -192,6 +318,61 @@ class Mcsed:
         f_nu = np.dot(self.spectrum, self.filter_matrix[:, self.filter_flag])
         return f_nu
 
+
+    def measure_absorption_index(self):
+        '''
+        measure absorption indices using current spectrum
+        '''
+        self.absindxCSPdict = {}
+        if self.use_absorption_indx:
+            # convert the spectrum from units of specific frequency to specific wavelength
+            wave = self.wave.copy()
+            factor = clight.to('Angstrom/s').value / wave**2.
+            spec = self.spectrum * factor
+
+            for indx in self.absindx_dict.keys():
+                wht, wave_indx, wave_blue, wave_red, unit = self.absindx_dict[indx]
+
+                # select appropriate data ranges for blue/red continuum and index
+                sel_index = np.array([False]*len(wave))
+                sel_index[np.argmin(abs(wave-wave_indx[0])):np.argmin(abs(wave-wave_indx[1]))] = True
+                if abs(np.argmin(abs(wave-wave_indx[0]))-np.argmin(abs(wave-wave_indx[1])))<2:
+                    sel_index[np.argmin(abs(wave-wave_indx[0])):np.argmin(abs(wave-wave_indx[0]))+2] = True
+                sel_blue = np.array([False]*len(wave))
+                sel_blue[np.argmin(abs(wave-wave_blue[0])):np.argmin(abs(wave-wave_blue[1]))] = True
+                if abs(np.argmin(abs(wave-wave_blue[0]))-np.argmin(abs(wave-wave_blue[1])))<2:
+                    sel_blue[np.argmin(abs(wave-wave_blue[0])):np.argmin(abs(wave-wave_blue[0]))+2] = True
+                sel_red = np.array([False]*len(wave))
+                sel_red[np.argmin(abs(wave-wave_red[0])):np.argmin(abs(wave-wave_red[1]))] = True
+                if abs(np.argmin(abs(wave-wave_red[0]))-np.argmin(abs(wave-wave_red[1])))<2:
+                    sel_red[np.argmin(abs(wave-wave_red[0])):np.argmin(abs(wave-wave_red[0]))+2] = True
+
+                # estimate continuum in the index:
+                fw_blue  = np.dot(spec[sel_blue][0:-1], np.diff(wave[sel_blue])) 
+                fw_blue /= np.diff(wave[sel_blue][[0,-1]])
+                fw_red   = np.dot(spec[sel_red][0:-1],  np.diff(wave[sel_red]))  
+                fw_red  /= np.diff(wave[sel_red][[0,-1]])
+                cont_waves = [np.median(wave_blue), np.median(wave_red)]
+                cont_fw    = [fw_blue, fw_red]
+                coeff = np.polyfit( cont_waves, cont_fw, 1)
+                cont_index = coeff[0] * wave[sel_index] + coeff[1]
+
+                # flux ratio of index and continuum
+                spec_index = spec[sel_index] / cont_index
+
+                if unit==0: # return measurement in equivalent width (Angstroms)
+                    value = np.dot( 1. - spec_index[0:-1], np.diff(wave[sel_index]) )
+
+                if unit==1: # return measurement in magnitudes
+                    integral = np.dot( spec_index[0:-1], np.diff(wave[sel_index]) )
+                    value = -2.5 * np.log10( integral / np.diff(wave[sel_index][[0,-1]]) ) 
+
+                if unit==2: # return measurement as a flux density ratio (red / blue)
+                    value = fw_red / fw_blue
+
+                self.absindxCSPdict[indx] = float(value)
+
+
     def set_class_parameters(self, theta):
         ''' For a given set of model parameters, set the needed class variables
         related to SFH, dust attenuation, ect.
@@ -199,112 +380,202 @@ class Mcsed:
         Input
         -----
         theta : list
-            list of input parameters for sfh, dust att., and dust em.
+            list of input parameters for sfh, dust attenuation, 
+            stellar metallicity, and dust emission
         '''
         start_value = 0
         ######################################################################
         # STAR FORMATION HISTORY
         self.sfh_class.set_parameters_from_list(theta, start_value)
-        # Keeping track of theta index for age of model and other classes
-        start_value += self.sfh_class.nparams
+        start_value += self.sfh_class.get_nparams()
 
         ######################################################################
         # DUST ATTENUATION
         self.dust_abs_class.set_parameters_from_list(theta, start_value)
-        start_value += self.dust_abs_class.nparams
+        start_value += self.dust_abs_class.get_nparams()
 
         ######################################################################
-        # SSP Parameters
-        self.ssp_class.set_parameters_from_list(theta, start_value)
-        start_value += self.ssp_class.nparams
+        # STELLAR METALLICITY 
+        self.met_class.set_parameters_from_list(theta, start_value)
+        start_value += self.met_class.get_nparams()
 
         ######################################################################
         # DUST EMISSION
         self.dust_em_class.set_parameters_from_list(theta, start_value)
-        start_value += self.dust_em_class.nparams
+        start_value += self.dust_em_class.get_nparams()
+
 
     def get_ssp_spectrum(self):
         '''
-        Calculate SSP for an arbitrary metallicity (self.ssp_class.met) given a
+        Calculate SSP for an arbitrary metallicity (self.met_class.met) given a
         model grid for a range of metallicities (self.ssp_met)
+
+        if left as a free parameter, stellar metallicity (self.met_class.met)
+        spans a range of log(Z / Z_solar)
+
+        the SSP grid of metallicities (self.ssp_met) assumes values of Z
+        (as opposed to log solar values)
 
         Returns
         -------
         SSP : 2-d array
             Single stellar population models for each age in self.ages
+        lineSSP : 2-d array
+            Single stellar population line fluxes for each age in self.ages
+
         '''
-        if self.ssp_class.fix_met:
+        if self.met_class.fix_met:
             if self.SSP is not None:
-                return self.SSP
+                return self.SSP, self.lineSSP
         Z = np.log10(self.ssp_met)
-        z = self.ssp_class.met + np.log10(0.019)
+        Zsolar = 0.019
+        z = self.met_class.met + np.log10(Zsolar)
         X = Z - z
         wei = np.exp(-(X)**2 / (2. * 0.15**2))
         wei /= wei.sum()
         self.SSP = np.dot(self.ssp_spectra, wei)
-        return self.SSP
+        if self.use_emline_flux:
+            self.lineSSP = np.dot(self.ssp_emline, wei)
+        else:
+            self.lineSSP = self.ssp_emline[:,:,0]
+        return self.SSP, self.lineSSP
 
     def build_csp(self, sfr=None):
         '''Build a composite stellar population model for a given star
         formation history, dust attenuation law, and dust emission law.
 
+        In addition to the returns it also modifies a lineflux dictionary
+
         Returns
         -------
         csp : numpy array (1 dim)
-            Composite stellar population model at self.redshift
+            Composite stellar population model (micro-Jy) at self.redshift
         mass : float
             Mass for csp given the SFH input
         '''
         # Collapse for metallicity
-        SSP = self.get_ssp_spectrum()
+        SSP, lineSSP = self.get_ssp_spectrum()
 
         # Need star formation rate from observation back to formation
         if sfr is None:
             sfr = self.sfh_class.evaluate(self.ssp_ages)
-        ageval = 10**self.sfh_class.age
+        ageval = 10**self.sfh_class.age # Gyr
 
+        # Treat the birth cloud and diffuse component separately
+        age_birth = self.t_birth 
+
+        # Get dust-free CSPs, properly accounting for ages
         # ageval sets limit on ssp_ages that are useable in model calculation
-        sel = self.ssp_ages <= ageval
+        # age_birth separates birth cloud and diffuse components
+        sel = (self.ssp_ages > age_birth) & (self.ssp_ages <= ageval)
+        sel_birth = (self.ssp_ages <= age_birth) & (self.ssp_ages <= ageval)
+        sel_age = self.ssp_ages <= ageval
 
-        # The weight is the time between ages of each SSP
+        # The weight is the linear time between ages of each SSP
         weight = np.diff(np.hstack([0, self.ssp_ages])) * 1e9 * sfr
-        # Ages greater than ageval should have zero weight in csp
+        weight_orig = weight.copy()
+        weight_birth = weight.copy()
+        weight_age = weight.copy()
         weight[~sel] = 0
+        weight_birth[~sel_birth] = 0
+        weight_age[~sel_age] = 0
 
         # Cover the two cases where ssp_ages contains ageval and when not
+        # A: index of last acceptable SSP age
         A = np.nonzero(self.ssp_ages <= ageval)[0][-1]
+        # indices of SSP ages that are too old
         select_too_old = np.nonzero(self.ssp_ages >= ageval)[0]
         if len(select_too_old):
-            B = np.nonzero(self.ssp_ages >= ageval)[0][0]
-            if A == B:
-                spec_dustfree = np.dot(SSP, weight)
-                mass = np.sum(weight * self.ssp_masses)
-            else:
+            # B: index of first SSP that is too old
+            B = select_too_old[0]
+            # only adjust weight if ageval falls between two SSP age gridpoints
+            if A != B:
                 lw = ageval - self.ssp_ages[A]
                 wei = lw * 1e9 * np.interp(ageval, self.ssp_ages, sfr)
-                weight[B] = wei
-                spec_dustfree = np.dot(SSP, weight)
-                mass = np.sum(weight * self.ssp_masses)
-        else:
-            spec_dustfree = np.dot(SSP, weight)
-            mass = np.sum(weight * self.ssp_masses)
+                if ageval > age_birth:
+                    weight[B] = wei
+                if ageval <= age_birth:
+                    weight_birth[B] = wei
+                weight_age[B] = wei
 
-        # Need to correct for dust attenuation
+        # Cover two cases where ssp_ages contains age_birth and when not
+        # A: index of last acceptable SSP age
+        A = np.nonzero(self.ssp_ages <= age_birth)[0][-1]
+        # indices of SSP ages that are too old
+        select_too_old = np.nonzero(self.ssp_ages >= age_birth)[0]
+        if (len(select_too_old)>0): 
+            # B: index of first SSP that is too old
+            B = select_too_old[0]
+            if A != B:
+                lw = age_birth - self.ssp_ages[A]
+                wei = lw * 1e9 * np.interp(age_birth, self.ssp_ages, sfr)
+                if ageval > age_birth:
+                    weight[B] = weight_age[B] - wei
+                if ageval >= age_birth:
+                    weight_birth[B] = wei
+                else:
+                    weight_birth[B] = weight_age[B]
+
+        # Finally, do the matrix multiplication using the weights
+        spec_dustfree = np.dot(self.SSP, weight)
+        spec_birth_dustfree = np.dot(self.SSP, weight_birth)
+        linespec_dustfree = np.dot(self.lineSSP, weight_birth)
+        mass = np.sum(weight_age)
+
+        # Need to correct spectrum for dust attenuation
         Alam = self.dust_abs_class.evaluate(self.wave)
         spec_dustobscured = spec_dustfree * 10**(-0.4 * Alam)
 
-        # Change in bolometric Luminosity
-        L_bol = (np.dot(self.dnu, spec_dustfree) -
-                 np.dot(self.dnu, spec_dustobscured))
+        # Correct the corresponding birth cloud spectrum separately
+        Alam_birth = Alam / self.dust_abs_class.EBV_old_young
+        spec_birth_dustobscured = spec_birth_dustfree * 10**(-0.4 * Alam_birth)
 
-        # Add dust emission
-        spec_dustobscured += L_bol * self.dust_em_class.evaluate(self.wave)
+        # Combine the young and old components
+        spec_dustfree += spec_birth_dustfree
+        spec_dustobscured += spec_birth_dustobscured
 
-        # Redshift to observed frame
+        # Compute attenuation for emission lines
+        Alam_emline = (self.dust_abs_class.evaluate(self.emlinewave,new_wave=True)
+                       / self.dust_abs_class.EBV_old_young)
+        linespec_dustobscured = linespec_dustfree * 10**(-0.4*Alam_emline)
+
+        if self.dust_em_class.assume_energy_balance:
+            # Bolometric luminosity of dust attenuation (for energy balance)
+            L_bol = (np.dot(self.dnu, spec_dustfree) - np.dot(self.dnu, spec_dustobscured)) 
+            dust_em = self.dust_em_class.evaluate(self.wave)
+            L_dust = np.dot(self.dnu,dust_em)
+            mdust_eb = L_bol/L_dust 
+            spec_dustobscured += mdust_eb * dust_em
+        else:
+            spec_dustobscured += self.dust_em_class.evaluate(self.wave)
+
+        # Redshift the spectrum to the observed frame
         csp = np.interp(self.wave, self.wave * (1. + self.redshift),
                         spec_dustobscured * (1. + self.redshift))
+
+        # Correct for ISM and/or IGM (or neither)
+        if self.tauIGM_lam is not None:
+            csp *= np.exp(-self.tauIGM_lam)
+        if self.tauISM_lam is not None:
+            csp *= np.exp(-self.tauISM_lam)
+
+        # Update dictionary of modeled emission line fluxes
+        linefluxCSPdict = {}
+        if self.use_emline_flux:
+            for emline in self.emline_dict.keys():
+                indx = np.argmin(np.abs(self.emlinewave 
+                                        - self.emline_dict[emline][0]))
+                # flux is given in ergs / s / cm2 at 10 pc
+                flux = linespec_dustobscured[indx]
+                # Correct flux from 10pc to redshift of source
+                linefluxCSPdict[emline] = linespec_dustobscured[indx] / self.Dl**2
+        self.linefluxCSPdict = linefluxCSPdict
+
         # Correct spectra from 10pc to redshift of the source
-        return csp / self.Dl**2, mass
+        if self.dust_em_class.assume_energy_balance:
+            return csp / self.Dl**2, mass, mdust_eb
+        else:
+            return csp / self.Dl**2, mass
 
     def lnprior(self):
         ''' Simple, uniform prior for input variables
@@ -321,55 +592,116 @@ class Mcsed:
         else:
             return 0.0
 
-    def measure_hb(self):
-        ze = (1 + self.redshift) * 4861.
-        xl = np.searchsorted(self.wave, ze)
-        dnu = np.diff(3e18 / self.wave[xl-4:xl+5])
-        dnuA = 3e18 / ze - 3e18 / ((1 + self.redshift) * 4865.)
-        y = self.spectrum[xl-4:xl+4]
-        b = self.spectrum[xl-7]
-        return np.dot((y-b), np.abs(dnu)) / 1e29 + (b * dnuA / 1e29)
-
     def lnlike(self):
         ''' Calculate the log likelihood and return the value and stellar mass
-        of the model
+        of the model as well as other derived parameters
 
         Returns
         -------
-        log likelihood, mass : float, float
+        log likelihood, mass, sfr10, sfr100, fpdr, mdust_eb : (all float)
             The log likelihood includes a chi2_term and a parameters term.
             The mass comes from building of the composite stellar population
+            The parameters sfr10, sfr100, fpdr, mdust_eb are derived in get_derived_params(self)
         '''
-        self.spectrum, mass = self.build_csp()
-        init_term = 0.0
-        self.hbflux = self.measure_hb()
-        if self.sfh_class.hblim is not None:
-            init_term = (-0.5 * (self.hbflux - self.sfh_class.hblim)**2 /
-                         self.sfh_class.hblim_error**2) * 1.
+        if self.dust_em_class.assume_energy_balance:
+            self.spectrum, mass, mdust_eb = self.build_csp()
+        else:
+            self.spectrum, mass = self.build_csp()
+            mdust_eb = None
+
+        sfr10,sfr100,fpdr = self.get_derived_params()
+
+        # likelihood contribution from the photometry
         model_y = self.get_filter_fluxdensities()
         inv_sigma2 = 1.0 / (self.data_fnu_e**2 + (model_y * self.sigma_m)**2)
         chi2_term = -0.5 * np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
         parm_term = -0.5 * np.sum(np.log(1 / inv_sigma2))
-        return (chi2_term + parm_term + init_term, mass)
+
+        # calculate the degrees of freedom and store the current chi2 value
+        if not self.chi2:
+            dof_wht = list(np.ones(len(self.data_fnu)))
+
+        # likelihood contribution from the absorption line indices
+        self.measure_absorption_index()
+        if self.use_absorption_indx:
+            for indx in self.absindx_dict.keys():
+                unit = self.absindx_dict[indx][-1]
+                # if null value, ignore it (null = -99)
+                if (self.data_absindx['%s_INDX' % indx]+99 > 1e-10):
+                    indx_weight = self.absindx_dict[indx][0]
+                    model_indx = self.absindxCSPdict[indx]
+                    if unit == 1: # magnitudes
+                        model_err = 2.5*np.log10(1.+self.sigma_m)
+                    else:
+                        model_err = model_indx * self.sigma_m
+                    obs_indx = self.data_absindx['%s_INDX' % indx]
+                    obs_indx_e = self.data_absindx_e['%s_Err' % indx]
+                    sigma2 = obs_indx_e**2. + model_err**2.
+                    chi2_term += (-0.5 * (model_indx - obs_indx)**2 /
+                                  sigma2) * indx_weight
+                    parm_term += -0.5 * np.log(indx_weight * sigma2)
+                    if not self.chi2:
+                        dof_wht.append(indx_weight) 
+
+        # likelihood contribution from the emission lines
+        if self.use_emline_flux:
+            # if all lines have null line strengths, ignore 
+            if not min(self.data_emline) == max(self.data_emline) == -99:
+                for emline in self.emline_dict.keys():
+                    if self.data_emline['%s_FLUX' % emline] > -99: # null value
+                        emline_wave, emline_weight = self.emline_dict[emline]
+                        model_lineflux = self.linefluxCSPdict[emline]
+                        model_err = model_lineflux * self.sigma_m
+                        lineflux  = self.data_emline['%s_FLUX' % emline]
+                        elineflux = self.data_emline_e['%s_ERR' % emline]
+                        sigma2 = elineflux**2. + model_err**2.
+                        chi2_term += (-0.5 * (model_lineflux - lineflux)**2 /
+                                      sigma2) * emline_weight
+                        parm_term += -0.5 * np.log(emline_weight * sigma2)
+                        if not self.chi2:
+                            dof_wht.append(emline_weight)
+
+        # record current chi2 and degrees of freedom
+        if not self.chi2:
+            self.chi2 = {}
+            dof_wht = np.array(dof_wht)
+            npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht) + 1
+            self.chi2['dof'] = npt - self.nfreeparams 
+        self.chi2['chi2']  = -2. * chi2_term
+        self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
+
+        return (chi2_term + parm_term, mass,sfr10,sfr100,fpdr,mdust_eb)
 
     def lnprob(self, theta):
-        ''' Calculate the log probabilty and return the value and stellar mass
-        of the model
+        ''' Calculate the log probabilty and return the value and stellar mass 
+        (as well as derived parameters) of the model
 
         Returns
         -------
-        log prior + log likelihood, mass : float, float
+        log prior + log likelihood, [mass,sfr10,sfr100,fpdr,mdust_eb]: (all floats) 
             The log probability is just the sum of the logs of the prior and
             likelihood.  The mass comes from the building of the composite
-            stellar population.
+            stellar population. The other derived parameters are calculated in get_derived_params()
         '''
         self.set_class_parameters(theta)
         lp = self.lnprior()
         if np.isfinite(lp):
-            lnl, mass = self.lnlike()
-            return lp + lnl, mass
+            lnl,mass,sfr10,sfr100,fpdr,mdust_eb = self.lnlike()
+            if not self.dust_em_class.fixed:
+                if self.dust_em_class.assume_energy_balance:
+                    return lp + lnl, np.array([mass,sfr10,sfr100,fpdr,mdust_eb])
+                else:
+                    return lp + lnl, np.array([mass, sfr10, sfr100, fpdr])
+            else:
+                return lp + lnl, np.array([mass, sfr10, sfr100])
         else:
-            return -np.inf, -np.inf
+            if not self.dust_em_class.fixed:
+                if self.dust_em_class.assume_energy_balance:
+                    return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+                else:
+                    return -np.inf, np.array([-np.inf, -np.inf, -np.inf, -np.inf])
+            else:
+                return -np.inf, np.array([-np.inf, -np.inf, -np.inf])
 
     def get_init_walker_values(self, kind='ball', num=None):
         ''' Before running emcee, this function generates starting points
@@ -426,6 +758,7 @@ class Mcsed:
         for par_cl in self.param_classes:
             vals.append(getattr(self, par_cl).get_params())
         vals = list(np.hstack(vals))
+        self.nfreeparams = len(vals)
         return vals
 
     def get_param_lims(self):
@@ -444,7 +777,7 @@ class Mcsed:
 
     def fit_model(self):
         ''' Using emcee to find parameter estimations for given set of
-        data magnitudes and errors
+        data measurements and errors
         '''
         # Need to verify data parameters have been set since this is not
         # a necessity on initiation
@@ -457,10 +790,8 @@ class Mcsed:
         pos = self.get_init_walker_values(kind='ball')
         ndim = pos.shape[1]
         start = time.time()
-        # Time to set up the sampler and run the mcmc
         sampler = emcee.EnsembleSampler(self.nwalkers, ndim, self.lnprob,
                                         a=2.0)
-
         # Do real run
         sampler.run_mcmc(pos, self.nsteps, rstate0=np.random.get_state())
         end = time.time()
@@ -476,101 +807,201 @@ class Mcsed:
                       (np.mean(sampler.acceptance_fraction)))
         self.log.info("AutoCorrelation Steps: %i, Number of Burn-in Steps: %i"
                       % (np.round(tau), burnin_step))
-        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+2))
-        new_chain[:, :, :-2] = sampler.chain
+
+        if self.dust_em_class.fixed: 
+            numderpar = 3
+        else: 
+            if self.dust_em_class.assume_energy_balance:
+                numderpar = 5
+            else:
+                numderpar = 4
+        new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
+        new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
         for i in xrange(len(sampler.blobs)):
             for j in xrange(len(sampler.blobs[0])):
-                x = sampler.blobs[i][j]
-                new_chain[j, i, -2] = np.where((np.isfinite(x)) * (x > 10.),
+                for k in xrange(len(sampler.blobs[0][0])):
+                    x = sampler.blobs[i][j][k]
+                    # stellar mass and dust mass
+                    if k==0 or k==4: 
+                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)) * (x > 10.),
                                                np.log10(x), -99.)
+                    # other derived parameters 
+                    else: 
+                        new_chain[j, i, -(numderpar+1)+k] = np.where((np.isfinite(x)),np.log10(x), -99.) 
         new_chain[:, :, -1] = sampler.lnprobability
-        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+2))
+        self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
+
+
+    def get_derived_params(self):
+        ''' These are not free parameters in the model, but are instead
+        calculated from free parameters
+        '''
+        # Lookback times for past 10 and 100 Myr (avoid t=0 for log purposes)
+        t_sfr100 = np.linspace(1.0e-9,0.1,num=251)
+        t_sfr10 = np.linspace(1.0e-9,0.01,num=251)
+        # Time-averaged SFR over the past 10 and 100 Myr 
+        sfrarray = self.sfh_class.evaluate(t_sfr100)
+        sfr100 = simps(sfrarray,x=t_sfr100)/(t_sfr100[-1]-t_sfr100[0])
+        sfrarray = self.sfh_class.evaluate(t_sfr10)
+        sfr10 = simps(sfrarray,x=t_sfr10)/(t_sfr10[-1]-t_sfr10[0])
+
+        if self.dust_em_class.fixed:
+            fpdr = None
+        else:
+            if self.dust_em_class.assume_energy_balance:
+                umin,gamma,qpah = self.dust_em_class.get_params()
+            else:
+                umin,gamma,qpah,mdust = self.dust_em_class.get_params()
+            umax = 1.0e6
+            fpdr = gamma*np.log(umax/100.) / ((1.-gamma)*(1.-umin/umax) + gamma*np.log(umax/umin))
+
+        return sfr10,sfr100,fpdr
+
+
+    def set_median_fit(self,rndsamples=200,lnprobcut=7.5):
+        '''
+        set attributes
+        median spectrum and filter flux densities for rndsamples random samples
+
+        Input
+        -----
+        rndsamples : int
+            number of random samples over which to compute medians
+        lnprobcut : float
+            Some of the emcee chains include outliers.  This value serves as
+            a cut in log probability space with respect to the maximum
+            probability.  For reference, a Gaussian 1-sigma is 2.5 in log prob
+            space.
+
+        Returns
+        -------
+        self.fluxwv : list (1d)
+            wavelengths of filters
+        self.fluxfn : list (1d)
+            median flux densities of filters
+        self.medianspec : list (1d)
+            median spectrum
+        '''
+        chi2sel = (self.samples[:, -1] >
+                   (np.max(self.samples[:, -1], axis=0) - lnprobcut))
+        nsamples = self.samples[chi2sel, :]
+        wv = self.get_filter_wavelengths()
+        sp, fn = ([], [])
+        for i in np.arange(rndsamples):
+            ind = np.random.randint(0, nsamples.shape[0])
+            self.set_class_parameters(nsamples[ind, :])
+            if self.dust_em_class.assume_energy_balance:
+                self.spectrum, mass, mdust_eb = self.build_csp()
+            else:
+                self.spectrum, mass = self.build_csp()
+            fnu = self.get_filter_fluxdensities()
+            sp.append(self.spectrum * 1.)
+            fn.append(fnu * 1.)
+        self.medianspec = np.median(np.array(sp), axis=0)
+        self.fluxwv = wv
+        self.fluxfn = np.median(np.array(fn), axis=0)
+
 
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
         ''' Make spectum plot for current model '''
-        self.spectrum, mass = self.build_csp()
+        if self.dust_em_class.assume_energy_balance:
+            self.spectrum, mass, mdust_eb = self.build_csp()
+        else:
+            self.spectrum, mass = self.build_csp()
+        self.true_spectrum = self.spectrum.copy()
         ax.plot(self.wave, self.spectrum, color=color, alpha=alpha)
 
     def add_sfr_plot(self, ax1):
         ax1.set_xscale('log')
         ax1.set_yscale('log')
-        ax1.set_ylabel(r'SFR $M_{\odot} yr^{-1}$')
-        ax1.set_xlabel('Lookback Time (Gyr)')
+        ax1.set_ylabel(r'SFR [$M_{\odot} yr^{-1}$]')
+        ax1.set_xlabel('Lookback Time') 
         ax1.set_xticks([1e-3, 1e-2, 1e-1, 1])
         ax1.set_xticklabels(['1 Myr', '10 Myr', '100 Myr', '1 Gyr'])
-        ax1.set_yticks([1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3])
-        ax1.set_yticklabels(['0.001', '0.01', '0.1', '1', '10', '100', '1000'])
-        ax1.set_xlim([10**-3, 10**self.sfh_class.age_lims[1]])
-        ax1.set_ylim([1e-3, 1e3])
+        ax1.set_yticks([1e-2, 1e-1, 1, 1e1, 1e2, 1e3])
+        ax1.set_yticklabels(['0.01', '0.1', '1', '10', '100', '1000'])
+        ax1.set_xlim([10**-3, max(10**self.sfh_class.age, 1.)])
+        ax1.set_ylim([10**-2.3, 1e3])
+        ax1.minorticks_on()
 
     def add_dust_plot(self, ax2):
         ax2.set_xscale('log')
-        xtick_pos = [1000, 3000, 10000]
-        xtick_lbl = ['1000', '3000', '10000']
+        xtick_pos = [2000, 4000, 8000]
+        xtick_lbl = ['2000', '4000', '8000']
         ax2.set_xticks(xtick_pos)
         ax2.set_xticklabels(xtick_lbl)
-        ax2.set_xlim([1000, 20000])
-        ax2.set_ylim([0, 8])
-        ax2.set_ylabel(r'Dust Attenuation (mag)')
-        ax2.set_xlabel(r'Wavelength $\AA$')
+        ax2.set_xlim([1000, 10000])
+        ax2.set_ylim([0.01, 4])
+        ax2.set_ylabel(r'$A_\lambda$ [mag]')
+        ax2.set_xlabel(r'Wavelength [$\AA$]')
 
     def add_spec_plot(self, ax3):
         ax3.set_xscale('log')
-        xtick_pos = [3000, 5000, 10000, 20000, 40000]
-        xtick_lbl = ['0.3', '0.5', '1', '2', '4']
+        if self.dust_em_class.fixed:
+            xtick_pos = [1000, 3000, 5000, 10000, 20000, 40000]
+            xtick_lbl = ['0.1', '0.3', '0.5', '1', '2', '4']
+            xlims = (1. + self.redshift) * np.array([1150, 20000])
+            xlims[0] = min( xlims[0], min(self.fluxwv) - 200)
+            xlims[1] = max( xlims[1], max(self.fluxwv) + 5000) 
+        else:
+            xtick_pos = [3000, 5000, 10000, 40000, 100000, 400000, 1000000]
+            xtick_lbl = ['0.3', '0.5', '1', '4', '10', '40', '100']
+            xlims = (1. + self.redshift) * np.array([1150, 700000])
+            xlims[0] = min( xlims[0], min(self.fluxwv) - 200)
+            xlims[1] = max( xlims[1], max(self.fluxwv) + 50000) 
+            ax3.set_yscale('log')
         ax3.set_xticks(xtick_pos)
         ax3.set_xticklabels(xtick_lbl)
-        ax3.set_xlim([3000, 50000])
-        ax3.set_xlabel(r'Wavelength $\mu m$')
-        ax3.set_ylabel(r'$F_{\nu}$ ($\mu$Jy)')
+        ax3.set_xlim(xlims)
+        ax3.set_xlabel(r'Wavelength [$\mu$m]')
+        ax3.set_ylabel(r'$F_{\nu}$ [$\mu$Jy]')
 
-    def add_subplots(self, ax1, ax2, ax3, nsamples):
+    def add_subplots(self, ax1, ax2, ax3, nsamples, rndsamples=200):
         ''' Add Subplots to Triangle plot below '''
-        wv = self.get_filter_wavelengths()
-        rndsamples = 200
-        sp, fn, hbm = ([], [], [])
+        sp, fn = ([], []) 
         for i in np.arange(rndsamples):
             ind = np.random.randint(0, nsamples.shape[0])
-            self.set_class_parameters(nsamples[ind, :-2])
+            self.set_class_parameters(nsamples[ind, :])
             self.sfh_class.plot(ax1, alpha=0.1)
             self.dust_abs_class.plot(ax2, self.wave, alpha=0.1)
             self.spectrum_plot(ax3, alpha=0.1)
-            fnu = self.get_filter_fluxdensities()
-            sp.append(self.spectrum * 1.)
-            fn.append(fnu * 1.)
-            hbm.append(self.hbflux * 1.)
-        # Plotting median value:
-        self.medianspec = np.median(np.array(sp), axis=0)
-        self.hbmedian = np.median(hbm)
+
         ax3.plot(self.wave, self.medianspec, color='dimgray')
-        self.fluxwv = wv
-        self.fluxfn = np.median(np.array(fn), axis=0)
         ax3.scatter(self.fluxwv, self.fluxfn, marker='x', s=200,
                     color='dimgray', zorder=8)
-        chi2 = (1. / (len(self.data_fnu) - 1) *
-                (((self.data_fnu - self.fluxfn) / self.data_fnu_e)**2).sum())
+
+        # plot "truths" if in test mode
         if self.input_params is not None:
             self.set_class_parameters(self.input_params)
             self.sfh_class.plot(ax1, color='k', alpha=1.0)
             self.dust_abs_class.plot(ax2, self.wave, color='k', alpha=1.0)
             self.spectrum_plot(ax3, color='k', alpha=0.5)
         if self.true_fnu is not None:
-            p = ax3.scatter(wv, self.true_fnu, marker='o', s=150,
+            p = ax3.scatter(self.fluxwv, self.true_fnu, marker='o', s=150,
                             color=[0.216, 0.471, 0.749], zorder=9)
             p.set_facecolor('none')
-        ax3.errorbar(wv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
-                     fillstyle='none', markersize=15,
-                     color=[0.510, 0.373, 0.529], zorder=10)
-        
-        sel = np.where((wv > 3000.) * (wv < 50000.))[0]
-        ax3min = np.percentile(self.data_fnu[sel], 5)
-        ax3max = np.percentile(self.data_fnu[sel], 95)
-        ax3ran = ax3max - ax3min
-        ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.4 * ax3ran])
-        ax3.text(4200, ax3max + 0.2 * ax3ran, r'${\chi}_{\nu}^2 = $%0.2f' % chi2)
 
-    def triangle_plot(self, outname, lnprobcut=7.5):
+        ax3.errorbar(self.fluxwv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
+                     fillstyle='none', markersize=150,
+                     color=[0.510, 0.373, 0.529], zorder=10)
+        ax3.scatter(self.fluxwv, self.data_fnu, marker='s', s=150,facecolors='none',
+                    edgecolors=[0.510, 0.373, 0.529], linewidths=2, zorder=10)        
+        sel = np.where((self.fluxwv > ax3.get_xlim()[0]) * (self.fluxwv < ax3.get_xlim()[1]))[0]
+        ax3min = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 1)
+        ax3max = np.percentile(self.data_fnu[sel][self.data_fnu[sel]>0.0], 99)
+        ax3ran = ax3max - ax3min
+        if not self.dust_em_class.fixed: 
+            ax3max = max(max(self.data_fnu),max(self.medianspec))
+            ax3.set_ylim([ax3min*0.5, ax3max + 0.4 * ax3ran])
+            ax3.set_xlim(right=max(max(self.fluxwv),max(self.wave)))
+        else:
+            ax3.set_ylim([ax3min - 0.4 * ax3ran, ax3max + 0.6 * ax3ran])
+        ax3.text((1.+self.redshift)*1400, ax3max,
+                 r'${\chi}_{\nu}^2 = $%0.2f' % self.chi2['rchi2'])
+
+
+    def triangle_plot(self, outname, lnprobcut=7.5, imgtype='png'):
         ''' Make a triangle corner plot for samples from fit
 
         Input
@@ -582,14 +1013,18 @@ class Mcsed:
             a cut in log probability space with respect to the maximum
             probability.  For reference, a Gaussian 1-sigma is 2.5 in log prob
             space.
+        imgtype : string
+            The file extension of the output plot
         '''
         # Make selection for three sigma sample
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :]
-        o = 0  # self.sfh_class.nparams
+        o = 0 
         names = self.get_param_names()[o:]
         names.append('Log Mass')
+        if self.dust_em_class.assume_energy_balance:
+            names.append("Log Dust Mass")
         if self.input_params is not None:
             truths = self.input_params[o:]
         else:
@@ -597,39 +1032,60 @@ class Mcsed:
         percentilerange = [p for i, p in enumerate(self.get_param_lims())
                            if i >= o] + [[7, 11]]
         percentilerange = [.95] * len(names)
-        fig = corner.corner(nsamples[:, o:-1], labels=names,
+        if self.dust_em_class.fixed: 
+            numderpar = 3
+        else: 
+            if self.dust_em_class.assume_energy_balance:
+                numderpar = 5
+            else:
+                numderpar = 4
+        if self.dust_em_class.assume_energy_balance:
+            indarr = np.concatenate((np.arange(o,len(nsamples[0])-numderpar),np.array([-2]))) 
+        else:
+            indarr = np.arange(o,len(nsamples[0])-numderpar) 
+        fsgrad = 11+int(round(0.75*len(indarr)))
+        fig = corner.corner(nsamples[:, indarr], labels=names,
                             range=percentilerange,
                             truths=truths, truth_color='gainsboro',
-                            label_kwargs={"fontsize": 18}, show_titles=True,
-                            title_kwargs={"fontsize": 16},
+                            label_kwargs={"fontsize": fsgrad}, show_titles=True,
+                            title_kwargs={"fontsize": fsgrad-2},
                             quantiles=[0.16, 0.5, 0.84], bins=30)
+        w = fig.get_figwidth()
+        fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
+
         # Adding subplots
+        w = fig.get_figwidth()
+        fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
         ax1 = fig.add_subplot(3, 1, 1)
-        ax1.set_position([0.7, 0.60, 0.25, 0.15])
+        ax1.set_position([0.7-0.02*(len(indarr)-5), 0.60+0.001*(len(indarr)-5), 
+                          0.28+0.02*(len(indarr)-5), 0.15+0.001*(len(indarr)-5)])
         ax2 = fig.add_subplot(3, 1, 2)
-        ax2.set_position([0.7, 0.40, 0.25, 0.15])
+        ax2.set_position([0.7+0.008*(15-len(indarr)), 0.39, 
+                          0.28-0.008*(15-len(indarr)), 0.15])
         ax3 = fig.add_subplot(3, 1, 3)
-        ax3.set_position([0.38, 0.80, 0.57, 0.15])
+        ax3.set_position([0.38-0.008*(len(indarr)-4), 0.82-0.001*(len(indarr)-4), 
+                          0.60+0.008*(len(indarr)-4), 0.15+0.001*(len(indarr)-4)])
         self.add_sfr_plot(ax1)
         self.add_dust_plot(ax2)
         self.add_spec_plot(ax3)
         self.add_subplots(ax1, ax2, ax3, nsamples)
-        if self.sfh_class.hblim is not None:
-            fig.text(.5, .75, r'H$\beta$ input: %0.2f' %
-                     (self.sfh_class.hblim * 1e17), fontsize=18)
-        fig.text(.5, .70, r'H$\beta$ model: %0.2f' % (self.hbmedian * 1e17),
-                 fontsize=18)
-        # fig.set_size_inches(15.0, 15.0)
-        fig.savefig("%s.png" % (outname), dpi=150)
+
+        for ax_loc in fig.axes:
+            ax_loc.minorticks_on() 
+            ax_loc.set_axisbelow('False')
+
+        fig.savefig("%s.%s" % (outname, imgtype), dpi=150)
         plt.close(fig)
 
-    def sample_plot(self, outname):
+    def sample_plot(self, outname, imgtype='png'):
         ''' Make a sample plot
 
         Input
         -----
         outname : string
             The sample plot will be saved as "sample_{outname}.png"
+        imgtype : string
+            The file extension of the output plot
 
         '''
         # Make selection for three sigma sample
@@ -646,10 +1102,19 @@ class Mcsed:
             a.set_ylabel(names[i])
             if truths is not None:
                 a.plot([0, self.chain.shape[1]], [truths[i], truths[i]], 'r--')
-        fig.savefig("%s.png" % (outname))
+            if i == len(ax)-1:
+                a.set_xlabel("Step")
+
+        for ax_loc in fig.axes:
+            ax_loc.minorticks_on()
+
+        fig.savefig("%s.%s" % (outname, imgtype))
+        plt.tight_layout()
         plt.close(fig)
 
-    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5):
+    def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5,
+                             numsamples=1000):
+        ''' Assumes that "Ln Prob" is the last column in self.samples'''
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :-1]
@@ -662,3 +1127,5 @@ class Mcsed:
     def add_truth_to_table(self, truth, start_value):
         for i, tr in enumerate(truth):
             self.table[-1][start_value + i + 1] = tr
+
+
