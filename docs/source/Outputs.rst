@@ -107,7 +107,7 @@ line indices will be returned. The list of features are those defined by
 ``absorption_index_dict`` in ``config.py``, and the columns returned are
 the name of index, it observed value, the uncertainty in the
 measurement, and the modeled value. The default for this option is
-``absorption = True``. The file will only be saved if absorption line indices are provided in
+``absindx = True``. The file will only be saved if absorption line indices are provided in
 the input file and used in constraining the SED fit.
 
 Sample Plot (``sample plot = True``)

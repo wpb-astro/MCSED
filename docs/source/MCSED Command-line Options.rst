@@ -14,7 +14,7 @@ You will see a drop down menu of all the available input arguments. This
 menu is reproduced below.
 
 | ``usage: -h [-h] [-f FILENAME] [-o OUTPUT_FILENAME] [-p] [-t] [-tf TEST_FIELD]``
-| ``          [-no NOBJECTS] [-s SSP] [-i ISOCHRONE] [-sfh SFH] [-dl DUST_LAW]``
+| ``[-no NOBJECTS] [-s SSP] [-i ISOCHRONE] [-sfh SFH] [-dl DUST_LAW]``
 | ``          [-de DUST_EM] [-aeb] [-z METALLICITY] [-nw NWALKERS] [-ns NSTEPS]``
 | ``          [-lu LOGU] [-ism ISM_CORRECT_COORDS] [-igm]``
 
