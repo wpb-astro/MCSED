@@ -1,5 +1,5 @@
 # MCSED
-Please [RTFM](https://mcsed.readthedocs.io/en/latest/index.html).
+The official documentation is hosted at [RTFM](https://mcsed.readthedocs.io/en/latest/index.html).
 
 ## Background
 MCSED models the optical, near-infrared and infrared spectral energy distribution (SED) of galactic systems.  In light of the fact that there are so many such codes already publicly available, we describe the motivation for MCSED and highlight areas in which this code stands out from the crowd.  First of all, galaxies over cosmic time span a wide range of parameters related to their baryonic content including total stellar mass, gas and stellar metallcity, dust mass and distribution, and star formation history.  This large variation for the totality of all galaxies makes it extremely difficult to develope a general enough SED fitting code to work for all systems.  Instead, most codes are taylored to work best for specific populations.  
