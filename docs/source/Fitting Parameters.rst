@@ -6,8 +6,8 @@ Fitting Parameters
 ``MCSED`` contains numerous options for fitting a galaxy’s spectral
 energy distribution. Many of these options can be specified either on
 the command line or entered directly in the ``config.py`` configuration
-script, including 5 dust attenuation laws and 6 star formation rate
-histories. These options (and others) are described below.
+script, including five dust laws and six star formation rate
+histories. These options are described below.
 
 .. _subsec:attenuation:
 
@@ -33,7 +33,7 @@ with
 
 In ``MCSED``, the default values for :math:`t_{\rm birth}` and
 :math:`\eta` are set in ``config.py`` to ``t_birth`` = 7 (log years) and
-``EBV_old_young`` = 0.44. (The latter number comes the analysis of local
+``EBV_old_young`` = 0.44. (The latter number comes from the analysis of local
 starburst galaxies by Calzetti et al. 2000). These values can easily be
 reset in ``config.py``.
 
@@ -44,8 +44,9 @@ Within ``MCSED`` are four pre-coded attenuation laws (``’calzetti’``,
 curve (``’cardelli’``). For each of these prescriptions, the amount of
 extinction is parameterized by the differential reddening,
 :math:`E(B-V)`, which is initialized in ``MCSED`` through the parameter
-``EBV`` in ``dust_abs.py``. As a default, ``EBV`` is allowed to take on
-values between ``[-0.05, 1.50]``.
+``EBV`` in ``dust_abs.py``. The default range for ``EBV`` in each law is
+set to allow for :math:`0 \leq A_V \lesssim 6` magnitudes of attenuation
+(where :math:`E(B-V) = A_V / R_V`).
 
 Note that many attenuation laws are written in terms of :math:`R_V`,
 which describes the ratio of total to differential extinction in the
