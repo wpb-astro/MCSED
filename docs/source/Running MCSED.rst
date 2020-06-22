@@ -91,7 +91,7 @@ run, as well as the "truth" model parameters, filter fluxes, and SED.
 
 .. _subsec:parallelmode:
 
-Parallel mode
+Parallel Mode
 -------------
 
 Parallel mode will automatically utilize :math:`N-i` cores on a
