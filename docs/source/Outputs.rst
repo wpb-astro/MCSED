@@ -12,7 +12,7 @@ specified by the ``-o`` argument on the command line (the default filename
 is ``test.dat``). All ancillary outputs are saved with filenames that 
 include the type of output, the field and object ID, and the star formation
 history and dust attenuation laws used in the calculation. The user can select
-which files to return and which files to skip using the ``output_dict''
+which files to return and which files to skip using the ``output_dict``
 dictionary defined in ``config.py``.
 
 .. _subsec:outputfile:
