@@ -650,6 +650,8 @@ class Mcsed:
                 for emline in self.emline_dict.keys():
                     if self.data_emline['%s_FLUX' % emline] > -99: # null value
                         emline_wave, emline_weight = self.emline_dict[emline]
+                        if emline_weight < 1e-10:
+                            continue
                         model_lineflux = self.linefluxCSPdict[emline]
                         model_err = model_lineflux * self.sigma_m
                         lineflux  = self.data_emline['%s_FLUX' % emline]
