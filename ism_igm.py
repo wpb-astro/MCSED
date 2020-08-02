@@ -60,7 +60,7 @@ def get_MW_EBV(args):
                 loc = datum[0].lower()
                 C1[i] = field_dict[loc].data['ra'][int(datum[1])-1]
                 C2[i] = field_dict[loc].data['dec'][int(datum[1])-1]
-            args.ISM_correct_coords = 'ICRS' #Skelton coordinates are RA and Dec
+            args.ISM_correct_coords = 'FK5' #Skelton coordinates are RA and Dec
         else:
             print("No coordinates given and no match to Skelton Catalog")
             return np.array([np.nan]*nobj)
