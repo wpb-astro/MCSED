@@ -109,7 +109,7 @@ reserved_cores = 2 # integer
 #   contribute to the model likelihood if they appear in the input file
 emline_list_dict = {'OII' : (3727., 0.5), 'OIII' : (5007., 0.5),
                     'Hb'  : (4861., 1.),  'Ha' : (6563., 1.),
-                    'NII' : (6583., 0.5)
+                    'NII' : (6583., 0.5), 'NeIII': (3869., 0.5)
                    }
 
 emline_factor = 1e-17 # numerical conversion from input values to units ergs/cm2/s

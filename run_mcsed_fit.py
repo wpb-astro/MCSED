@@ -540,6 +540,7 @@ def read_input_file(args):
                 em_arr = np.array(F[colname]  * args.emline_factor)
                 emerr_arr = np.max([abs(F[ecolname]),
                                     args.emline_floor_error*abs(np.array(F[colname]))],0)
+                emerr_arr *= args.emline_factor
 
                 # account for objects with null measurements
                 null_idx = np.where(abs(np.array(F[colname])-line_fill_value)<1e-10)[0]
