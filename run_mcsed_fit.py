@@ -178,13 +178,12 @@ def parse_args(argv=None):
 
     # Use config values if none are set in the input
     arg_inputs = ['ssp', 'metallicity', 'isochrone', 'sfh', 'dust_law',
-                  't_birth',
-                  'nwalkers', 'nsteps', 'logU', 
+                  't_birth', 'nwalkers', 'nsteps', 'logU', 
                   'phot_floor_error', 'emline_floor_error', 'absindx_floor_error',  
                   'model_floor_error', 'nobjects', 'test_zrange', 'blue_wave_cutoff', 
                   'dust_em', 'Rv', 'EBV_old_young', 'wave_dust_em',
                   'emline_list_dict', 'emline_factor', 'use_input_data',
-                  'absorption_index_dict',
+                  'absorption_index_dict', 'separate_stars_gas',
                   'output_dict', 'param_percentiles', 'reserved_cores', 
                   'assume_energy_balance', 'ISM_correct_coords', 'IGM_correct']
     for arg_i in arg_inputs:
@@ -743,9 +742,14 @@ def main(argv=None, ssp_info=None):
     # Load Single Stellar Population model(s)
     if ssp_info is None:
         args.log.info('Reading in SSP model')
-        ages, wave, SSP, met, linewave, lineSSP = read_ssp_fsps(args)
+        ages, wave, starSSP, nebSSP, met, emlinewave, emlinefluxSSP = read_ssp_fsps(args)
     else:
-        ages, wave, SSP, met, linewave, lineSSP = ssp_info
+        ages, wave, starSSP, nebSSP, met, emlinewave, emlinefluxSSP = read_ssp_fsps(args)
+
+    # If not returning best-fit stellar/nebular spectra separately, combine them
+    if not args.separate_stars_gas:
+        starSSP += nebSSP
+        nebSSP = None
 
     # Read in input data, if not in test mode 
     if not args.test: 
@@ -764,10 +768,11 @@ def main(argv=None, ssp_info=None):
 
     # Make one instance of Mcsed for speed on initialization
     # (relevant variables are reassigned for each galaxy)
-    mcsed_model = Mcsed(filter_matrix, SSP, linewave, lineSSP, ages, 
-                        met, wave, args.sfh,
-                        args.dust_law, args.dust_em, nwalkers=args.nwalkers,
-                        nsteps=args.nsteps,sigma_m=args.model_floor_error)
+    mcsed_model = Mcsed(filter_matrix, wave, ages, met, starSSP, nebSSP, 
+                        emlinewave, emlinefluxSSP,
+                        args.sfh, args.dust_law, args.dust_em, 
+                        nwalkers=args.nwalkers, nsteps=args.nsteps,
+                        sigma_m=args.model_floor_error)
 
     # Communicate emission line measurement preferences
     mcsed_model.use_emline_flux = args.use_emline_flux
@@ -895,8 +900,14 @@ def main(argv=None, ssp_info=None):
                 T.write('output/fitposterior_fake_%05d_%s_%s.dat' % (cnt, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
-                T = Table([mcsed_model.wave, mcsed_model.medianspec, mcsed_model.true_spectrum],
-                          names=['wavelength', 'spectrum', 'true_spectrum'])
+                bestfitspec_data = [mcsed_model.wave, mcsed_model.medianspec, mcsed_model.true_spectrum]
+                bestfitspec_name = ['wavelength', 'spectrum', 'true_spectrum']
+                if args.separate_stars_gas:
+                    bestfitspec_data += [mcsed_model.medianstarspec, mcsed_model.true_starspectrum,
+                                         mcsed_model.mediannebspec, mcsed_model.true_nebspectrum]
+                    bestfitspec_name += ['starspectrum', 'true_starspectrum',
+                                         'nebspectrum', 'true_nebspectrum']
+                T = Table(bestfitspec_data, names=bestfitspec_name)
                 T.write('output/bestfitspec_fake_%05d_%s_%s.dat' % (cnt, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:
@@ -931,17 +942,18 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_absindx = indx
             mcsed_model.data_absindx_e = indxe
 
-            # Bin the SSP ages, if possible
             if args.sfh == 'binned_lsfr':
                 sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
                 max_ssp_age = get_max_ssp_age(args, z=zi)
                 maxage_Gyr = 10.**(max_ssp_age-9.)
-                binned_ssp = bin_ssp_ages(ages, SSP, lineSSP, sfh_ages_Gyr,
+                binned_ssp = bin_ssp_ages(ages, starSSP, nebSSP, 
+                                          emlinefluxSSP, sfh_ages_Gyr,
                                           maxage_Gyr, mcsed_model.t_birth)
-                binned_ages, binned_spec, binned_linespec = binned_ssp
+                binned_ages, binned_starspec, binned_nebspec, binned_emlineflux = binned_ssp
                 mcsed_model.ssp_ages = binned_ages
-                mcsed_model.ssp_spectra = binned_spec
-                mcsed_model.ssp_emline = binned_linespec
+                mcsed_model.ssp_starspectra = binned_starspec
+                mcsed_model.ssp_nebspectra = binned_nebspec
+                mcsed_model.ssp_emlineflux = binned_emlineflux
 
             # Remove filters containing Lyman-alpha (and those blueward)
             mcsed_model.remove_waverange_filters(0., args.blue_wave_cutoff, restframe=True)
@@ -991,8 +1003,12 @@ def main(argv=None, ssp_info=None):
                 T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['bestfitspec']:
-                T = Table([mcsed_model.wave, mcsed_model.medianspec],
-                          names=['wavelength', 'spectrum'])
+                bestfitspec_data = [mcsed_model.wave, mcsed_model.medianspec]
+                bestfitspec_name = ['wavelength', 'spectrum']
+                if args.separate_stars_gas:
+                    bestfitspec_data += [mcsed_model.medianstarspec, mcsed_model.mediannebspec]
+                    bestfitspec_name += ['starspectrum', 'nebspectrum']
+                T = Table(bestfitspec_data, names=bestfitspec_name)
                 T.write('output/bestfitspec_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
             if args.output_dict['fluxdensity']:

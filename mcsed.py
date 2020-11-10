@@ -19,6 +19,7 @@ from scipy.integrate import simps
 from scipy.interpolate import interp1d
 from astropy.constants import c as clight
 import numpy as np
+from astropy.table import Table, vstack
 
 plt.ioff() 
 
@@ -33,18 +34,22 @@ sns.set_style({"xtick.direction": "in","ytick.direction": "in",
 
 
 class Mcsed:
-    def __init__(self, filter_matrix, ssp_spectra,
-                 emlinewave, ssp_emline, ssp_ages, ssp_met, wave, 
+    def __init__(self, filter_matrix, wave, ssp_ages, ssp_met,
+                 ssp_starspectra, ssp_nebspectra, emlinewave, ssp_emlineflux, 
                  sfh_class, dust_abs_class, dust_em_class, met_class=None,
-                 nfreeparams=None, t_birth=None, SSP=None, lineSSP=None, 
+                 nfreeparams=None, t_birth=None, 
+                 starSSP=None, nebSSP=None, emlinefluxSSP=None, 
                  data_fnu=None, data_fnu_e=None, 
                  data_emline=None, data_emline_e=None, emline_dict=None,
                  use_emline_flux=None, linefluxCSPdict=None,
                  data_absindx=None, data_absindx_e=None, absindx_dict=None,
                  use_absorption_indx=None, absindxCSPdict=None,
-                 fluxwv=None, fluxfn=None, medianspec=None, spectrum=None, 
+                 fluxwv=None, fluxfn=None, medianspec=None, spectrum=None,
+                 medianstarspec=None, starspectrum=None,
+                 mediannebspec=None, nebspectrum=None, 
                  redshift=None, Dl=None, filter_flag=None, 
-                 input_params=None, true_fnu=None, true_spectrum=None, 
+                 input_params=None, true_fnu=None, true_spectrum=None,
+                 true_starspectrum=None, true_nebspectrum=None, 
                  sigma_m=0.1, nwalkers=40, nsteps=1000, 
                  chi2=None, tauISM_lam=None, tauIGM_lam=None):
         ''' Initialize the Mcsed class.
@@ -54,24 +59,29 @@ class Mcsed:
         filter_matrix : numpy array (2 dim)
             The filter_matrix has rows of wavelength and columns for each
             filter (can be much larger than the filters used for fitting)
-        ssp_spectra : numpy array (3 dim)
-            single stellar population spectrum for each age in ssp_ages
-            and each metallicity in ssp_met 
-        emlinewave : numpy array (1 dim)
-            Rest-frame wavelengths of requested emission lines (emline_dict)
-            Corresponds to ssp_emline
-        ssp_emline : numpy array (3 dim)
-            Emission line SSP grid spanning emlinewave, age, metallicity
-            Only includes requested emission lines (from emline_dict)
-            Only used for calculating model emission line strengths
-            Spectral units are ergs / s / cm2 at 10 pc
+        wave : numpy array (1 dim)
+            wavelength for SSP models and all model spectra
         ssp_ages : numpy array (1 dim)
             ages of the SSP models
         ssp_met : numpy array (1 dim)
             metallicities of the SSP models
             assume a grid of values Z, where Z_solar = 0.019
-        wave : numpy array (1 dim)
-            wavelength for SSP models and all model spectra
+        ssp_starspectra : numpy array (3 dim)
+            single stellar population spectrum (stellar component) for each 
+            age in ssp_ages and each metallicity in ssp_met 
+        ssp_nebspectra : numpy array (3 dim)
+            single stellar population spectrum (nebular component) for each 
+            age in ssp_ages and each metallicity in ssp_met
+            (must have same shape as ssp_starspectra)
+            if None, assume stars+gas are combined in ssp_starspectra 
+        emlinewave : numpy array (1 dim)
+            Rest-frame wavelengths of requested emission lines (emline_dict)
+            Corresponds to ssp_emline
+        ssp_emlineflux : numpy array (3 dim)
+            Emission line SSP grid spanning emlinewave, age, metallicity
+            Only includes requested emission lines (from emline_dict)
+            Only used for calculating model emission line strengths
+            Spectral units are ergs / s / cm2 at 10 pc
         sfh_class : str
             Converted from str to class in initialization
             This is the input class for sfh.  Each class has a common attribute
@@ -92,12 +102,15 @@ class Mcsed:
         t_birth : float
             Age of the birth cloud in Gyr
             set from the value provided in config.py
-        SSP : numpy array (2 dim)
-            Grid of SSP spectra at current guess of stellar metallicity
-            (set from ssp_spectra)
-        lineSSP : numpy array (2 dim)
+        starSSP : numpy array (2 dim)
+            Grid of stellar SSP spectra at current guess of stellar metallicity
+            (set from ssp_starspectra)
+        nebSSP : numpy array (2 dim)
+            Grid of nebular SSP spectra at current guess of stellar metallicity
+            (set from ssp_nebspectra)
+        emlinefluxSSP : numpy array (2 dim)
             Grid of emission line fluxes at each age in the SSP grid
-            (set from ssp_emline)
+            (set from ssp_emlineflux)
         data_fnu : numpy array (1 dim)
             Photometry for data.  Length = (filter_flag == True).sum()
         data_fnu_e : numpy array (1 dim)
@@ -139,6 +152,16 @@ class Mcsed:
             set after fitting the model
         spectrum : numpy array (1 dim)
             current SED model (same length as self.wave) 
+        medianstarspec : numpy array (1 dim)
+            best-fit stellar SED model (same length as self.wave)
+            set after fitting the model
+        starspectrum : numpy array (1 dim)
+            current stellar SED model (same length as self.wave) 
+        mediannebspec : numpy array (1 dim)
+            best-fit nebular SED model (same length as self.wave)
+            set after fitting the model
+        nebspectrum : numpy array (1 dim)
+            current nebular SED model (same length as self.wave) 
         redshift : float
             Redshift of the source
         Dl : float
@@ -152,6 +175,10 @@ class Mcsed:
             True photometry for test mode.  Length = (filter_flag == True).sum()
         true_spectrum : numpy array (1 dim)
             truth model spectrum in test model (realized from input_params)
+        true_starspectrum : numpy array (1 dim)
+            truth model stellar spectrum in test model (realized from input_params)
+        true_nebspectrum : numpy array (1 dim)
+            truth model nebular spectrum in test model (realized from input_params)
         sigma_m : float
             Fractional error expected from the models.  This is used in
             the log likelihood calculation.  No model is perfect, and this is
@@ -173,12 +200,13 @@ class Mcsed:
         '''
         # Initialize all argument inputs
         self.filter_matrix = filter_matrix
-        self.ssp_spectra = ssp_spectra
-        self.emlinewave = emlinewave
-        self.ssp_emline = ssp_emline
+        self.wave = wave
         self.ssp_ages = ssp_ages
         self.ssp_met = ssp_met
-        self.wave = wave
+        self.ssp_starspectra = ssp_starspectra
+        self.ssp_nebspectra = ssp_nebspectra
+        self.emlinewave = emlinewave
+        self.ssp_emlineflux = ssp_emlineflux
         self.dnu = np.abs(np.hstack([0., np.diff(2.99792e18 / self.wave)]))
         self.sfh_class = getattr(sfh, sfh_class)()
         self.dust_abs_class = getattr(dust_abs, dust_abs_class)()
@@ -188,8 +216,9 @@ class Mcsed:
                               'dust_em_class']
         self.nfreeparams = nfreeparams
         self.t_birth = t_birth
-        self.SSP = None
-        self.lineSSP = None
+        self.starSSP = None
+        self.nebSSP = None
+        self.emlinefluxSSP = None
         self.data_fnu = data_fnu
         self.data_fnu_e = data_fnu_e
         self.data_emline = data_emline
@@ -206,6 +235,10 @@ class Mcsed:
         self.fluxfn = fluxfn
         self.medianspec = medianspec
         self.spectrum = None
+        self.medianstarspec = medianstarspec
+        self.starspectrum = None
+        self.mediannebspec = mediannebspec
+        self.nebspectrum = None
         self.redshift = redshift
         if self.redshift is not None:
             self.set_new_redshift(self.redshift)
@@ -214,6 +247,8 @@ class Mcsed:
         self.input_params = input_params
         self.true_fnu = true_fnu
         self.true_spectrum = true_spectrum
+        self.true_starspectrum = true_starspectrum
+        self.true_nebspectrum = true_nebspectrum
         self.sigma_m = sigma_m
         self.nwalkers = nwalkers
         self.nsteps = nsteps
@@ -304,34 +339,59 @@ class Mcsed:
         wave_avg = np.dot(self.wave, self.filter_matrix[:, self.filter_flag])
         return wave_avg
 
-    def get_filter_fluxdensities(self):
+    def get_filter_fluxdensities(self, spectrum=None):
         '''Convert a spectrum to photometric fluxes for a given filter set.
         The photometric fluxes will be in the same units as the spectrum.
         The spectrum is in microjanskies(lambda) such that
         the photometric fluxes will be in microjanskies.
+
+        Parameters
+        ----------
+        spectrum : None or 1d array
+            if not None, measure the absorption indices using the input spectrum
+            (must have same shape as self.wave)
 
         Returns
         -------
         f_nu : numpy array (1 dim)
             Photometric flux densities for an input spectrum
         '''
-        f_nu = np.dot(self.spectrum, self.filter_matrix[:, self.filter_flag])
+        if type(spectrum)==type(None):
+            spectrum = self.spectrum.copy()
+        f_nu = np.dot(spectrum, self.filter_matrix[:, self.filter_flag])
         return f_nu
 
 
-    def measure_absorption_index(self):
+    def measure_absorption_index(self, spectrum=None):
         '''
         measure absorption indices using current spectrum
+
+        Parameters
+        ----------
+        spectrum : None or 1d array
+            if not None, measure the absorption indices using the input spectrum
+            (must have same shape as self.wave)
+
+        Returns
+        -------
+        update self.absindxCSPdict, the dictionary of absorption line indices
         '''
         self.absindxCSPdict = {}
         if self.use_absorption_indx:
             # convert the spectrum from units of specific frequency to specific wavelength
             wave = self.wave.copy()
             factor = clight.to('Angstrom/s').value / wave**2.
-            spec = self.spectrum * factor
+            if type(spectrum)==type(None):
+                spec = self.spectrum * factor
+            else:
+                spec = spectrum * factor
 
             for indx in self.absindx_dict.keys():
                 wht, wave_indx, wave_blue, wave_red, unit = self.absindx_dict[indx]
+
+                wave_indx = np.array(wave_indx) * (1. + self.redshift)
+                wave_blue = np.array(wave_blue) * (1. + self.redshift)
+                wave_red  = np.array(wave_blue) * (1. + self.redshift)
 
                 # select appropriate data ranges for blue/red continuum and index
                 sel_index = np.array([False]*len(wave))
@@ -418,27 +478,35 @@ class Mcsed:
 
         Returns
         -------
-        SSP : 2-d array
-            Single stellar population models for each age in self.ages
-        lineSSP : 2-d array
+        starSSP : numpy array (2 dim)
+            Grid of stellar SSP spectra at current guess of stellar metallicity
+            (set from ssp_starspectra)
+        nebSSP : numpy array (2 dim)
+            Grid of nebular SSP spectra at current guess of stellar metallicity
+            (set from ssp_nebspectra)
+        emlinefluxSSP : 2-d array
             Single stellar population line fluxes for each age in self.ages
 
         '''
         if self.met_class.fix_met:
-            if self.SSP is not None:
-                return self.SSP, self.lineSSP
+            if self.starSSP is not None:
+                return self.starSSP, self.nebSSP, self.emlinefluxSSP
         Z = np.log10(self.ssp_met)
         Zsolar = 0.019
         z = self.met_class.met + np.log10(Zsolar)
         X = Z - z
         wei = np.exp(-(X)**2 / (2. * 0.15**2))
         wei /= wei.sum()
-        self.SSP = np.dot(self.ssp_spectra, wei)
-        if self.use_emline_flux:
-            self.lineSSP = np.dot(self.ssp_emline, wei)
+        self.starSSP = np.dot(self.ssp_starspectra, wei)
+        if type(self.ssp_nebspectra)==type(None):
+            self.nebSSP = None 
         else:
-            self.lineSSP = self.ssp_emline[:,:,0]
-        return self.SSP, self.lineSSP
+            self.nebSSP  = np.dot(self.ssp_nebspectra,  wei)
+        if self.use_emline_flux:
+            self.emlinefluxSSP = np.dot(self.ssp_emlineflux, wei)
+        else:
+            self.emlinefluxSSP = self.ssp_emlineflux[:,:,0]
+        return self.starSSP, self.nebSSP, self.emlinefluxSSP
 
     def build_csp(self, sfr=None):
         '''Build a composite stellar population model for a given star
@@ -450,11 +518,20 @@ class Mcsed:
         -------
         csp : numpy array (1 dim)
             Composite stellar population model (micro-Jy) at self.redshift
+            (both stellar and nebular components)
+        starcsp : numpy array (1 dim)
+            Composite stellar population model (micro-Jy) at self.redshift
+            (stellar component)
+        nebcsp : numpy array (1 dim)
+            Composite stellar population model (micro-Jy) at self.redshift
+            (nebular component)
         mass : float
             Mass for csp given the SFH input
+        mdust_eb : float
+            Dust mass if dust emission is being fit AND assume energy balance
         '''
         # Collapse for metallicity
-        SSP, lineSSP = self.get_ssp_spectrum()
+        starSSP, nebSSP, emlinefluxSSP = self.get_ssp_spectrum()
 
         # Need star formation rate from observation back to formation
         if sfr is None:
@@ -517,47 +594,90 @@ class Mcsed:
                     weight_birth[B] = weight_age[B]
 
         # Finally, do the matrix multiplication using the weights
-        spec_dustfree = np.dot(self.SSP, weight)
-        spec_birth_dustfree = np.dot(self.SSP, weight_birth)
-        linespec_dustfree = np.dot(self.lineSSP, weight_birth)
+        starspec_dustfree = np.dot(self.starSSP, weight)
+        starspec_birth_dustfree = np.dot(self.starSSP, weight_birth)
+        if type(self.nebSSP) != type(None):
+            nebspec_dustfree  = np.dot(self.nebSSP, weight)
+            nebspec_birth_dustfree  = np.dot(self.nebSSP, weight_birth)
+        emlineflux_dustfree = np.dot(self.emlinefluxSSP, weight)
+        emlineflux_birth_dustfree = np.dot(self.emlinefluxSSP, weight_birth)
         mass = np.sum(weight_age)
 
         # Need to correct spectrum for dust attenuation
         Alam = self.dust_abs_class.evaluate(self.wave)
-        spec_dustobscured = spec_dustfree * 10**(-0.4 * Alam)
+        starspec_dustobscured = starspec_dustfree * 10**(-0.4 * Alam)
+        if type(self.nebSSP) != type(None):
+            nebspec_dustobscured  = nebspec_dustfree * 10**(-0.4 * Alam)
 
         # Correct the corresponding birth cloud spectrum separately
         Alam_birth = Alam / self.dust_abs_class.EBV_old_young
-        spec_birth_dustobscured = spec_birth_dustfree * 10**(-0.4 * Alam_birth)
-
-        # Combine the young and old components
-        spec_dustfree += spec_birth_dustfree
-        spec_dustobscured += spec_birth_dustobscured
+        starspec_birth_dustobscured = starspec_birth_dustfree * 10**(-0.4 * Alam_birth)
+        if type(self.nebSSP) != type(None):
+            nebspec_birth_dustobscured  = nebspec_birth_dustfree * 10**(-0.4 * Alam_birth)
 
         # Compute attenuation for emission lines
-        Alam_emline = (self.dust_abs_class.evaluate(self.emlinewave,new_wave=True)
-                       / self.dust_abs_class.EBV_old_young)
-        linespec_dustobscured = linespec_dustfree * 10**(-0.4*Alam_emline)
+        Alam_emline = self.dust_abs_class.evaluate(self.emlinewave,new_wave=True)
+        Alam_emline_birth = Alam_emline / self.dust_abs_class.EBV_old_young
+        emlineflux_dustobscured = emlineflux_dustfree * 10**(-0.4*Alam_emline)
+        emlineflux_birth_dustobscured = emlineflux_birth_dustfree * 10**(-0.4*Alam_emline_birth)
+
+        # Combine the young and old components
+        starspec_dustfree     += starspec_birth_dustfree
+        starspec_dustobscured += starspec_birth_dustobscured
+        if type(self.nebSSP) != type(None):
+            nebspec_dustfree      += nebspec_birth_dustfree
+            nebspec_dustobscured  += nebspec_birth_dustobscured
+        emlineflux_dustfree     += emlineflux_birth_dustfree
+        emlineflux_dustobscured += emlineflux_birth_dustobscured
+
+        # Combine the stellar and nebular components
+        if type(self.nebSSP) != type(None):
+            spec_dustfree     = starspec_dustfree + nebspec_dustfree
+            spec_dustobscured = starspec_dustobscured + nebspec_dustobscured 
+        else:
+            spec_dustfree     = starspec_dustfree.copy() 
+            spec_dustobscured = starspec_dustobscured.copy() 
 
         if self.dust_em_class.assume_energy_balance:
             # Bolometric luminosity of dust attenuation (for energy balance)
             L_bol = (np.dot(self.dnu, spec_dustfree) - np.dot(self.dnu, spec_dustobscured)) 
             dust_em = self.dust_em_class.evaluate(self.wave)
             L_dust = np.dot(self.dnu,dust_em)
-            mdust_eb = L_bol/L_dust 
+            mdust_eb = L_bol/L_dust
             spec_dustobscured += mdust_eb * dust_em
+            if type(self.nebSSP) != type(None):
+                nebspec_dustobscured += mdust_eb * dust_em
         else:
             spec_dustobscured += self.dust_em_class.evaluate(self.wave)
+            if type(self.nebSSP) != type(None):
+                nebspec_dustobscured += self.dust_em_class.evaluate(self.wave)
 
         # Redshift the spectrum to the observed frame
         csp = np.interp(self.wave, self.wave * (1. + self.redshift),
                         spec_dustobscured * (1. + self.redshift))
+        if type(self.nebSSP) != type(None):
+            starcsp = np.interp(self.wave, self.wave * (1. + self.redshift),
+                                starspec_dustobscured * (1. + self.redshift))
+            nebcsp  = np.interp(self.wave, self.wave * (1. + self.redshift),
+                                nebspec_dustobscured * (1. + self.redshift))
+        else:
+            starcsp = np.zeros(csp.shape)
+            nebcsp  = np.zeros(csp.shape)
 
         # Correct for ISM and/or IGM (or neither)
         if self.tauIGM_lam is not None:
-            csp *= np.exp(-self.tauIGM_lam)
+            csp     *= np.exp(-self.tauIGM_lam)
+            starcsp *= np.exp(-self.tauIGM_lam)
+            nebcsp  *= np.exp(-self.tauIGM_lam)
         if self.tauISM_lam is not None:
-            csp *= np.exp(-self.tauISM_lam)
+            csp     *= np.exp(-self.tauISM_lam)
+            starcsp *= np.exp(-self.tauISM_lam)
+            nebcsp  *= np.exp(-self.tauISM_lam)
+
+        # Correct spectra from 10pc to redshift of the source
+        csp     /= self.Dl**2
+        starcsp /= self.Dl**2
+        nebcsp  /= self.Dl**2
 
         # Update dictionary of modeled emission line fluxes
         linefluxCSPdict = {}
@@ -566,16 +686,91 @@ class Mcsed:
                 indx = np.argmin(np.abs(self.emlinewave 
                                         - self.emline_dict[emline][0]))
                 # flux is given in ergs / s / cm2 at 10 pc
-                flux = linespec_dustobscured[indx]
+                flux = emlineflux_dustobscured[indx]
                 # Correct flux from 10pc to redshift of source
-                linefluxCSPdict[emline] = linespec_dustobscured[indx] / self.Dl**2
+                linefluxCSPdict[emline] = flux / self.Dl**2
         self.linefluxCSPdict = linefluxCSPdict
 
-        # Correct spectra from 10pc to redshift of the source
+        # Update dictionary of modeled absorption line indices
+        self.measure_absorption_index(spectrum=csp)
+
         if self.dust_em_class.assume_energy_balance:
-            return csp / self.Dl**2, mass, mdust_eb
+            return csp, starcsp, nebcsp, mass, mdust_eb
         else:
-            return csp / self.Dl**2, mass
+            return csp, starcsp, nebcsp, mass
+
+    def measure_chi2(self, spectrum):
+        '''
+        Measure chi2 from the input spectrum. Used in measuring chi2 from 
+        the median spectrum, emline fluxes, and absorption line indices
+
+        Parameters
+        ----------
+        spectrum : 1d array
+            same shape as self.wave
+
+        Returns
+        -------
+        update the chi2 dictionary 
+        '''
+        # likelihood contribution from the photometry
+        model_y = self.get_filter_fluxdensities(spectrum=spectrum)
+        inv_sigma2 = 1.0 / (self.data_fnu_e**2 + (model_y * self.sigma_m)**2)
+        chi2_term = np.sum((self.data_fnu - model_y)**2 * inv_sigma2)
+
+        # calculate the degrees of freedom and store the current chi2 value
+        if not self.chi2:
+            dof_wht = list(np.ones(len(self.data_fnu)))
+
+        # likelihood contribution from the absorption line indices
+        if self.use_absorption_indx:
+            self.measure_absorption_index(spectrum=spectrum)
+            for indx in self.absindx_dict.keys():
+                unit = self.absindx_dict[indx][-1]
+                # if null value, ignore it (null = -99)
+                if (self.data_absindx['%s_INDX' % indx]+99 > 1e-10):
+                    indx_weight = self.absindx_dict[indx][0]
+                    if indx_weight < 1e-10:
+                        continue
+                    model_indx = self.absindxCSPdict[indx]
+                    if unit == 1: # magnitudes
+                        model_err = 2.5*np.log10(1.+self.sigma_m)
+                    else:
+                        model_err = model_indx * self.sigma_m
+                    obs_indx = self.data_absindx['%s_INDX' % indx]
+                    obs_indx_e = self.data_absindx_e['%s_Err' % indx]
+                    sigma2 = obs_indx_e**2. + model_err**2.
+                    chi2_term += ( (model_indx - obs_indx)**2 /
+                                  sigma2) * indx_weight
+                    if not self.chi2:
+                        dof_wht.append(indx_weight)
+
+        if self.use_emline_flux:
+            # if all lines have null line strengths, ignore 
+            if not min(self.data_emline) == max(self.data_emline) == -99:
+                for emline in self.emline_dict.keys():
+                    if self.data_emline['%s_FLUX' % emline] > -99: # null value
+                        emline_wave, emline_weight = self.emline_dict[emline]
+                        if emline_weight < 1e-10:
+                            continue
+                        model_lineflux = self.linefluxCSPdict[emline]
+                        model_err = model_lineflux * self.sigma_m
+                        lineflux  = self.data_emline['%s_FLUX' % emline]
+                        elineflux = self.data_emline_e['%s_ERR' % emline]
+                        sigma2 = elineflux**2. + model_err**2.
+                        chi2_term += ( (model_lineflux - lineflux)**2 /
+                                      sigma2) * emline_weight
+                        if not self.chi2:
+                            dof_wht.append(emline_weight)
+
+        # record current chi2 and degrees of freedom
+        if not self.chi2:
+            self.chi2 = {}
+            dof_wht = np.array(dof_wht)
+            npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht) + 1
+            self.chi2['dof'] = npt - self.nfreeparams
+        self.chi2['chi2']  = chi2_term
+        self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
 
     def lnprior(self):
         ''' Simple, uniform prior for input variables
@@ -604,9 +799,9 @@ class Mcsed:
             The parameters sfr10, sfr100, fpdr, mdust_eb are derived in get_derived_params(self)
         '''
         if self.dust_em_class.assume_energy_balance:
-            self.spectrum, mass, mdust_eb = self.build_csp()
+            self.spectrum, self.starspectrum, self.nebspectrum, mass, mdust_eb = self.build_csp()
         else:
-            self.spectrum, mass = self.build_csp()
+            self.spectrum, self.starspectrum, self.nebspectrum, mass = self.build_csp()
             mdust_eb = None
 
         sfr10,sfr100,fpdr = self.get_derived_params()
@@ -622,13 +817,14 @@ class Mcsed:
             dof_wht = list(np.ones(len(self.data_fnu)))
 
         # likelihood contribution from the absorption line indices
-        self.measure_absorption_index()
         if self.use_absorption_indx:
             for indx in self.absindx_dict.keys():
                 unit = self.absindx_dict[indx][-1]
                 # if null value, ignore it (null = -99)
                 if (self.data_absindx['%s_INDX' % indx]+99 > 1e-10):
                     indx_weight = self.absindx_dict[indx][0]
+                    if indx_weight < 1e-10:
+                        continue
                     model_indx = self.absindxCSPdict[indx]
                     if unit == 1: # magnitudes
                         model_err = 2.5*np.log10(1.+self.sigma_m)
@@ -668,7 +864,7 @@ class Mcsed:
             self.chi2 = {}
             dof_wht = np.array(dof_wht)
             npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht) + 1
-            self.chi2['dof'] = npt - self.nfreeparams 
+            self.chi2['dof'] = npt - self.nfreeparams
         self.chi2['chi2']  = -2. * chi2_term
         self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
 
@@ -883,35 +1079,78 @@ class Mcsed:
         self.fluxfn : list (1d)
             median flux densities of filters
         self.medianspec : list (1d)
-            median spectrum
+            median spectrum (stellar and nebular)
+        self.medianstarspec : list (1d)
+            median stellar spectrum
+        self.mediannebspec : list (1d)
+            median nebular spectrum
+        self.absindxCSPdict : dict
+            update with median absorption line index measurements
+        self.linefluxCSPdict : dict
+            update with median emission line flux measurements
+        self.chi2 : dict
+            update dictionary (chi2, reduced chi2, and degrees of freedom)
+            as measured from medianspec and median line fluxes / indexes
         '''
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :]
         wv = self.get_filter_wavelengths()
-        sp, fn = ([], [])
+        sp, starsp, nebsp, fn = ([], [], [], [])
+        temline, tabsindx, tchi2 = ( Table(), Table(), Table() )
         for i in np.arange(rndsamples):
             ind = np.random.randint(0, nsamples.shape[0])
             self.set_class_parameters(nsamples[ind, :])
             if self.dust_em_class.assume_energy_balance:
-                self.spectrum, mass, mdust_eb = self.build_csp()
+                self.spectrum, self.starspectrum, self.nebspectrum, mass, mdust_eb = self.build_csp()
             else:
-                self.spectrum, mass = self.build_csp()
+                self.spectrum, self.starspectrum, self.nebspectrum, mass = self.build_csp()
             fnu = self.get_filter_fluxdensities()
             sp.append(self.spectrum * 1.)
+            starsp.append(self.starspectrum * 1.)
+            nebsp.append(self.nebspectrum * 1.)
             fn.append(fnu * 1.)
+            if self.use_emline_flux:
+                tloc = Table()
+                if not len(temline):
+                    cols = list(self.linefluxCSPdict.keys())
+                else:
+                    cols = temline.colnames
+                for emline in cols:
+                    tloc[emline] = [self.linefluxCSPdict[emline]]
+                temline = vstack([temline, tloc])
+            if self.use_absorption_indx:
+                tloc = Table()
+                if not len(tabsindx):
+                    cols = list(self.absindxCSPdict.keys())
+                else:
+                    cols = tabsindx.colnames
+                for indx in cols:
+                    tloc[indx] = [self.absindxCSPdict[indx]]
+                tabsindx = vstack([tabsindx, tloc])
         self.medianspec = np.median(np.array(sp), axis=0)
+        self.medianstarspec = np.median(np.array(starsp), axis=0)
+        self.mediannebspec = np.median(np.array(nebsp), axis=0)
         self.fluxwv = wv
         self.fluxfn = np.median(np.array(fn), axis=0)
+        if self.use_emline_flux:
+            for emline in temline.colnames:
+                self.linefluxCSPdict[emline] = np.median(temline[emline])
+        if self.use_absorption_indx:
+            for indx in tabsindx.colnames:
+                self.absindxCSPdict[indx] = np.median(tabsindx[indx])
+        self.measure_chi2(spectrum=self.medianspec)
 
 
     def spectrum_plot(self, ax, color=[0.996, 0.702, 0.031], alpha=0.1):
         ''' Make spectum plot for current model '''
         if self.dust_em_class.assume_energy_balance:
-            self.spectrum, mass, mdust_eb = self.build_csp()
+            self.spectrum, self.starspectrum, self.nebspectrum, mass, mdust_eb = self.build_csp()
         else:
-            self.spectrum, mass = self.build_csp()
+            self.spectrum, self.starspectrum, self.nebspectrum, mass = self.build_csp()
         self.true_spectrum = self.spectrum.copy()
+        self.true_starspectrum = self.starspectrum.copy()
+        self.true_nebspectrum = self.nebspectrum.copy()
         ax.plot(self.wave, self.spectrum, color=color, alpha=alpha)
 
     def add_sfr_plot(self, ax1):

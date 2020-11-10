@@ -17,7 +17,8 @@ from astropy.convolution import Gaussian1DKernel, convolve
 
 plt.ioff() 
 
-def bin_ssp_ages(ssp_ages, ssp_spec, ssp_linespec, sfh_ages, galaxy_age, t_birth):
+def bin_ssp_ages(ssp_ages, ssp_starspec, ssp_nebspec, ssp_emlineflux, 
+                 sfh_ages, galaxy_age, t_birth):
     '''
     Collapse the SSP grid into fewer ages, if possible, to significantly
     increase the computational efficiency.
@@ -35,22 +36,20 @@ def bin_ssp_ages(ssp_ages, ssp_spec, ssp_linespec, sfh_ages, galaxy_age, t_birth
     ----------
     ssp_ages : 1d array
         SSP age grid in Gyr
-
-    ssp_spec : 3d array
-        SSP spectra in units of micro-Jy at a distance of 10 pc
+    ssp_starspec : 3d array
+        stellar SSP spectra in units of micro-Jy at a distance of 10 pc
         dimensions: (wavelengths, ages, metallicities)
-
-    ssp_linespec : 3d array
+    ssp_nebspec : 3d array
+        nebular SSP spectra in units of micro-Jy at a distance of 10 pc
+        dimensions: (wavelengths, ages, metallicities)
+    ssp_emlineflux : 3d array
         SSP emission line fluxes in units of ergs/s/cm2 at 10 pc
         dimensions: (wavelengths, ages, metallicities)
-
     sfh_ages : 1d array
         SFH age bins in Gyr
-
     galaxy_age : float
         maximum age of the galaxy in Gyr
         (age of Universe at the redshift of the galaxy)
-
     t_birth : float
         age of the birth cloud in Gyr
 
@@ -60,12 +59,12 @@ def bin_ssp_ages(ssp_ages, ssp_spec, ssp_linespec, sfh_ages, galaxy_age, t_birth
         collapsed SSP age grid in Gyr
         include age of the birth cloud
         and all SFH age bins, accounting for the age of the galaxy
-
-    binned_spec : 3d array
-        new ssp_spec, accounting for the new age weighting
-
-    binned_linespec : 3d array
-        new ssp_linespec, accounting for the new age weighting
+    binned_starspec : 3d array
+        new ssp_starspec, accounting for the new age weighting
+    binned_nebspec : 3d array
+        new ssp_nebspec, accounting for the new age weighting
+    binned_emlineflux : 3d array
+        new ssp_emlineflux, accounting for the new age weighting
 
     '''
     # build the list of age bin points
@@ -84,26 +83,35 @@ def bin_ssp_ages(ssp_ages, ssp_spec, ssp_linespec, sfh_ages, galaxy_age, t_birth
         agebin[-1] = ssp_ages[ np.where(ssp_ages>agebin[-1])[0][0] ]
 
     # set up the output array
-    binned_ages   = agebin[1:]
-    nwave_ssp     = ssp_spec.shape[0]
-    nwave_linessp = ssp_linespec.shape[0]
-    nmet          = ssp_spec.shape[2]
+    binned_ages      = agebin[1:]
+    nwave_starssp    = ssp_starspec.shape[0]
+    if type(ssp_nebspec) != type(None):
+        nwave_nebssp     = ssp_nebspec.shape[0]
+    nwave_emlineflux = ssp_emlineflux.shape[0]
+    nmet             = ssp_starspec.shape[2]
 
-    binned_spec     = np.zeros((nwave_ssp,     len(binned_ages), nmet))
-    binned_linespec = np.zeros((nwave_linessp, len(binned_ages), nmet))
+    binned_starspec   = np.zeros((nwave_starssp,    len(binned_ages), nmet))
+    if type(ssp_nebspec) != type(None):
+        binned_nebspec    = np.zeros((nwave_nebssp,     len(binned_ages), nmet))
+    binned_emlineflux = np.zeros((nwave_emlineflux, len(binned_ages), nmet))
 
     for i in np.arange(len(binned_ages)):
         sel = np.where( (ssp_ages > agebin[i]) * (ssp_ages <= agebin[i+1]) )[0]
         wht = np.diff(np.hstack([0., 1e9 * ssp_ages[sel]]))
         wht[0] = np.diff( 1e9 * np.array([agebin[i], ssp_ages[sel][0]]) )
         for imet in np.arange(nmet):
-            binned_spec[:,i,imet] = np.dot(ssp_spec[:,sel,imet],wht) / wht.sum()
-            binned_linespec[:,i,imet] = np.dot(ssp_linespec[:,sel,imet],wht) / wht.sum()
+            binned_starspec[:,i,imet]   = np.dot(ssp_starspec[:,sel,imet],wht) / wht.sum()
+            if type(ssp_nebspec) != type(None):
+                binned_nebspec[:,i,imet]    = np.dot(ssp_nebspec[:,sel,imet],wht) / wht.sum()
+            binned_emlineflux[:,i,imet] = np.dot(ssp_emlineflux[:,sel,imet],wht) / wht.sum()
 
-    return binned_ages, binned_spec, binned_linespec
+    if type(ssp_nebspec) == type(None):
+        binned_nebspec = None
+
+    return binned_ages, binned_starspec, binned_nebspec, binned_emlineflux
 
 
-def get_coarser_wavelength_fsps(wave, spec, redwave=1e5):
+def get_coarser_wavelength_fsps(wave, spec, redwave=350e4):
     '''
     smooth the spectrum with a gaussian kernel to improve 
     computational efficiency
@@ -435,38 +443,40 @@ def read_ssp_fsps(args):
         SSP age grid (Gyr)
     wave : numpy array (1d)
         SSP wavelength grid (Angstroms)
-    spec : numpy array (3d)
-        SSP spectra in units micro-Jy at a distance of 10 pc
+    starspec : numpy array (3d)
+        stellar SSP spectra in units micro-Jy at a distance of 10 pc
+        dimensions: (wave, ages, metallicities)
+    nebspec : numpy array (3d)
+        nebular SSP spectra in units micro-Jy at a distance of 10 pc
         dimensions: (wave, ages, metallicities)
     metallicities : numpy array (1d)
         SSP metallicities (in values of Z, where Zsolar = 0.019)
-    linewave : numpy array (1d)
+    emlinewave : numpy array (1d)
         rest-frame wavelengths of emission-line fluxes 
         (if used in model calculation)
-    linespec : numpy array (3d)
+    emlineflux : numpy array (3d)
         line fluxes in units ergs / cm2 / s at distance of 10 pc
-        dimensions: (linewave, ages, metallicities)
+        dimensions: (emlinewave, ages, metallicities)
 
     '''
     metallicities = np.array(args.metallicity_dict[args.ssp][args.isochrone])
 
-    s, ls = [], []
+    ss, ns, ef = [], [], []
     for met in metallicities:
         if args.ssp.lower() == 'fsps':
-            ages, wave, spec = read_fsps_file(args, met)
-        linespec = get_nebular_emission(ages, wave, spec, args.logU,
+            ages, wave, starspec = read_fsps_file(args, met)
+        emlineflux = get_nebular_emission(ages, wave, starspec, args.logU,
                                         met, kind='line')
-        spec = add_nebular_emission(ages, wave, spec, args.logU,
-                                        met)
+        nebspec = get_nebular_emission(ages, wave, starspec, args.logU,
+                                        met, kind='both')
 
         # do not smooth the emission line grid
         wave0 = wave.copy()
-        if args.fit_dust_em:
-            wave, spec = get_coarser_wavelength_fsps(wave0, spec, redwave=350e4)
-        else:
-            wave, spec = get_coarser_wavelength_fsps(wave0, spec)
-        s.append(spec)
-        ls.append(linespec)
+        wave, starspec = get_coarser_wavelength_fsps(wave0, starspec)
+        wave, nebspec  = get_coarser_wavelength_fsps(wave0, nebspec)
+        ss.append(starspec)
+        ns.append(nebspec)
+        ef.append(emlineflux)
 
     # save plot of SSP spectra
     if args.output_dict['template spec']:
@@ -476,11 +486,13 @@ def read_ssp_fsps(args):
             imet = np.argmin(abs(0.0077 - metallicities))
         fig = plt.figure(figsize=(8, 8))
         import seaborn as sns
-        colors = sns.color_palette("coolwarm", s[imet].shape[1])
+        colors = sns.color_palette("coolwarm", ss[imet].shape[1])
         wei = np.diff(np.hstack([0., ages]))
 #        wei = np.ones(s[imet].shape[1])
         for i in np.arange(s[imet].shape[1]):
-            plt.plot(wave, s[imet][:, i] * wei[i] / 1e8, color=colors[i])
+            # sum the stellar and nebular components:
+            si = ss[imet][:,i] + ns[imet][:,i]
+            plt.plot(wave, si * wei[i] / 1e8, color=colors[i])
         plt.xlim([900., 40000.])
         plt.xscale('log')
         plt.yscale('log')
@@ -491,12 +503,13 @@ def read_ssp_fsps(args):
         plt.savefig('template_spectra_plot.%s' % args.output_dict['image format'])
         plt.close(fig)
 
-    spec = np.moveaxis(np.array(s), 0, 2)
-    linespec = np.moveaxis(np.array(ls), 0, 2)
+    starspec   = np.moveaxis(np.array(ss), 0, 2)
+    nebspec    = np.moveaxis(np.array(ns), 0, 2)
+    emlineflux = np.moveaxis(np.array(ef), 0, 2)
 
     # Collapse the emission line SSP grid
-    linewave, linespec = collapse_emline_SSP(args, wave0, linespec) 
+    emlinewave, emlineflux = collapse_emline_SSP(args, wave0, emlineflux) 
 
-    return ages, wave, spec, metallicities, linewave,linespec
+    return ages, wave, starspec, nebspec, metallicities, emlinewave, emlineflux
 
 

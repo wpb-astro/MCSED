@@ -37,12 +37,12 @@ t_birth = 7. # age of the birth cloud (log years)
 #   wave_dust_em:     if not fitting dust emission component, ignore photometry
 #                     dominated by dust emission
 blue_wave_cutoff = 1216. # rest-frame wavelength in Angstroms 
-wave_dust_em     = 2.5   # rest-frame wavelength in microns 
+wave_dust_em     = 30.   # rest-frame wavelength in microns 
 
 # Stellar metallicity
 #   If False, leave metallicity as a free model parameter
 #   else, must be float: fixed metallicity of SSP models (Z_solar = 0.019)
-metallicity = 0.0077 
+metallicity = False
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
@@ -79,6 +79,11 @@ ISM_correct_coords = None # if None, do not apply an ISM correction
 #                     'hcrs', 'heliocentrictrueecliptic', 'icrs', 'itrs', 
 #                     'lsr', 'precessedgeocentric', 'supergalactic'
 IGM_correct = False
+
+# Separate the stellar/nebular components
+#   slower by factor of ~ 2, only needed if wish to return
+#   best-fit spectrum for stellar and nebular components separately
+separate_stars_gas = False 
 
 
 # Output files
