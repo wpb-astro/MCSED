@@ -921,14 +921,21 @@ class Mcsed:
         theta = list(np.hstack(init_params))
         thetae = list(np.hstack(init_deltas))
         theta_lims = np.vstack(init_lims)
+
         if num is None:
             num = self.nwalkers
         if kind == 'ball':
             pos = emcee.utils.sample_ball(theta, thetae, size=num)
         else:
-            pos = (np.random.rand(num)[:, np.newaxis] *
-                   (theta_lims[:, 1]-theta_lims[:, 0]) + theta_lims[:, 0])
+### WPBWPB delete
+#            pos = (np.random.rand(num)[:, np.newaxis] *
+#                   (theta_lims[:, 1]-theta_lims[:, 0]) + theta_lims[:, 0])
+            ran = (theta_lims[:, 1]-theta_lims[:, 0])[np.newaxis, :]
+            pos = (np.random.rand(num, len(theta_lims))*
+                   ran*0.8 + theta_lims[np.newaxis, :, 0]+0.1*ran)
+
         return pos
+
 
     def get_param_names(self):
         ''' Grab the names of the parameters for plotting
@@ -1016,9 +1023,9 @@ class Mcsed:
         new_chain = np.zeros((self.nwalkers, self.nsteps, ndim+numderpar+1))
         new_chain[:, :, :-(numderpar+1)] = sampler.chain
         self.chain = sampler.chain
-        for i in xrange(len(sampler.blobs)):
-            for j in xrange(len(sampler.blobs[0])):
-                for k in xrange(len(sampler.blobs[0][0])):
+        for i in np.arange(len(sampler.blobs)):
+            for j in np.arange(len(sampler.blobs[0])):
+                for k in np.arange(len(sampler.blobs[0][0])):
                     x = sampler.blobs[i][j][k]
                     # stellar mass and dust mass
                     if k==0 or k==4: 
@@ -1092,9 +1099,14 @@ class Mcsed:
             update dictionary (chi2, reduced chi2, and degrees of freedom)
             as measured from medianspec and median line fluxes / indexes
         '''
+### WPBWPB delete
+        Table(self.samples).write('samples.dat',format='ascii',overwrite=True)
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :]
+
+### WPBWPB delete
+        print(len(nsamples))
         wv = self.get_filter_wavelengths()
         sp, starsp, nebsp, fn = ([], [], [], [])
         temline, tabsindx, tchi2 = ( Table(), Table(), Table() )
@@ -1286,11 +1298,16 @@ class Mcsed:
             indarr = np.arange(o,len(nsamples[0])-numderpar) 
         fsgrad = 11+int(round(0.75*len(indarr)))
         fig = corner.corner(nsamples[:, indarr], labels=names,
-                            range=percentilerange,
+                            range=percentilerange, color='rebeccapurple',
                             truths=truths, truth_color='gainsboro',
                             label_kwargs={"fontsize": fsgrad}, show_titles=True,
                             title_kwargs={"fontsize": fsgrad-2},
-                            quantiles=[0.16, 0.5, 0.84], bins=30)
+                            quantiles=[0.16, 0.5, 0.84], bins=20,
+                            **{'plot_density':False,
+                               'plot_datapoints':False,
+                               'fill_contours': True,
+                               'plot_contours': True,
+                               'no_fill_contours': False})
         w = fig.get_figwidth()
         fig.set_figwidth(w-(len(indarr)-13)*0.025*w)
 

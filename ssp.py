@@ -489,7 +489,7 @@ def read_ssp_fsps(args):
         colors = sns.color_palette("coolwarm", ss[imet].shape[1])
         wei = np.diff(np.hstack([0., ages]))
 #        wei = np.ones(s[imet].shape[1])
-        for i in np.arange(s[imet].shape[1]):
+        for i in np.arange(ss[imet].shape[1]):
             # sum the stellar and nebular components:
             si = ss[imet][:,i] + ns[imet][:,i]
             plt.plot(wave, si * wei[i] / 1e8, color=colors[i])

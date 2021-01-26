@@ -10,8 +10,8 @@ ssp = 'fsps'           # options include: 'fsps'
 isochrone = 'padova'   # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'binned_lsfr'
-sfh = 'constant' 
-dust_law = 'calzetti'  # options include: 'calzetti', 'noll', 'reddy', 
+sfh = 'binned_lsfr'  #'constant' 
+dust_law = 'noll'  # options include: 'calzetti', 'noll', 'reddy', 
                        #                  'conroy', 'cardelli'
 
 # Dust emission parameters: 
@@ -83,7 +83,7 @@ IGM_correct = False
 # Separate the stellar/nebular components
 #   slower by factor of ~ 2, only needed if wish to return
 #   best-fit spectrum for stellar and nebular components separately
-separate_stars_gas = False 
+separate_stars_gas = False # True 
 
 
 # Output files
@@ -104,7 +104,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
 param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
-reserved_cores = 2 # integer
+reserved_cores = 4 # integer
 
 # Input emission line strengths
 #   keys are emission line name (str) corresponding to Name in the input file
