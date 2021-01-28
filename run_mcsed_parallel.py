@@ -18,15 +18,17 @@ def worker(f, i, chunk, ssp_info, out_q, err_q, kwargs):
     ''' Simple design to catch exceptions from the given call '''
     try:
         result = f(argv=chunk, ssp_info=ssp_info)
+        print('worker worked, i=%s' % i)
     except Exception as e:
         err_q.put(e)
+        print('worker failed, i=%s' % i)
         return
 
     # output the result and task ID to output queue
     out_q.put((i, result))
 
 
-def parallel_map(func, argv, args, ncpu, ssp_info, clean=True, **kwargs):
+def parallel_map(func, argv, args, ncpu, ssp_info, clean=False, **kwargs):
     '''
     Make multiple calls to run_mcsed_fit's main function for either
     test or real data to parallelize the computing effort.  Collect the info
@@ -80,6 +82,8 @@ def parallel_map(func, argv, args, ncpu, ssp_info, clean=True, **kwargs):
     for i, chunk in enumerate(chunks):
         p = Process(target=worker, args=(func, i, chunk, ssp_info, out_q,
                                          err_q, kwargs))
+        print(i)
+        print(chunk)
         jobs.append(p)
         p.start()
 
@@ -89,6 +93,7 @@ def parallel_map(func, argv, args, ncpu, ssp_info, clean=True, **kwargs):
 
     if not err_q.empty():
         # kill all on any exception from any one worker
+        print('one of the workers died')
         raise err_q.get()
 
     # Processes finish in arbitrary order. Process IDs double
@@ -96,6 +101,7 @@ def parallel_map(func, argv, args, ncpu, ssp_info, clean=True, **kwargs):
     results = [None] * len(jobs)
     while not out_q.empty():
         idx, result = out_q.get()
+        print('result gathering worked for idx %s' % idx)
         results[idx] = result
 
     # Remove the temporary (divided) input files

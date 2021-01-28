@@ -777,7 +777,7 @@ def main(argv=None, ssp_info=None):
     # Communicate emission line measurement preferences
     mcsed_model.use_emline_flux = args.use_emline_flux
     mcsed_model.emline_dict = args.emline_list_dict
-    mcsed_model.use_absorption_indx = args.use_absorption_indx
+    mcsed_model.use_absorption_indx = False # args.use_absorption_indx
     mcsed_model.absindx_dict = args.absorption_index_dict
 
     # Adjust Rv in the dust attenuation model, if specified in config file
@@ -932,6 +932,7 @@ def main(argv=None, ssp_info=None):
         for yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe, ebvi in zip(y, yerr, z, flag, 
                                                                         objid, field, em, emerr,
                                                                         absindx, absindx_e, ebv_MW):
+            print((oi, fd))
             mcsed_model.filter_flag = fl
             mcsed_model.set_class_parameters(iv)
             mcsed_model.data_fnu = yi[fl]
@@ -943,6 +944,9 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_absindx_e = indxe
 
             if args.sfh == 'binned_lsfr':
+#            if False:
+                # number of (useful) age grid points depends on galaxy age
+                mcsed_model.starSSP=None
                 sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
                 max_ssp_age = get_max_ssp_age(args, z=zi)
                 maxage_Gyr = 10.**(max_ssp_age-9.)
@@ -976,6 +980,7 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.tauIGM_lam = None
 
             mcsed_model.fit_model()
+            print('done fitting model, about to set median fit')
             mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:

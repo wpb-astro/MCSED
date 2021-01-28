@@ -557,6 +557,9 @@ class Mcsed:
         weight_birth[~sel_birth] = 0
         weight_age[~sel_age] = 0
 
+        if self.ssp_ages.shape[0] != self.ssp_starspectra.shape[1]:
+            print(( self.ssp_ages.shape , self.ssp_starspectra.shape) )
+
         # Cover the two cases where ssp_ages contains ageval and when not
         # A: index of last acceptable SSP age
         A = np.nonzero(self.ssp_ages <= ageval)[0][-1]
@@ -992,7 +995,8 @@ class Mcsed:
             if getattr(self, var) is None:
                 self.error('The variable %s must be set first' % var)
 
-        pos = self.get_init_walker_values(kind='ball')
+### WPBWPB do I want ball or not?
+        pos = self.get_init_walker_values(kind='not_ball')
         ndim = pos.shape[1]
         start = time.time()
         sampler = emcee.EnsembleSampler(self.nwalkers, ndim, self.lnprob,

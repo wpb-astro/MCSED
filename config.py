@@ -37,19 +37,19 @@ t_birth = 7. # age of the birth cloud (log years)
 #   wave_dust_em:     if not fitting dust emission component, ignore photometry
 #                     dominated by dust emission
 blue_wave_cutoff = 1216. # rest-frame wavelength in Angstroms 
-wave_dust_em     = 30.   # rest-frame wavelength in microns 
+wave_dust_em     = 2.5   # rest-frame wavelength in microns 
 
 # Stellar metallicity
 #   If False, leave metallicity as a free model parameter
 #   else, must be float: fixed metallicity of SSP models (Z_solar = 0.019)
-metallicity = False
+metallicity = 0.0077 #False
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
 logU = -2.5
 
 # EMCEE parameters
-nwalkers = 100 
+nwalkers = 130 
 nsteps   = 1000 
 
 # Number of test objects
@@ -58,9 +58,9 @@ test_zrange = (1.0, 2.0) # redshift range of test objects (uniform prior)
 
 # Minimum fractional errors in observed photometry, 
 #   emission line fluxes, and absorption line indices 
-phot_floor_error    = 0.05
-emline_floor_error  = 0.05
-absindx_floor_error = 0.05
+phot_floor_error    = 0.1
+emline_floor_error  = 0.1
+absindx_floor_error = 0.1
 
 # Fractional error expected from the models, i.e., fractional error adopted
 #   for model photometry, emission line fluxes, and absorption line indices
@@ -83,7 +83,7 @@ IGM_correct = False
 # Separate the stellar/nebular components
 #   slower by factor of ~ 2, only needed if wish to return
 #   best-fit spectrum for stellar and nebular components separately
-separate_stars_gas = False # True 
+separate_stars_gas = True 
 
 
 # Output files
@@ -104,7 +104,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
 param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
-reserved_cores = 4 # integer
+reserved_cores = 0 # integer
 
 # Input emission line strengths
 #   keys are emission line name (str) corresponding to Name in the input file
