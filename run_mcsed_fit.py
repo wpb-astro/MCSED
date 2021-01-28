@@ -252,6 +252,7 @@ def parse_args(argv=None):
         args.use_emline_flux = True
         args.use_absorption_indx = True
 
+
     if (type(args.emline_list_dict)!=dict) | (args.test):
         args.emline_list_dict={}
     if (type(args.absorption_index_dict)!=dict) | (args.test):
@@ -468,7 +469,7 @@ def read_input_file(args):
 
     # assemble photometry
     for i, datum in enumerate(F):
-        loc = datum[0].lower()
+        loc = datum['Field'].lower()
 
         for j, ind in enumerate(args.filt_dict.keys()):
             if loc in args.catalog_filter_dict.keys():
@@ -494,8 +495,8 @@ def read_input_file(args):
                     continue
             if loc in field_dict.keys():
                 if colname in field_dict[loc].columns.names:
-                    fi  = field_dict[loc].data[colname][int(datum[1])-1]
-                    fie = field_dict[loc].data[ecolname][int(datum[1])-1]
+                    fi  = field_dict[loc].data[colname][int(datum['ID'])-1]
+                    fie = field_dict[loc].data[ecolname][int(datum['ID'])-1]
                 elif colname in F.colnames:
                     fi  = datum[colname]
                     fie = datum[ecolname]
@@ -533,7 +534,8 @@ def read_input_file(args):
     line_fill_value = -99 # null value, should not be changed
     if args.use_emline_flux:
         em, emerr = Table(), Table()
-        for emline in args.emline_list_dict.keys():
+
+        for emline in list(args.emline_list_dict.keys()):
             colname, ecolname = '%s_FLUX' % emline, '%s_ERR' % emline
             if colname in Fcols:
                 em_arr = np.array(F[colname]  * args.emline_factor)
@@ -562,7 +564,7 @@ def read_input_file(args):
     # read in absorption line indices, if provided
     if args.use_absorption_indx:
         absindx, absindx_e = Table(), Table()
-        for indx in args.absorption_index_dict.keys():
+        for indx in list(args.absorption_index_dict.keys()):
             colname, ecolname = '%s_INDX' % indx, '%s_Err' % indx
             # note the index units (for applying the floor error)
             unit = args.absorption_index_dict[indx][-1]
@@ -777,7 +779,7 @@ def main(argv=None, ssp_info=None):
     # Communicate emission line measurement preferences
     mcsed_model.use_emline_flux = args.use_emline_flux
     mcsed_model.emline_dict = args.emline_list_dict
-    mcsed_model.use_absorption_indx = False # args.use_absorption_indx
+    mcsed_model.use_absorption_indx = args.use_absorption_indx
     mcsed_model.absindx_dict = args.absorption_index_dict
 
     # Adjust Rv in the dust attenuation model, if specified in config file
@@ -932,7 +934,6 @@ def main(argv=None, ssp_info=None):
         for yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe, ebvi in zip(y, yerr, z, flag, 
                                                                         objid, field, em, emerr,
                                                                         absindx, absindx_e, ebv_MW):
-            print((oi, fd))
             mcsed_model.filter_flag = fl
             mcsed_model.set_class_parameters(iv)
             mcsed_model.data_fnu = yi[fl]
@@ -944,8 +945,8 @@ def main(argv=None, ssp_info=None):
             mcsed_model.data_absindx_e = indxe
 
             if args.sfh == 'binned_lsfr':
-#            if False:
-                # number of (useful) age grid points depends on galaxy age
+                # number of (useful) age grid points depends on galaxy age,
+                # so the starSSP attribute should be reset each time
                 mcsed_model.starSSP=None
                 sfh_ages_Gyr = 10.**(np.array(mcsed_model.sfh_class.ages)-9.)
                 max_ssp_age = get_max_ssp_age(args, z=zi)
@@ -954,6 +955,7 @@ def main(argv=None, ssp_info=None):
                                           emlinefluxSSP, sfh_ages_Gyr,
                                           maxage_Gyr, mcsed_model.t_birth)
                 binned_ages, binned_starspec, binned_nebspec, binned_emlineflux = binned_ssp
+
                 mcsed_model.ssp_ages = binned_ages
                 mcsed_model.ssp_starspectra = binned_starspec
                 mcsed_model.ssp_nebspectra = binned_nebspec
@@ -980,7 +982,6 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.tauIGM_lam = None
 
             mcsed_model.fit_model()
-            print('done fitting model, about to set median fit')
             mcsed_model.set_median_fit()
 
             if args.output_dict['sample plot']:

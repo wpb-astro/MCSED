@@ -28,8 +28,8 @@ sns.set_context("talk") # options include: talk, poster, paper
 sns.set_style("ticks")
 sns.set_style({"xtick.direction": "in","ytick.direction": "in",
                "xtick.top":True, "ytick.right":True,
-               "xtick.major.size":12, "xtick.minor.size":4,
-               "ytick.major.size":12, "ytick.minor.size":4,
+               "xtick.major.size":16, "xtick.minor.size":4,
+               "ytick.major.size":16, "ytick.minor.size":4,
                })
 
 
@@ -557,9 +557,6 @@ class Mcsed:
         weight_birth[~sel_birth] = 0
         weight_age[~sel_age] = 0
 
-        if self.ssp_ages.shape[0] != self.ssp_starspectra.shape[1]:
-            print(( self.ssp_ages.shape , self.ssp_starspectra.shape) )
-
         # Cover the two cases where ssp_ages contains ageval and when not
         # A: index of last acceptable SSP age
         A = np.nonzero(self.ssp_ages <= ageval)[0][-1]
@@ -740,8 +737,8 @@ class Mcsed:
                         model_err = 2.5*np.log10(1.+self.sigma_m)
                     else:
                         model_err = model_indx * self.sigma_m
-                    obs_indx = self.data_absindx['%s_INDX' % indx]
-                    obs_indx_e = self.data_absindx_e['%s_Err' % indx]
+                    obs_indx = float(self.data_absindx['%s_INDX' % indx])
+                    obs_indx_e = float(self.data_absindx_e['%s_Err' % indx])
                     sigma2 = obs_indx_e**2. + model_err**2.
                     chi2_term += ( (model_indx - obs_indx)**2 /
                                   sigma2) * indx_weight
@@ -758,8 +755,8 @@ class Mcsed:
                             continue
                         model_lineflux = self.linefluxCSPdict[emline]
                         model_err = model_lineflux * self.sigma_m
-                        lineflux  = self.data_emline['%s_FLUX' % emline]
-                        elineflux = self.data_emline_e['%s_ERR' % emline]
+                        lineflux  = float(self.data_emline['%s_FLUX' % emline])
+                        elineflux = float(self.data_emline_e['%s_ERR' % emline])
                         sigma2 = elineflux**2. + model_err**2.
                         chi2_term += ( (model_lineflux - lineflux)**2 /
                                       sigma2) * emline_weight
@@ -770,7 +767,7 @@ class Mcsed:
         if not self.chi2:
             self.chi2 = {}
             dof_wht = np.array(dof_wht)
-            npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht) + 1
+            npt = ( np.sum(dof_wht)**2. - np.sum(dof_wht**2.) ) / np.sum(dof_wht) + 1
             self.chi2['dof'] = npt - self.nfreeparams
         self.chi2['chi2']  = chi2_term
         self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
@@ -833,8 +830,8 @@ class Mcsed:
                         model_err = 2.5*np.log10(1.+self.sigma_m)
                     else:
                         model_err = model_indx * self.sigma_m
-                    obs_indx = self.data_absindx['%s_INDX' % indx]
-                    obs_indx_e = self.data_absindx_e['%s_Err' % indx]
+                    obs_indx = float(self.data_absindx['%s_INDX' % indx])
+                    obs_indx_e = float(self.data_absindx_e['%s_Err' % indx])
                     sigma2 = obs_indx_e**2. + model_err**2.
                     chi2_term += (-0.5 * (model_indx - obs_indx)**2 /
                                   sigma2) * indx_weight
@@ -853,8 +850,8 @@ class Mcsed:
                             continue
                         model_lineflux = self.linefluxCSPdict[emline]
                         model_err = model_lineflux * self.sigma_m
-                        lineflux  = self.data_emline['%s_FLUX' % emline]
-                        elineflux = self.data_emline_e['%s_ERR' % emline]
+                        lineflux  = float(self.data_emline['%s_FLUX' % emline])
+                        elineflux = float(self.data_emline_e['%s_ERR' % emline])
                         sigma2 = elineflux**2. + model_err**2.
                         chi2_term += (-0.5 * (model_lineflux - lineflux)**2 /
                                       sigma2) * emline_weight
@@ -866,7 +863,7 @@ class Mcsed:
         if not self.chi2:
             self.chi2 = {}
             dof_wht = np.array(dof_wht)
-            npt = ( sum(dof_wht)**2. - sum(dof_wht**2.) ) / sum(dof_wht) + 1
+            npt = ( np.sum(dof_wht)**2. - np.sum(dof_wht**2.) ) / np.sum(dof_wht) + 1
             self.chi2['dof'] = npt - self.nfreeparams
         self.chi2['chi2']  = -2. * chi2_term
         self.chi2['rchi2'] = self.chi2['chi2'] / (self.chi2['dof'] - 1.)
@@ -930,9 +927,6 @@ class Mcsed:
         if kind == 'ball':
             pos = emcee.utils.sample_ball(theta, thetae, size=num)
         else:
-### WPBWPB delete
-#            pos = (np.random.rand(num)[:, np.newaxis] *
-#                   (theta_lims[:, 1]-theta_lims[:, 0]) + theta_lims[:, 0])
             ran = (theta_lims[:, 1]-theta_lims[:, 0])[np.newaxis, :]
             pos = (np.random.rand(num, len(theta_lims))*
                    ran*0.8 + theta_lims[np.newaxis, :, 0]+0.1*ran)
@@ -995,14 +989,15 @@ class Mcsed:
             if getattr(self, var) is None:
                 self.error('The variable %s must be set first' % var)
 
-### WPBWPB do I want ball or not?
-        pos = self.get_init_walker_values(kind='not_ball')
+        pos = self.get_init_walker_values(kind='notball')
         ndim = pos.shape[1]
         start = time.time()
+        moves = emcee.moves.StretchMove()
         sampler = emcee.EnsembleSampler(self.nwalkers, ndim, self.lnprob,
                                         a=2.0)
         # Do real run
-        sampler.run_mcmc(pos, self.nsteps, rstate0=np.random.get_state())
+        sampler.run_mcmc(pos, self.nsteps, rstate0=np.random.get_state(),
+                         progress=True) 
         end = time.time()
         elapsed = end - start
         self.log.info("Total time taken: %0.2f s" % elapsed)
@@ -1010,8 +1005,12 @@ class Mcsed:
                       (elapsed / (self.nsteps) * 1000. /
                        self.nwalkers))
         # Calculate how long the run should last
-        tau = np.max(sampler.acor)
-        burnin_step = int(tau*3)
+        try:
+            tau = np.max(sampler.acor)
+            burnin_step = int(tau*3)
+        except emcee.autocorr.AutocorrError:
+            tau = -99
+            burnin_step = int(self.nsteps / 4)
         self.log.info("Mean acceptance fraction: %0.2f" %
                       (np.mean(sampler.acceptance_fraction)))
         self.log.info("AutoCorrelation Steps: %i, Number of Burn-in Steps: %i"
@@ -1103,14 +1102,10 @@ class Mcsed:
             update dictionary (chi2, reduced chi2, and degrees of freedom)
             as measured from medianspec and median line fluxes / indexes
         '''
-### WPBWPB delete
-        Table(self.samples).write('samples.dat',format='ascii',overwrite=True)
         chi2sel = (self.samples[:, -1] >
                    (np.max(self.samples[:, -1], axis=0) - lnprobcut))
         nsamples = self.samples[chi2sel, :]
 
-### WPBWPB delete
-        print(len(nsamples))
         wv = self.get_filter_wavelengths()
         sp, starsp, nebsp, fn = ([], [], [], [])
         temline, tabsindx, tchi2 = ( Table(), Table(), Table() )
@@ -1240,7 +1235,7 @@ class Mcsed:
             p.set_facecolor('none')
 
         ax3.errorbar(self.fluxwv, self.data_fnu, yerr=self.data_fnu_e, fmt='s',
-                     fillstyle='none', markersize=150,
+                     fillstyle='none', markersize=15,
                      color=[0.510, 0.373, 0.529], zorder=10)
         ax3.scatter(self.fluxwv, self.data_fnu, marker='s', s=150,facecolors='none',
                     edgecolors=[0.510, 0.373, 0.529], linewidths=2, zorder=10)        
@@ -1288,7 +1283,7 @@ class Mcsed:
             truths = None
         percentilerange = [p for i, p in enumerate(self.get_param_lims())
                            if i >= o] + [[7, 11]]
-        percentilerange = [.95] * len(names)
+        percentilerange = [.97] * len(names)
         if self.dust_em_class.fixed: 
             numderpar = 3
         else: 
@@ -1370,8 +1365,8 @@ class Mcsed:
         for ax_loc in fig.axes:
             ax_loc.minorticks_on()
 
+        plt.tight_layout()            
         fig.savefig("%s.%s" % (outname, imgtype))
-        plt.tight_layout()
         plt.close(fig)
 
     def add_fitinfo_to_table(self, percentiles, start_value=3, lnprobcut=7.5,

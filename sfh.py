@@ -781,9 +781,6 @@ class binned_lsfr:
             val = getattr(self, 'sfr_' + str(num))
             lims = getattr(self, 'sfr_' + str(num) + '_lims')
             flag *= ((val > lims[0]) * (val < lims[1]))
-#            if not flag:
-#                print('num in sfh is out of prior')
-#                print(num)
         return flag
 
     def set_parameters_from_list(self, input_list, start_value):

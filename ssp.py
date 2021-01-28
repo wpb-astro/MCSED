@@ -348,7 +348,7 @@ def collapse_emline_SSP(args, linewave, linespec, clight=2.99792e18):
         return np.array([1000.,2000.]), linespec[0:2,:,:]
 
     emlines = args.emline_list_dict.keys() 
-    emwaves = np.array(args.emline_list_dict.values())[:,0]
+    emwaves = np.array(list(args.emline_list_dict.values()))[:,0]
     ssp_emline_collapsed = linespec[0:len(emlines),:,:]
     # loop through emission line spectra for all ages, metallicities
     dims = linespec.shape
@@ -395,10 +395,10 @@ def make_gaussian_emission(wavebig, wave, stddev=1., clight=2.99792e18):
     '''
     gspec = np.zeros((len(wavebig), len(wave)))
     G = Gaussian1DKernel(stddev).array
-    mid = len(G) / 2
+    mid = int(len(G) / 2)
     dw = np.diff(wavebig)
     for i, w in enumerate(wave):
-        xl = np.argmin(np.abs(wavebig - w))
+        xl = int(np.argmin(np.abs(wavebig - w)))
         if (xl > mid) and ((xl+mid) < len(wavebig)):
             gspec[(xl-mid):(xl+mid+1), i] = G / clight * w**2 / dw[xl]
     return gspec
