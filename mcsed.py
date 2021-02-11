@@ -50,7 +50,8 @@ class Mcsed:
                  redshift=None, Dl=None, filter_flag=None, 
                  input_params=None, true_fnu=None, true_spectrum=None,
                  true_starspectrum=None, true_nebspectrum=None, 
-                 sigma_m=0.1, nwalkers=40, nsteps=1000, 
+                 sigma_m=0.1, nwalkers=40, nsteps=1000,
+                 progress_bar=False, force_emcee_finish=True, burnin_fraction=0.25, 
                  chi2=None, tauISM_lam=None, tauIGM_lam=None):
         ''' Initialize the Mcsed class.
 
@@ -187,6 +188,13 @@ class Mcsed:
             The number of walkers for emcee when fitting a model
         nsteps : int
             The number of steps each walker will make when fitting a model
+        progress_bar : bool
+            Show the progress of the fit in the terminal
+        force_emcee_finish : bool
+            Force emcee to finish even if it does not meet the formal
+            criteria for convergence
+        burnin_fraction : float
+            Fraction of nsteps to count as burnin steps, if force_emcee_finish=True
         chi2 : dict
             keys: 'dof', 'chi2', 'rchi2'
             Track the degrees of freedom (accounting for data and model parameters)
@@ -252,6 +260,9 @@ class Mcsed:
         self.sigma_m = sigma_m
         self.nwalkers = nwalkers
         self.nsteps = nsteps
+        self.progress_bar = progress_bar
+        self.force_emcee_finish = force_emcee_finish
+        self.burnin_fraction = burnin_fraction
         self.chi2 = chi2
         self.tauISM_lam = tauISM_lam
         self.tauIGM_lam = tauIGM_lam
@@ -997,7 +1008,7 @@ class Mcsed:
                                         a=2.0)
         # Do real run
         sampler.run_mcmc(pos, self.nsteps, rstate0=np.random.get_state(),
-                         progress=True) 
+                         progress=self.progress_bar) 
         end = time.time()
         elapsed = end - start
         self.log.info("Total time taken: %0.2f s" % elapsed)
@@ -1005,12 +1016,16 @@ class Mcsed:
                       (elapsed / (self.nsteps) * 1000. /
                        self.nwalkers))
         # Calculate how long the run should last
-        try:
+        if not self.force_finish:
             tau = np.max(sampler.acor)
             burnin_step = int(tau*3)
-        except emcee.autocorr.AutocorrError:
-            tau = -99
-            burnin_step = int(self.nsteps / 4)
+        else:
+            try:
+                tau = np.max(sampler.acor)
+                burnin_step = int(tau*3)
+            except emcee.autocorr.AutocorrError:
+                tau = -99
+                burnin_step = int(self.nsteps * self.burnin_fraction)
         self.log.info("Mean acceptance fraction: %0.2f" %
                       (np.mean(sampler.acceptance_fraction)))
         self.log.info("AutoCorrelation Steps: %i, Number of Burn-in Steps: %i"

@@ -178,7 +178,8 @@ def parse_args(argv=None):
 
     # Use config values if none are set in the input
     arg_inputs = ['ssp', 'metallicity', 'isochrone', 'sfh', 'dust_law',
-                  't_birth', 'nwalkers', 'nsteps', 'logU', 
+                  't_birth', 'logU', 'nwalkers', 'nsteps',
+                  'progress_bar', 'force_finish', 'burnin_fraction', 
                   'phot_floor_error', 'emline_floor_error', 'absindx_floor_error',  
                   'model_floor_error', 'nobjects', 'test_zrange', 'blue_wave_cutoff', 
                   'dust_em', 'Rv', 'EBV_old_young', 'wave_dust_em',
@@ -774,6 +775,9 @@ def main(argv=None, ssp_info=None):
                         emlinewave, emlinefluxSSP,
                         args.sfh, args.dust_law, args.dust_em, 
                         nwalkers=args.nwalkers, nsteps=args.nsteps,
+                        progress_bar=args.progress_bar,
+                        force_finish=args.force_finish, 
+                        burnin_fraction=args.burnin_fraction,
                         sigma_m=args.model_floor_error)
 
     # Communicate emission line measurement preferences
@@ -931,9 +935,14 @@ def main(argv=None, ssp_info=None):
 
         iv = mcsed_model.get_params()
 
+### WPBWPB delete
+        i=0
         for yi, ye, zi, fl, oi, fd, emi, emie, indx, indxe, ebvi in zip(y, yerr, z, flag, 
                                                                         objid, field, em, emerr,
                                                                         absindx, absindx_e, ebv_MW):
+            # WPBWPB delete
+            print('starting object %s' % i)
+
             mcsed_model.filter_flag = fl
             mcsed_model.set_class_parameters(iv)
             mcsed_model.data_fnu = yi[fl]
@@ -982,7 +991,13 @@ def main(argv=None, ssp_info=None):
                 mcsed_model.tauIGM_lam = None
 
             mcsed_model.fit_model()
+            # WPBWPB delete
+            print('finished model object %s' % i)
+
             mcsed_model.set_median_fit()
+            # WPBWPB delete
+            print('finished median fit object %s' % i)
+
 
             if args.output_dict['sample plot']:
                 mcsed_model.sample_plot('output/sample_%s_%05d_%s_%s' % 
@@ -1058,6 +1073,10 @@ def main(argv=None, ssp_info=None):
 
             last = mcsed_model.add_fitinfo_to_table(percentiles)
             print(mcsed_model.table)
+            # WPBWPB delete
+            print('finished everything object %s' % i)
+            i += 1
+
     if args.parallel:
         return [mcsed_model.table, formats]
     else:

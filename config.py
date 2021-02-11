@@ -10,7 +10,7 @@ ssp = 'fsps'           # options include: 'fsps'
 isochrone = 'padova'   # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'binned_lsfr'
-sfh = 'binned_lsfr'  # 'constant' 
+sfh = 'constant' #'binned_lsfr'  # 'constant' 
 dust_law = 'calzetti'  # options include: 'calzetti', 'noll', 'reddy', 
                        #                  'conroy', 'cardelli'
 
@@ -42,15 +42,19 @@ wave_dust_em     = 2.5   # rest-frame wavelength in microns
 # Stellar metallicity
 #   If False, leave metallicity as a free model parameter
 #   else, must be float: fixed metallicity of SSP models (Z_solar = 0.019)
-metallicity = False
+metallicity = 0.0077 # False
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
 logU = -2.5
 
 # EMCEE parameters
-nwalkers = 100 
-nsteps   = 1500 
+nwalkers = 20 
+nsteps   = 100 
+progress_bar = False # requires tqdm 
+# Force finish if EMCEE fails to converge
+force_finish = True
+burnin_fraction = 0.25
 
 # Number of test objects
 nobjects = 5
@@ -83,7 +87,7 @@ IGM_correct = False
 # Separate the stellar/nebular components
 #   slower by factor of ~ 2, only needed if wish to return
 #   best-fit spectrum for stellar and nebular components separately
-separate_stars_gas = True 
+separate_stars_gas = False 
 
 
 # Output files
