@@ -778,7 +778,7 @@ def main(argv=None, ssp_info=None):
                         args.sfh, args.dust_law, args.dust_em, 
                         nwalkers=args.nwalkers, nsteps=args.nsteps,
                         progress_bar=args.progress_bar,
-                        force_finish=args.force_finish, 
+                        force_emcee_finish=args.force_finish, 
                         burnin_fraction=args.burnin_fraction,
                         sigma_m=args.model_floor_error)
 
@@ -1037,7 +1037,8 @@ def main(argv=None, ssp_info=None):
                     dset[...] = mcsed_model.full_chains
                 # add meta-data
                 dset.attrs['burn_in'] = mcsed_model.burn_in
-                dset.attrs['header'] = names 
+                names_tmp = np.array([str(i) for i in names])
+                dset.attrs['header'] = names_tmp.astype('S')
                 dset.attrs['date'] = datetime.today().strftime('%Y-%m-%d')
                 f.close()
             if args.output_dict['bestfitspec']:

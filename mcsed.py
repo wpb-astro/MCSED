@@ -1023,7 +1023,7 @@ class Mcsed:
                       (elapsed / (self.nsteps) * 1000. /
                        self.nwalkers))
         # Calculate how long the run should last
-        if not self.force_finish:
+        if not self.force_emcee_finish:
             tau = np.max(sampler.acor)
             burnin_step = int(tau*3)
         else:
