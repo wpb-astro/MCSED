@@ -10,7 +10,7 @@ ssp = 'fsps'           # options include: 'fsps'
 isochrone = 'padova'   # options include: 'padova'
 # SFH options include: 'constant', 'burst', 'polynomial', 'exponential', 
 #                      'double_powerlaw', 'binned_lsfr'
-sfh = 'constant' 
+sfh = 'constant' #'binned_lsfr'  # 'constant' 
 dust_law = 'calzetti'  # options include: 'calzetti', 'noll', 'reddy', 
                        #                  'conroy', 'cardelli'
 
@@ -42,15 +42,19 @@ wave_dust_em     = 2.5   # rest-frame wavelength in microns
 # Stellar metallicity
 #   If False, leave metallicity as a free model parameter
 #   else, must be float: fixed metallicity of SSP models (Z_solar = 0.019)
-metallicity = 0.0077 
+metallicity = 0.0077 # False
 
 # Nebular Emission Properties
 # The ionization parameter, logU, is held fixed
 logU = -2.5
 
 # EMCEE parameters
-nwalkers = 100 
-nsteps   = 1000 
+nwalkers = 20 
+nsteps   = 100 
+progress_bar = False # requires tqdm 
+# Force finish if EMCEE fails to converge
+force_finish = True
+burnin_fraction = 0.25
 
 # Number of test objects
 nobjects = 5
@@ -58,9 +62,9 @@ test_zrange = (1.0, 2.0) # redshift range of test objects (uniform prior)
 
 # Minimum fractional errors in observed photometry, 
 #   emission line fluxes, and absorption line indices 
-phot_floor_error    = 0.05
-emline_floor_error  = 0.05
-absindx_floor_error = 0.05
+phot_floor_error    = 0.1 
+emline_floor_error  = 0.1 
+absindx_floor_error = 0.1 
 
 # Fractional error expected from the models, i.e., fractional error adopted
 #   for model photometry, emission line fluxes, and absorption line indices
@@ -80,6 +84,11 @@ ISM_correct_coords = None # if None, do not apply an ISM correction
 #                     'lsr', 'precessedgeocentric', 'supergalactic'
 IGM_correct = False
 
+# Separate the stellar/nebular components
+#   slower by factor of ~ 2, only needed if wish to return
+#   best-fit spectrum for stellar and nebular components separately
+separate_stars_gas = False 
+
 
 # Output files
 #   Supported image formats: eps, pdf, pgf, png, ps, raw, rgba, svg, svgz
@@ -91,7 +100,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
                'lineflux'      : True,   # modeled and observed emission lines
                'absindx'       : True,   # modeled, observed absorption indices
                'triangle plot' : True,   # summary diagnostic plot
-               'sample plot'   : False,  # parameter estimates for MCMC chains
+               'sample plot'   : True,  # parameter estimates for MCMC chains
                'template spec' : True,   # save a plot of SSP spectra 
                'image format'  : 'png'}  # image type for plots
 
@@ -99,7 +108,7 @@ output_dict = {'parameters'    : True,   # fitted parameters
 param_percentiles = [5, 16, 50, 84, 95]
 
 # When running in parallel mode, utilize (Total cores) - reserved_cores
-reserved_cores = 2 # integer
+reserved_cores = 4 # integer
 
 # Input emission line strengths
 #   keys are emission line name (str) corresponding to Name in the input file

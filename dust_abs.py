@@ -46,7 +46,7 @@ def calzettilaw(wave, Rv=4.05):
 class calzetti:
     ''' Calzetti Dust Law
     '''
-    def __init__(self, EBV=0.15, EBV_lims=[-0.05, 1.50], EBV_delta=0.02, 
+    def __init__(self, EBV=0.1, EBV_lims=[-0.05, 1.50], EBV_delta=0.05, 
                  Rv=4.05, EBV_old_young=None):
         ''' Initialize Class
 
@@ -152,9 +152,9 @@ class noll:
         D(wave) = frac{E_b (wave,dellam)^2 }{(wave^2-lam0^2)^2
                      + (wave,dellam)^2}
     '''
-    def __init__(self, EBV=0.15, delta=0.0, Eb=2.5, EBV_lims=[-0.05, 1.50],
-                 delta_lims=[-1., 1.], Eb_lims=[-0.2, 6.], EBV_delta=0.02,
-                 delta_delta=0.3, Eb_delta=1.0, 
+    def __init__(self, EBV=0.1, delta=0.0, Eb=2.5, EBV_lims=[-0.05, 1.50],
+                 delta_lims=[-1., 1.], Eb_lims=[-0.2, 6.], EBV_delta=0.05,
+                 delta_delta=0.3, Eb_delta=0.5, 
                  Rv=4.05, EBV_old_young=None):
         ''' Initialize Class
 
@@ -274,7 +274,7 @@ class reddy:
     Reddy et al. (2015) derived an attenuation law for 1.4 < z < 2.6 galaxies 
     selected on the basis of emission-line detections on HST grism frames. 
     '''
-    def __init__(self, EBV=0.15, EBV_lims=[-0.05, 2.00], EBV_delta=0.02, 
+    def __init__(self, EBV=0.1, EBV_lims=[-0.05, 2.00], EBV_delta=0.05, 
                  Rv=2.505, EBV_old_young=None):
         ''' Initialize Class
 
@@ -403,7 +403,7 @@ class conroy:
     galaxies within the mass range $ 9.5 < \log(M_*/M_\odot) < 10$.
     Fixing Rv=3.1 and B=1.0 recovers a Cardelli et al. (1989) extinction curve.
     '''
-    def __init__(self, EBV=0.15, EBV_lims=[-0.05, 2.00], EBV_delta=0.02,
+    def __init__(self, EBV=0.1, EBV_lims=[-0.05, 2.00], EBV_delta=0.05,
                  B=0.8, Rv=2.0, EBV_old_young=None):
         ''' Initialize Class
 
@@ -599,7 +599,7 @@ class cardelli:
     '''
 
     '''
-    def __init__(self, EBV=0.15, EBV_lims=[-0.05, 2.00], EBV_delta=0.02,
+    def __init__(self, EBV=0.1, EBV_lims=[-0.05, 2.00], EBV_delta=0.05,
                  B=1.0, Rv=3.1, EBV_old_young=None):
         ''' Initialize Class
 

@@ -247,6 +247,22 @@ Summary of Important Variables
 |               |                  |             |             | steps for   |
 |               |                  |             |             | each walker |
 +---------------+------------------+-------------+-------------+-------------+
+| progress_bar  | config.py        | False       | …           | Show bar    |
+|               |                  |             |             | of fit      |
+|               |                  |             |             | progress    |
++---------------+------------------+-------------+-------------+-------------+
+| force_finish  | config.py        | True        | …           | Force emcee |
+|               |                  |             |             | to finish   |
+|               |                  |             |             | even if no  |
+|               |                  |             |             | convergence |
++---------------+------------------+-------------+-------------+-------------+
+| burnin        | config.py        | 0.25        | …           | Fraction of |
+| _fraction     |                  |             |             | nsteps to   |
+|               |                  |             |             | count as    |
+|               |                  |             |             | burnin, if  |
+|               |                  |             |             | force_      |
+|               |                  |             |             | finish=True |
++---------------+------------------+-------------+-------------+-------------+
 | reserved      | config.py        | 2           | …           | In          |
 | _cores        |                  |             |             | parallel, # |
 |               |                  |             |             | cores =     |
@@ -268,6 +284,11 @@ Summary of Important Variables
 | param         | config.py        | 5, 16, 50,  | …           | % of each   |
 | _percentiles  |                  | 84, 95      |             | parameter   |
 |               |                  |             |             | to report   |
++---------------+------------------+-------------+-------------+-------------+
+| separate_     | config.py        | False       | …           | Return the  |
+| stars_gas     |                  |             |             | stellar and |
+|               |                  |             |             | nebular     |
+|               |                  |             |             | components  |
 +---------------+------------------+-------------+-------------+-------------+
 | *Output Parameters*              |             |             |             |
 +---------------+------------------+-------------+-------------+-------------+

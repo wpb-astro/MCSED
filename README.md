@@ -1,5 +1,5 @@
 # MCSED
-The official documentation is hosted at [RTFM](https://mcsed.readthedocs.io/en/latest/index.html).
+The official documentation is hosted at [Read the Docs](https://mcsed.readthedocs.io/en/latest/index.html).
 
 ## Background
 MCSED models the optical, near-infrared and infrared spectral energy distribution (SED) of galactic systems.  In light of the fact that there are so many such codes already publicly available, we describe the motivation for MCSED and highlight areas in which this code stands out from the crowd.  First of all, galaxies over cosmic time span a wide range of parameters related to their baryonic content including total stellar mass, gas and stellar metallcity, dust mass and distribution, and star formation history.  This large variation for the totality of all galaxies makes it extremely difficult to develope a general enough SED fitting code to work for all systems.  Instead, most codes are taylored to work best for specific populations.  
@@ -11,7 +11,7 @@ To acquire and install this code, simply move to a directory where you would lik
 
         git clone https://github.com/wpb-astro/MCSED.git
 
-A directory called "MCSED" will be created containing all of the necessary files for the program.  This is a python based code and does require a few standard python based packages.  All of the packages required can be found in the Anaconda distribution environment.  To install Anaconda, see:
+A directory called "MCSED" will be created containing all of the necessary files for the program.  This is a python 3.9 based code and does require a few standard python based packages.  All of the packages required can be found in the Anaconda distribution environment.  To install Anaconda, see:
 https://docs.anaconda.com/anaconda/install/
 
 ## How to Run MCSED
@@ -96,11 +96,13 @@ The output files are stored in a directory called "outputs". Several output file
 
 ## Dependencies
 
-* emcee, tested with version '2.1.0', currently there are errors using '2.2.1'
-* corner, tested with version '2.0.1'
-* seaborn, tested with version '0.8.1'
-* astropy, tested with version '2.0.6'
-* matplotlib, tested with version '2.1.2'
-* scipy, tested with version '1.0.0'
+* emcee, tested with version '3.0.2'
+* corner, tested with version '2.1.0'
+* seaborn, tested with version '0.11.1'
+* astropy, tested with version '4.2'
+* matplotlib, tested with version '3.3.3'
+* numpy, tested with version '1.19.5'
+* scipy, tested with version '1.6.0'
 * dustmaps (if a correct for foreground Milky Way dust extinction is desired)
+* tqdm (if want to show progress bar tracking the emcee fit)
 

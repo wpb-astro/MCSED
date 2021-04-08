@@ -739,8 +739,8 @@ class binned_lsfr:
         if len(indx_too_old) > 1:
             for num in indx_too_old[1:]+1:
                 setattr(self, 'sfr_' + str(num), -99.)
-                setattr(self, 'sfr_' + str(num) + '_lims', [-99-1e-9,-99+1e-9])
-                setattr(self, 'sfr_' + str(num) + '_delta', 1e-9)
+                setattr(self, 'sfr_' + str(num) + '_lims', [-99-1e-5,-99+1e-5])
+                setattr(self, 'sfr_' + str(num) + '_delta', 1e-7)
 
     def get_nparams(self):
         ''' Return number of parameters '''

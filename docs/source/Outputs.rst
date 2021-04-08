@@ -66,7 +66,10 @@ Best Fit SEDs (``bestfitspec = True``)
 --------------------------------------
 
 For each object, a file containing the best fit SED will be returned,
-with columns of wavelength and flux density. The default wavelength
+with columns of wavelength and flux density. If the ``separate_stars_gas``
+keyword in ``config.py`` is set to True, the output file will contain 
+additional columns for the best fit stellar and nebular components, in
+addition to the combined SED. The default wavelength
 range is from rest-frame 500 Å to 350 :math:`\mu`\ m. If dust emission 
 is not being fit (``dust_em = False``), the spectrum will extend to the 
 rest-frame wavelength specified by the ``wave_dust_em`` keyword in ``config.py``. 
