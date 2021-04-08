@@ -95,6 +95,7 @@ separate_stars_gas = False
 output_dict = {'parameters'    : True,   # fitted parameters
                'settings'      : True,   # user-defined fitting assumptions
                'fitposterior'  : False,  # parameter posterior distributions
+               'fullposterior' : False,  # full 3D posteriors saved as HDF5 file
                'bestfitspec'   : True,   # best-fit SED model
                'fluxdensity'   : True,   # modeled and observed photometry
                'lineflux'      : True,   # modeled and observed emission lines

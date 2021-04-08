@@ -18,6 +18,8 @@ from astropy.table import Table, vstack
 from mcsed import Mcsed
 from distutils.dir_util import mkpath
 from cosmology import Cosmology
+import h5py
+from datetime import datetime 
 
 sys.path.insert(0,'3dhst_catalogs')
 import filter_info
@@ -1023,6 +1025,21 @@ def main(argv=None, ssp_info=None):
                 T = Table(mcsed_model.samples, names=names)
                 T.write('output/fitposterior_%s_%05d_%s_%s.dat' % (fd, oi, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
+            if args.output_dict['fullposterior']:
+                # save output as HDF5 file
+                f = h5py.File('output/fullposterior.hdf5', 'a')
+                tmp = 'fullposterior_%s_%05d_%s_%s' % (fd, oi, args.sfh, args.dust_law)
+                try: 
+                    dset = f.create_dataset(tmp, data=mcsed_model.full_chains)
+                except ValueError as e:
+                    # if dataset already exists, update numbers
+                    dset = f[tmp] 
+                    dset[...] = mcsed_model.full_chains
+                # add meta-data
+                dset.attrs['burn_in'] = mcsed_model.burn_in
+                dset.attrs['header'] = names 
+                dset.attrs['date'] = datetime.today().strftime('%Y-%m-%d')
+                f.close()
             if args.output_dict['bestfitspec']:
                 bestfitspec_data = [mcsed_model.wave, mcsed_model.medianspec]
                 bestfitspec_name = ['wavelength', 'spectrum']
