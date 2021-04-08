@@ -105,4 +105,5 @@ The output files are stored in a directory called "outputs". Several output file
 * scipy, tested with version '1.6.0'
 * dustmaps (if a correct for foreground Milky Way dust extinction is desired)
 * tqdm (if want to show progress bar tracking the emcee fit)
+* h5py, test with version '3.2.1' 
 
