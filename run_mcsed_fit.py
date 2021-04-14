@@ -907,6 +907,22 @@ def main(argv=None, ssp_info=None):
                 T = Table(mcsed_model.samples, names=names)
                 T.write('output/fitposterior_fake_%05d_%s_%s.dat' % (cnt, args.sfh, args.dust_law),
                         overwrite=True, format='ascii.fixed_width_two_line')
+            if args.output_dict['fullposterior']:
+                # save output as HDF5 file
+                f = h5py.File('output/fullposterior_test.hdf5', 'a')
+                tmp = 'fullposterior_test_%s_%05d_%s_%s' % (fd, oi, args.sfh, args.dust_law)
+                try: 
+                    dset = f.create_dataset(tmp, data=mcsed_model.full_chains)
+                except ValueError as e:
+                    # if dataset already exists, update numbers
+                    dset = f[tmp] 
+                    dset[...] = mcsed_model.full_chains
+                # add meta-data
+                dset.attrs['burn_in'] = mcsed_model.burn_in
+                names_tmp = np.array([str(i) for i in names])
+                dset.attrs['header'] = names_tmp.astype('S')
+                dset.attrs['date'] = datetime.today().strftime('%Y-%m-%d')
+                f.close()
             if args.output_dict['bestfitspec']:
                 bestfitspec_data = [mcsed_model.wave, mcsed_model.medianspec, mcsed_model.true_spectrum]
                 bestfitspec_name = ['wavelength', 'spectrum', 'true_spectrum']
