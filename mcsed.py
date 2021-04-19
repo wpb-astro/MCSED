@@ -205,6 +205,11 @@ class Mcsed:
         tauIGM_lam : numpy array (1 dim)
             Array of effective optical depths as function of wavelength 
             for IGM gas correction
+        full_chains : numpy array (3 dim)
+            Array containing the full posterior chains. The three axes are
+            walker, step, parameter
+        burn_in : int
+            Number of steps in the burn-in phase
         '''
         # Initialize all argument inputs
         self.filter_matrix = filter_matrix
@@ -266,6 +271,8 @@ class Mcsed:
         self.chi2 = chi2
         self.tauISM_lam = tauISM_lam
         self.tauIGM_lam = tauIGM_lam
+        self.full_chains = None
+        self.burn_in = None
 
         # Set up logging
         self.setup_logging()
@@ -1016,7 +1023,7 @@ class Mcsed:
                       (elapsed / (self.nsteps) * 1000. /
                        self.nwalkers))
         # Calculate how long the run should last
-        if not self.force_finish:
+        if not self.force_emcee_finish:
             tau = np.max(sampler.acor)
             burnin_step = int(tau*3)
         else:
@@ -1055,6 +1062,9 @@ class Mcsed:
         new_chain[:, :, -1] = sampler.lnprobability
         self.samples = new_chain[:, burnin_step:, :].reshape((-1, ndim+numderpar+1))
 
+        # full posterior
+        self.full_chains = new_chain 
+        self.burn_in = burnin_step 
 
     def get_derived_params(self):
         ''' These are not free parameters in the model, but are instead

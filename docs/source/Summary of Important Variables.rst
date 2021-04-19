@@ -306,6 +306,12 @@ Summary of Important Variables
 |               |                  |             |             | probability |
 |               |                  |             |             | distribs    |
 +---------------+------------------+-------------+-------------+-------------+
+| output_dict:  | config.py        | False       | [T,F]       | Save each   |
+| fullposterior |                  |             |             | walker,     |
+|               |                  |             |             | step, and   |
+|               |                  |             |             | parameter   |
+|               |                  |             |             | information |
++---------------+------------------+-------------+-------------+-------------+
 | output_dict:  | config.py        | True        | [T,F]       | Save        |
 | bestfitspec   |                  |             |             | best-fitting|
 |               |                  |             |             | SED         |
