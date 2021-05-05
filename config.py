@@ -53,7 +53,7 @@ nwalkers = 20
 nsteps   = 100 
 progress_bar = False # requires tqdm 
 # Force finish if EMCEE fails to converge
-force_finish = True
+force_emcee_finish = True
 burnin_fraction = 0.25
 
 # Number of test objects

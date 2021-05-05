@@ -251,8 +251,8 @@ Summary of Important Variables
 |               |                  |             |             | of fit      |
 |               |                  |             |             | progress    |
 +---------------+------------------+-------------+-------------+-------------+
-| force_finish  | config.py        | True        | …           | Force emcee |
-|               |                  |             |             | to finish   |
+| force_emcee   | config.py        | True        | …           | Force emcee |
+| _finish       |                  |             |             | to finish   |
 |               |                  |             |             | even if no  |
 |               |                  |             |             | convergence |
 +---------------+------------------+-------------+-------------+-------------+

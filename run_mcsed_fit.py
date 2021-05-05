@@ -181,7 +181,7 @@ def parse_args(argv=None):
     # Use config values if none are set in the input
     arg_inputs = ['ssp', 'metallicity', 'isochrone', 'sfh', 'dust_law',
                   't_birth', 'logU', 'nwalkers', 'nsteps',
-                  'progress_bar', 'force_finish', 'burnin_fraction', 
+                  'progress_bar', 'force_emcee_finish', 'burnin_fraction', 
                   'phot_floor_error', 'emline_floor_error', 'absindx_floor_error',  
                   'model_floor_error', 'nobjects', 'test_zrange', 'blue_wave_cutoff', 
                   'dust_em', 'Rv', 'EBV_old_young', 'wave_dust_em',
@@ -778,7 +778,7 @@ def main(argv=None, ssp_info=None):
                         args.sfh, args.dust_law, args.dust_em, 
                         nwalkers=args.nwalkers, nsteps=args.nsteps,
                         progress_bar=args.progress_bar,
-                        force_emcee_finish=args.force_finish, 
+                        force_emcee_finish=args.force_emcee_finish, 
                         burnin_fraction=args.burnin_fraction,
                         sigma_m=args.model_floor_error)
 
