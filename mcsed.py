@@ -1030,7 +1030,9 @@ class Mcsed:
             try:
                 tau = np.max(sampler.acor)
                 burnin_step = int(tau*3)
-            except emcee.autocorr.AutocorrError:
+            except (emcee.autocorr.AutocorrError, ValueError):
+                # ValueError to catch issue when tau is NaN
+                # potentially could change np.max to np.nanmax to ignore nan acor
                 tau = -99
                 burnin_step = int(self.nsteps * self.burnin_fraction)
         self.log.info("Mean acceptance fraction: %0.2f" %

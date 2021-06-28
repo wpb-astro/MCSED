@@ -454,7 +454,7 @@ def read_input_file(args):
                 if '%s.res' % fname not in args.filt_dict.values():
                     findex = max(args.filt_dict.keys())+1
                 else:
-                    findex = args.filt_dict.keys()[args.filt_dict.values().index('%s.res' % fname)]
+                    findex = list(args.filt_dict.keys())[list(args.filt_dict.values()).index('%s.res' % fname)]
                 infilt_dict[ findex ] = '%s.res' % fname
                 Fcols = [c for c in Fcols if c not in ['f_'+fname, 'e_'+fname]]
                 args.filt_dict.update(infilt_dict)
@@ -686,6 +686,12 @@ def mock_data(args, mcsed_model, nsamples=5, phot_error=0.05):
     for theta, z in zip(thetas, zobs):
         mcsed_model.set_class_parameters(theta)
         mcsed_model.set_new_redshift(z)
+        # changes to the below if statement
+        # if ...:
+        #     mcsed_model.spectrum, mcsed_model.starspectrum, mcsed_model.nebspectrum, mass, mdust_eb = mcsed_model.build_csp()
+        # else:
+        #     mcsed_model.spectrum, mcsed_model.starspectrum, mcsed_model.nebspectrum, mass = mcsed_model.build_csp()
+
         if mcsed_model.dust_em_class.assume_energy_balance:
             mcsed_model.spectrum, mass, mdust_eb = mcsed_model.build_csp()
         else:
@@ -910,6 +916,23 @@ def main(argv=None, ssp_info=None):
             if args.output_dict['fullposterior']:
                 # save output as HDF5 file
                 f = h5py.File('output/fullposterior_test.hdf5', 'a')
+                tmp = 'fullposterior_test_%s_%05d_%s_%s' % (args.test_field, cnt, args.sfh, args.dust_law)
+                try: 
+                    dset = f.create_dataset(tmp, data=mcsed_model.full_chains, maxshape=(None,None,None))
+                except ValueError as e:
+                    print('Error:', e)
+                    # if dataset already exists, update numbers
+                    dset = f[tmp] 
+                    dset[...] = mcsed_model.full_chains
+                # add meta-data
+                dset.attrs['burn_in'] = mcsed_model.burn_in
+                names_tmp = np.array([str(i) for i in names])
+                dset.attrs['header'] = names_tmp.astype('S')
+                dset.attrs['date'] = datetime.today().strftime('%Y-%m-%d')
+                f.close()
+            if args.output_dict['fullposterior']:
+                # save output as HDF5 file
+                f = h5py.File('output/fullposterior_test.hdf5', 'a')
                 tmp = 'fullposterior_test_%s_%05d_%s_%s' % (fd, oi, args.sfh, args.dust_law)
                 try: 
                     dset = f.create_dataset(tmp, data=mcsed_model.full_chains)
@@ -1046,7 +1069,7 @@ def main(argv=None, ssp_info=None):
                 f = h5py.File('output/fullposterior.hdf5', 'a')
                 tmp = 'fullposterior_%s_%05d_%s_%s' % (fd, oi, args.sfh, args.dust_law)
                 try: 
-                    dset = f.create_dataset(tmp, data=mcsed_model.full_chains)
+                    dset = f.create_dataset(tmp, data=mcsed_model.full_chains, maxshape=(None,None,None))
                 except ValueError as e:
                     # if dataset already exists, update numbers
                     dset = f[tmp] 
